@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AI Agent Specifics
+.agent/
+.gemini/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+implementation_plan.md
+task.md
+walkthrough.md
+*.png
+*.webp
+*.mp4
