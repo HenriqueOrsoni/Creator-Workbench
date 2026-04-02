@@ -47,14 +47,14 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
 
   return (
     <div className="space-y-6 text-left font-sans antialiased">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-3xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 font-heading">
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 font-heading">
             Estrutura_<span className="text-orange-500">Curricular</span>
           </h2>
-          <p className="text-xs text-zinc-400 font-bold mt-1 uppercase tracking-widest font-sans">PROJETO: {courseTitle}</p>
+          <p className="text-xs text-zinc-400 font-bold mt-1 uppercase tracking-widest font-sans break-words max-w-[300px] md:max-w-none">PROJETO: {courseTitle}</p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-orange-500/20 transition-all font-heading">
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-orange-500/20 transition-all font-heading w-full sm:w-auto">
           <Plus size={16} className="mr-2" /> NOVO_MÓDULO
         </Button>
       </div>

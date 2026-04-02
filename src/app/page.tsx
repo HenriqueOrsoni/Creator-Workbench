@@ -48,7 +48,7 @@ export default function UnifiedPage() {
       <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-orange-100/50 dark:bg-orange-950/20 rounded-full blur-[120px] -z-10 animate-pulse" />
       <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-orange-50/50 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
 
-      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 bg-white/40 backdrop-blur-md z-50 flex items-center justify-between px-12 font-sans">
+      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-md z-50 flex items-center justify-between px-4 md:px-12 font-sans transition-colors duration-500">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
             <Zap className="w-6 h-6 text-white" />
@@ -56,9 +56,9 @@ export default function UnifiedPage() {
           <span className="text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100">Workbench<span className="text-orange-500">_CR</span></span>
         </div>
 
-        <div className="flex items-center gap-8">
-          <button className="text-sm font-bold uppercase tracking-widest hover:text-orange-500 transition-colors font-sans">Ideação</button>
-          <button className="text-sm font-bold uppercase tracking-widest hover:text-orange-500 transition-colors font-sans">Produção</button>
+        <div className="flex items-center gap-4 md:gap-8">
+          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-orange-500 transition-colors font-sans">Ideação</button>
+          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-orange-500 transition-colors font-sans">Produção</button>
           <CreateIdeaDialog
             trigger={
               <Button className="bg-zinc-900 dark:bg-orange-500 dark:text-white hover:bg-zinc-800 dark:hover:bg-orange-600 text-white rounded-2xl px-8 font-bold uppercase text-xs tracking-[0.2em] transition-all hover:scale-105 active:scale-95 font-heading">
@@ -70,7 +70,7 @@ export default function UnifiedPage() {
         </div>
       </nav>
 
-      <main className="pt-[140px] pb-24 grid grid-cols-1 px-6 lg:px-24">
+      <main className="pt-[140px] pb-24 grid grid-cols-1 px-4 md:px-10 lg:px-16 xl:px-24">
         <Tabs defaultValue="inbox" className="w-full">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
             <motion.div
@@ -83,33 +83,33 @@ export default function UnifiedPage() {
                   Create.
                 </span>
               </h1>
-              <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-18 gap-2">
-                <TabsTrigger value="inbox" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Caixa de Entrada</TabsTrigger>
-                <TabsTrigger value="active" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Projetos Ativos</TabsTrigger>
-                <TabsTrigger value="editor" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Estúdio de Escrita</TabsTrigger>
+              <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-auto lg:h-18 gap-2 grid grid-cols-2 lg:flex">
+                <TabsTrigger value="inbox" className="rounded-xl flex-1 px-4 lg:px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-[10px] lg:text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Caixa de Entrada</TabsTrigger>
+                <TabsTrigger value="active" className="rounded-xl flex-1 px-4 lg:px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-[10px] lg:text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Projetos Ativos</TabsTrigger>
+                <TabsTrigger value="editor" className="rounded-xl flex-1 px-4 lg:px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-[10px] lg:text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 col-span-2 lg:col-auto">Estúdio de Escrita</TabsTrigger>
               </TabsList>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex gap-4 lg:gap-8"
+              className="grid grid-cols-2 lg:flex gap-4 lg:gap-8 w-full lg:w-auto"
             >
-              <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 flex flex-col justify-between w-[160px] h-[160px] group hover:border-orange-500/20 transition-all">
+              <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 flex flex-col justify-between flex-1 min-w-[120px] aspect-square group hover:border-orange-500/20 transition-all">
                 <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-700 rounded-xl flex items-center justify-center text-zinc-400 group-hover:bg-orange-500 group-hover:text-white transition-colors">
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  <div className="text-3xl font-black font-heading line-height-1 leading-none dark:text-zinc-100">{ideas.length}</div>
+                  <div className="text-2xl md:text-3xl font-black font-heading line-height-1 leading-none dark:text-zinc-100">{ideas.length}</div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-1">Ideias_Insight</div>
                 </div>
               </div>
-              <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 flex flex-col justify-between w-[160px] h-[160px] group hover:border-orange-500/20 transition-all">
+              <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 flex flex-col justify-between flex-1 min-w-[120px] aspect-square group hover:border-orange-500/20 transition-all">
                 <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-700 rounded-xl flex items-center justify-center text-zinc-400 group-hover:bg-zinc-900 group-hover:text-white transition-colors">
                   <Layout size={20} />
                 </div>
                 <div>
-                  <div className="text-3xl font-black font-heading line-height-1 leading-none dark:text-zinc-100">{projects.length}</div>
+                  <div className="text-2xl md:text-3xl font-black font-heading line-height-1 leading-none dark:text-zinc-100">{projects.length}</div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-1">Status_Produção</div>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function UnifiedPage() {
           </TabsContent>
 
           <TabsContent value="active" className="mt-0 outline-none space-y-12">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
               <div className="space-y-8">
                 <h2 className="text-4xl font-black uppercase tracking-tighter italic flex items-center gap-4 font-heading dark:text-zinc-100">
                   <Layout className="text-orange-500" /> Pipeline_Ativo
