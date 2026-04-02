@@ -17,6 +17,17 @@ export function ThemeToggle() {
       <AnimatePresence mode="wait" initial={false}>
         {theme === "light" ? (
           <motion.div
+            key="moon"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="text-orange-500"
+          >
+            <Moon size={20} />
+          </motion.div>
+        ) : (
+          <motion.div
             key="sun"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -25,17 +36,6 @@ export function ThemeToggle() {
             className="text-orange-500"
           >
             <Sun size={20} />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="moon"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="text-orange-400"
-          >
-            <Moon size={20} />
           </motion.div>
         )}
       </AnimatePresence>

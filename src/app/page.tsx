@@ -77,11 +77,10 @@ export default function UnifiedPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <h1 className="text-[8vw] lg:text-[4.5vw] leading-[0.85] font-black tracking-tighter uppercase mb-4 font-heading group">
+              <h1 className="text-[8vw] lg:text-[4.5vw] leading-[0.85] font-black tracking-tighter uppercase mb-6 font-heading group">
                 Dream.<br />
-                <span className="text-orange-500 italic ml-[2vw] relative">
+                <span className="text-orange-500 italic ml-[2vw]">
                   Create.
-                  <div className="absolute -bottom-2 lg:-bottom-4 left-0 w-full h-[0.5rem] bg-orange-500/20 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
                 </span>
               </h1>
               <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-18 gap-2">
@@ -192,9 +191,9 @@ function CreativeIdeaCard({ idea, delay = 0 }: { idea: import("@/store/useAppSto
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.8 }}
       transition={{ duration: 0.5, delay }}
-      className="group font-sans"
+      className="group font-sans h-full"
     >
-      <Card className="p-8 border-none dark:border dark:border-zinc-700 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-2xl bg-white dark:bg-zinc-800 hover:shadow-orange-500/10 dark:hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-300 h-full relative">
+      <Card className="p-8 border-none dark:border dark:border-zinc-700 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-2xl bg-white dark:bg-zinc-800 hover:shadow-orange-500/10 dark:hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-300 h-full relative flex flex-col">
         <div className="absolute top-6 right-6">
           <DropdownMenu>
             <DropdownMenuTrigger render={
@@ -225,29 +224,31 @@ function CreativeIdeaCard({ idea, delay = 0 }: { idea: import("@/store/useAppSto
           />
         </div>
 
-        <div className="space-y-6 text-left">
+        <div className="space-y-6 text-left flex-1">
           <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-700 rounded-xl flex items-center justify-center text-zinc-900 dark:text-zinc-100 group-hover:bg-orange-500 dark:group-hover:bg-orange-500 group-hover:text-white transition-all duration-500">
             <Sparkles size={24} />
           </div>
-          <h3 className="text-2xl font-black uppercase tracking-tight leading-tight font-heading dark:text-zinc-100">{idea.title}</h3>
-          <p className="text-xs text-zinc-400 font-medium line-clamp-2">{idea.description || "Nenhuma descrição fornecida."}</p>
+          <h3 className={`font-black uppercase tracking-tight leading-tight font-heading dark:text-zinc-100 break-words line-clamp-2 min-h-[3.5rem] ${idea.title.length > 30 ? 'text-xl' : 'text-2xl'}`}>
+            {idea.title.length > 60 ? `${idea.title.slice(0, 60)}...` : idea.title}
+          </h3>
+          <p className="text-xs text-zinc-400 font-medium line-clamp-2 break-words">{idea.description || "Nenhuma descrição fornecida."}</p>
+        </div>
 
-          <div className="flex gap-2 w-full">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-red-500/70 hover:text-red-600 h-11 w-11 rounded-lg transition-colors border border-red-500/10 hover:bg-red-50/50 dark:hover:bg-red-950/20"
-              onClick={() => deleteItem(idea.id)}
-            >
-              <Trash2 size={20} />
-            </Button>
-            <Button 
-                className="flex-1 bg-zinc-900 dark:bg-zinc-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] px-8 h-12 hover:bg-orange-500 dark:hover:bg-orange-500 transition-all active:scale-95 font-heading dark:border dark:border-zinc-600"
-                onClick={() => useAppStore.getState().convertToProject(idea.id, idea.title)}
-            >
-                Ativar Projeto
-            </Button>
-          </div>
+        <div className="flex gap-2 w-full mt-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-red-500/70 hover:text-red-600 h-11 w-11 rounded-lg transition-colors border border-red-500/10 hover:bg-red-50/50 dark:hover:bg-red-950/20"
+            onClick={() => deleteItem(idea.id)}
+          >
+            <Trash2 size={20} />
+          </Button>
+          <Button 
+              className="flex-1 bg-zinc-900 dark:bg-zinc-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] px-8 h-12 hover:bg-orange-500 dark:hover:bg-orange-500 transition-all active:scale-95 font-heading dark:border dark:border-zinc-600"
+              onClick={() => useAppStore.getState().convertToProject(idea.id, idea.title)}
+          >
+              Ativar Projeto
+          </Button>
         </div>
       </Card>
     </motion.div>
