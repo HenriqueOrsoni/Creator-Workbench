@@ -29,6 +29,8 @@ interface AppState {
   updateProject: (id: string, title: string, audience: string, goal: string) => void;
   updateProgress: (id: string, progress: number) => void;
   deleteItem: (id: string) => void;
+  accentHue: number;
+  setAccentHue: (hue: number) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -125,6 +127,13 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           items: state.items.filter((i) => i.id !== id),
         }));
+      },
+      accentHue: 45, // Default Orange OKLCH Hue
+      setAccentHue: (hue) => {
+        set({ accentHue: hue });
+        if (typeof document !== "undefined") {
+          document.documentElement.style.setProperty("--brand-hue", hue.toString());
+        }
       },
     }),
     {

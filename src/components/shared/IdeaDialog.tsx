@@ -99,8 +99,8 @@ export function IdeaDialog({
       <DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-900 border-none dark:border dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-xl font-sans antialiased">
         <DialogHeader className="space-y-4">
           <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 text-left font-heading">
-            {isEdit ? <Settings2 className="text-orange-500" /> : <Sparkles className="text-orange-500" />}
-            {isEdit ? "Configurar_" : "Capturar_"}<span className="text-orange-500">Pipeline</span>
+            {isEdit ? <Settings2 className="text-primary" /> : <Sparkles className="text-primary" />}
+            {isEdit ? "Configurar_" : "Capturar_"}<span className="text-primary">Pipeline</span>
           </DialogTitle>
           <DialogDescription className="text-xs uppercase tracking-widest text-zinc-400 font-bold text-left font-sans">
             {isEdit ? "Atualize as definições estratégicas do seu projeto." : "Transforme seu insight em um projeto de produção ativo."}
@@ -115,13 +115,13 @@ export function IdeaDialog({
               render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "title"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <Layout size={14} className="text-orange-500/50" />
+                    <Layout size={14} className="text-primary/50" />
                     Título {isEdit ? "do Projeto" : "Final"}
                   </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Ex: Minha Nova Série de Vídeos" 
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-orange-500/50 text-zinc-900 dark:text-zinc-100 h-14 transition-all duration-300 font-sans font-bold shadow-none"
+                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-14 transition-all duration-300 font-sans font-bold shadow-none"
                       {...field} 
                     />
                   </FormControl>
@@ -136,13 +136,13 @@ export function IdeaDialog({
               render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "targetAudience"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <Target size={14} className="text-orange-500/50" />
+                    <Target size={14} className="text-primary/50" />
                     Público-Alvo
                   </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Ex: Criadores de Conteúdo Iniciantes" 
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-orange-500/50 text-zinc-900 dark:text-zinc-100 h-14 transition-all duration-300 font-sans shadow-none"
+                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-14 transition-all duration-300 font-sans shadow-none"
                       {...field} 
                     />
                   </FormControl>
@@ -157,13 +157,13 @@ export function IdeaDialog({
               render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "pedagogicalGoal"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <BookOpen size={14} className="text-orange-500/50" />
+                    <BookOpen size={14} className="text-primary/50" />
                     Objetivo Pedagógico
                   </FormLabel>
                   <FormControl>
                     <Textarea 
                       placeholder="Quais competências o aluno irá adquirir ao final desta aula?" 
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-orange-500/50 text-zinc-900 dark:text-zinc-100 min-h-[120px] py-4 transition-all duration-300 font-sans shadow-none"
+                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 min-h-[120px] py-4 transition-all duration-300 font-sans shadow-none"
                       {...field} 
                     />
                   </FormControl>
@@ -184,7 +184,7 @@ export function IdeaDialog({
                <Button 
                  type="submit" 
                  disabled={!form.formState.isValid}
-                 className="bg-orange-500 hover:bg-orange-600 text-white rounded-2xl shadow-lg shadow-orange-500/20 font-black uppercase tracking-[0.2em] text-[10px] h-12 px-8 flex-1 transition-all duration-300 font-heading"
+                 className="bg-primary hover:opacity-90 text-white rounded-2xl shadow-lg shadow-primary/20 font-black uppercase tracking-[0.2em] text-[10px] h-12 px-8 flex-1 transition-all duration-300 font-heading"
                >
                  {isEdit ? "Salvar Alterações" : "Ativar Produção"}
                </Button>

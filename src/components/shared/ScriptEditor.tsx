@@ -13,9 +13,12 @@ import {
   Heading1, 
   Heading2, 
   History, 
-  CheckCircle,
+  Sparkles,
+  Zap,
+  Save,
+  Undo2,
   FileText,
-  Sparkles
+  Layout
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -46,14 +49,14 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder: "Comece a roteirizar seu conteúdo aqui... (Pressione '/' para comandos)",
+        placeholder: "Comece a roteirizar seu conteúdo aqui...",
       }),
     ],
     immediatelyRender: false,
     content: initialContent,
     editorProps: {
       attributes: {
-        class: "prose max-w-none focus:outline-none min-h-[500px] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-orange-500/20 py-12 px-8",
+        class: "prose max-w-none focus:outline-none min-h-[500px] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/20",
       },
     },
   });
@@ -62,7 +65,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
     if (!editor) return;
     const content = editor.getHTML();
     const newSnapshot = {
-      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
+      id: crypto.randomUUID(),
       timestamp: Date.now(),
       content,
     };
@@ -117,14 +120,14 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
 
         <div className="flex items-center gap-4 shrink-0 ml-4">
           <Sheet>
-            <SheetTrigger render={
-              <Button variant="ghost" size="sm" className="h-10 text-[10px] text-zinc-400 hover:text-orange-500 uppercase tracking-widest font-black transition-all">
+            <SheetTrigger>
+              <Button variant="ghost" size="sm" className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all">
                 <History size={16} className="mr-2" /> REVISÕES ({snapshots.length})
               </Button>
-            } />
+            </SheetTrigger>
             <SheetContent className="bg-white dark:bg-zinc-900 border-none dark:border-l dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-l-[40px] p-8">
               <SheetHeader>
-                <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-zinc-100">Histórico_<span className="text-orange-500">Fluxo</span></SheetTitle>
+                <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-zinc-100 italic">Histórico_<span className="text-primary">Fluxo</span></SheetTitle>
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-120px)] mt-8">
                 <div className="space-y-6 pr-4">
@@ -139,11 +142,11 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
                     snapshots.map((s) => (
                       <div 
                         key={s.id} 
-                        className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:shadow-orange-500/5 transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
+                        className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-primary-light dark:hover:bg-primary-dark transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
                         onClick={() => restoreSnapshot(s.content)}
                       >
                          <div className="flex items-center justify-between mb-3">
-                           <Badge variant="outline" className="bg-orange-500 text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
+                           <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
                              SNAPSHOT
                            </Badge>
                            <span className="text-[10px] text-zinc-400 font-bold">
@@ -165,14 +168,14 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
             size="sm" 
             variant="ghost" 
             onClick={takeSnapshot}
-            className="h-10 text-zinc-500 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 px-4 text-[10px] font-black tracking-widest uppercase transition-all rounded-full"
+            className="h-10 text-zinc-500 hover:text-primary hover:bg-primary-light dark:hover:bg-primary-dark px-4 text-[10px] font-black tracking-widest uppercase transition-all rounded-full"
           >
             SNAPSHOT
           </Button>
 
           <Button 
             size="sm" 
-            className="h-10 bg-orange-500 hover:bg-orange-600 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-orange-500/20 transition-all active:scale-95"
+            className="h-10 bg-primary hover:opacity-90 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
             onClick={() => onSave?.(editor.getHTML())}
           >
             SALVAR
@@ -181,21 +184,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
       </div>
 
       <ScrollArea className="flex-1 bg-white dark:bg-zinc-900 font-sans">
-        <style dangerouslySetInnerHTML={{ __html: `
-          .ProseMirror p.is-editor-empty:first-child::before {
-            content: attr(data-placeholder);
-            float: left;
-            color: #71717a;
-            pointer-events: none;
-            height: 0;
-            font-style: italic;
-          }
-          .ProseMirror {
-            padding: 2rem;
-            color: inherit;
-          }
-        `}} />
-        <div className="max-w-4xl mx-auto py-12">
+        <div className="max-w-4xl mx-auto py-12 px-12">
            <EditorContent editor={editor} />
         </div>
       </ScrollArea>
@@ -203,16 +192,13 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
       <div className="px-8 py-4 bg-white dark:bg-zinc-900 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-2">
-             <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
              <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">Status: Live</span>
            </div>
-           <span className="text-[10px] font-bold text-zinc-300 tracking-widest uppercase">
-             Palavras: {editor.storage.characterCount?.words?.() || 0}
-           </span>
         </div>
         <div className="flex items-center gap-2">
-           <Sparkles size={12} className="text-orange-500" />
-           <span className="text-[10px] font-black text-orange-500/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
+           <Sparkles size={12} className="text-primary" />
+           <span className="text-[10px] font-black text-primary/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
         </div>
       </div>
     </div>
@@ -227,7 +213,7 @@ function ToolbarButton({ onClick, icon, active = false }: { onClick: () => void,
       onClick={onClick}
       className={cn(
         "h-10 w-10 rounded-2xl transition-all",
-        active ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+        active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
       )}
     >
       {icon}

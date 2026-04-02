@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useAppStore } from "@/store/useAppStore";
 
 type Theme = "light" | "dark";
 
@@ -28,6 +29,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
     setMounted(true);
   }, []);
+
+  // Sync Brand Hue
+  const accentHue = useAppStore((state) => state.accentHue);
+  useEffect(() => {
+    if (mounted && typeof document !== "undefined") {
+      document.documentElement.style.setProperty("--brand-hue", accentHue.toString());
+    }
+  }, [accentHue, mounted]);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";

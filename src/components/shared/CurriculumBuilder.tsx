@@ -50,11 +50,11 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-3xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 font-heading">
-            Estrutura_<span className="text-orange-500">Curricular</span>
+            Estrutura_<span className="text-primary">Curricular</span>
           </h2>
           <p className="text-xs text-zinc-400 font-bold mt-1 uppercase tracking-widest font-sans">PROJETO: {courseTitle}</p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-orange-500/20 transition-all font-heading">
+        <Button className="bg-primary hover:opacity-90 text-white rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 transition-all font-heading">
           <Plus size={16} className="mr-2" /> NOVO_MÓDULO
         </Button>
       </div>
@@ -64,15 +64,15 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
           <AccordionItem
             key={module.id}
             value={module.id}
-            className="border-none bg-white dark:bg-zinc-900 shadow-[10px_10px_30px_#efefef] dark:shadow-none dark:border dark:border-zinc-800 rounded-[32px] overflow-hidden transition-all hover:shadow-orange-500/5 group/module"
+            className="border-none bg-white dark:bg-zinc-900 shadow-[10px_10px_30px_#efefef] dark:shadow-none dark:border dark:border-zinc-800 rounded-[32px] overflow-hidden transition-all hover:shadow-primary/5 group/module"
           >
             <AccordionTrigger className="px-8 py-6 hover:no-underline transition-colors group">
               <div className="flex items-center gap-4 text-left">
-                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center">
-                  <span className="font-bold text-orange-500 text-xs font-heading">{module.id.slice(0, 2)}</span>
+                <div className="w-12 h-12 bg-primary-light rounded-2xl flex items-center justify-center">
+                  <span className="font-bold text-primary text-xs font-heading">{module.id.slice(0, 2)}</span>
                 </div>
                 <div>
-                  <h3 className="font-black uppercase tracking-tight text-lg text-zinc-900 dark:text-zinc-100 group-hover:text-orange-500 transition-colors font-heading">
+                  <h3 className="font-black uppercase tracking-tight text-lg text-zinc-900 dark:text-zinc-100 group-hover:text-primary transition-colors font-heading">
                     {module.title}
                   </h3>
                   <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-sans">{module.lessons.length} AULAS PLANEJADAS</span>
@@ -87,7 +87,7 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
                     className="px-6 py-5 flex items-center justify-between rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group/lesson"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover/lesson:bg-orange-100 dark:group-hover/lesson:bg-orange-900/30 group-hover/lesson:text-orange-500 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover/lesson:bg-primary-accent dark:group-hover/lesson:bg-primary-dark/30 group-hover/lesson:text-primary transition-colors">
                         {lesson.type === "video" ? <Video size={16} /> : <FileText size={16} />}
                       </div>
                       <span className="text-base font-bold text-zinc-600 dark:text-zinc-400 group-hover/lesson:text-zinc-900 dark:group-hover/lesson:text-zinc-100 transition-colors font-sans">{lesson.title}</span>
@@ -95,7 +95,7 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
 
                     <div className="flex items-center gap-4">
                       {lesson.published ? (
-                        <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-600 text-[9px] uppercase tracking-widest rounded-full h-6 px-3 font-bold font-sans">
+                        <Badge variant="outline" className="bg-primary-light border-primary-hover text-primary text-[9px] uppercase tracking-widest rounded-full h-6 px-3 font-bold font-sans">
                           <CheckCircle2 size={10} className="mr-1" /> PUBLICADA
                         </Badge>
                       ) : (
@@ -109,7 +109,7 @@ export function CurriculumBuilder({ courseTitle, modules: initialModules }: Curr
                     </div>
                   </div>
                 ))}
-                <button className="w-full py-6 text-xs font-bold text-zinc-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all uppercase tracking-[0.2em] italic rounded-2xl mt-2 font-heading">
+                <button className="w-full py-6 text-xs font-bold text-zinc-400 hover:text-primary hover:bg-primary-light dark:hover:bg-primary-dark/20 transition-all uppercase tracking-[0.2em] italic rounded-2xl mt-2 font-heading">
                   [+] ADICIONAR NOVA AULA AO FLUXO
                 </button>
               </div>
