@@ -117,7 +117,7 @@ export default function UnifiedPage() {
           </div>
 
           <TabsContent value="inbox" className="mt-0 outline-none">
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <AnimatePresence>
                 {ideas.map((idea, i) => (
                   <CreativeIdeaCard key={idea.id} idea={idea} delay={i * 0.1} />
