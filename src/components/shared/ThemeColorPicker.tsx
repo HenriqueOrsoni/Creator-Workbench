@@ -30,11 +30,11 @@ const DEFAULT_SUGGESTIONS = [
 ];
 
 export function ThemeColorPicker() {
-  const { 
+  const {
     accentHue, accentChroma, accentLuminance, favoriteColors,
-    setAccentHue, setAccentColor, toggleFavorite 
+    setAccentHue, setAccentColor, toggleFavorite
   } = useAppStore();
-  
+
   const [hexInput, setHexInput] = useState("");
   const [isValidHex, setIsValidHex] = useState(true);
   const [isFocused, setIsFocused] = useState(false);
@@ -56,7 +56,7 @@ export function ThemeColorPicker() {
 
   const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.toUpperCase();
-    
+
     // Only allow Hex characters and #
     const allowedCharsRegex = /^[0-9A-F#]*$/;
     if (!allowedCharsRegex.test(value)) return;
@@ -65,7 +65,7 @@ export function ThemeColorPicker() {
     if (value.length > 7) return;
 
     setHexInput(value);
-    
+
     // Attempt parsing only valid 7-char strings
     if (value.startsWith("#") && value.length === 7) {
       const hexRegex = /^#([A-Fa-f0-9]{6})$/;
@@ -118,15 +118,15 @@ export function ThemeColorPicker() {
       >
         {/* Header Readout & Reset */}
         <div className="flex items-center justify-between px-1">
-           <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full" style={{ backgroundColor: `oklch(${accentLuminance} ${accentChroma} ${accentHue})` }} />
             <span className="text-[10px] font-mono font-black text-zinc-400 uppercase tracking-tight">
               oklch({accentLuminance.toFixed(2)}, {accentChroma.toFixed(2)}, {accentHue.toFixed(0)})
             </span>
-           </div>
-           <div className="flex items-center gap-2">
-             <button onClick={() => setAccentColor(45, 0.19, 0.65)} className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 hover:text-primary transition-colors">Reset</button>
-           </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setAccentColor(45, 0.19, 0.65)} className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 hover:text-primary transition-colors">Reset</button>
+          </div>
         </div>
 
         {/* Dual Linear Controls */}
@@ -134,11 +134,10 @@ export function ThemeColorPicker() {
           {/* Main Action: Save/Remove */}
           <Button
             onClick={handleToggleFavorite}
-            className={`w-full h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300 shadow-lg ${
-              isCurrentFavorite 
-                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 shadow-none" 
-                : "bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-95"
-            }`}
+            className={`w-full h-12 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300 shadow-lg ${isCurrentFavorite
+              ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 shadow-none"
+              : "bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-95"
+              }`}
           >
             <Heart size={14} className="mr-2" fill={isCurrentFavorite ? "currentColor" : "none"} />
             {isCurrentFavorite ? "Remover da Biblioteca" : "Salvar na Biblioteca"}
@@ -151,9 +150,9 @@ export function ThemeColorPicker() {
               <span>{Math.round(accentHue)}°</span>
             </div>
             <div className="relative group/slider px-1">
-              <div 
+              <div
                 className="absolute inset-x-1 h-3 top-1/2 -translate-y-1/2 rounded-full pointer-events-none"
-                style={{ 
+                style={{
                   background: `linear-gradient(to right, 
                     oklch(0.7 0.19 0), 
                     oklch(0.7 0.19 45), 
@@ -186,9 +185,9 @@ export function ThemeColorPicker() {
               <span>{Math.round(accentLuminance * 100)}%</span>
             </div>
             <div className="relative group/slider px-1">
-              <div 
+              <div
                 className="absolute inset-x-1 h-3 top-1/2 -translate-y-1/2 rounded-full pointer-events-none"
-                style={{ 
+                style={{
                   background: `linear-gradient(to right, 
                     oklch(0.40 ${accentChroma} ${accentHue}), 
                     oklch(0.65 ${accentChroma} ${accentHue}), 
@@ -243,9 +242,9 @@ export function ThemeColorPicker() {
                   className="w-full aspect-square rounded-md shadow-sm transition-transform active:scale-90 border border-black/5"
                   style={{ backgroundColor: oklchToHex(c.l, c.c, c.h) }}
                 >
-                   {accentHue === c.h && accentChroma === c.c && accentLuminance === c.l && (
+                  {accentHue === c.h && accentChroma === c.c && accentLuminance === c.l && (
                     <div className="w-full h-full flex items-center justify-center">
-                       <Check className="w-2.5 h-2.5 text-white drop-shadow-sm" />
+                      <Check className="w-2.5 h-2.5 text-white drop-shadow-sm" />
                     </div>
                   )}
                 </button>
