@@ -5,14 +5,14 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Heading1, 
-  Heading2, 
-  History, 
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Heading1,
+  Heading2,
+  History,
   Sparkles,
   Zap,
   Save,
@@ -22,12 +22,12 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
@@ -84,37 +84,37 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
       {/* Toolbar */}
       <div className="flex items-center justify-between px-8 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-50 dark:border-zinc-800 overflow-x-auto shrink-0">
         <div className="flex items-center gap-1 shrink-0">
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleBold().run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive('bold')}
-            icon={<Bold size={18} />} 
+            icon={<Bold size={18} />}
           />
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleItalic().run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive('italic')}
-            icon={<Italic size={18} />} 
+            icon={<Italic size={18} />}
           />
           <div className="w-[1px] h-6 bg-zinc-100 dark:bg-zinc-800 mx-2" />
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive('heading', { level: 1 })}
-            icon={<Heading1 size={20} />} 
+            icon={<Heading1 size={20} />}
           />
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive('heading', { level: 2 })}
-            icon={<Heading2 size={20} />} 
+            icon={<Heading2 size={20} />}
           />
           <div className="w-[1px] h-6 bg-zinc-100 dark:bg-zinc-800 mx-2" />
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleBulletList().run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive('bulletList')}
-            icon={<List size={18} />} 
+            icon={<List size={18} />}
           />
-          <ToolbarButton 
-            onClick={() => editor.chain().focus().toggleOrderedList().run()} 
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive('orderedList')}
-            icon={<ListOrdered size={18} />} 
+            icon={<ListOrdered size={18} />}
           />
         </div>
 
@@ -140,22 +140,22 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
                     </div>
                   ) : (
                     snapshots.map((s) => (
-                      <div 
-                        key={s.id} 
+                      <div
+                        key={s.id}
                         className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-primary-light dark:hover:bg-primary-dark transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
                         onClick={() => restoreSnapshot(s.content)}
                       >
-                         <div className="flex items-center justify-between mb-3">
-                           <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
-                             SNAPSHOT
-                           </Badge>
-                           <span className="text-[10px] text-zinc-400 font-bold">
-                             {new Date(s.timestamp).toLocaleTimeString()}
-                           </span>
-                         </div>
-                         <p className="text-[11px] text-zinc-500 font-medium truncate leading-relaxed">
-                           {s.content.replace(/<[^>]*>?/gm, '').slice(0, 60)}...
-                         </p>
+                        <div className="flex items-center justify-between mb-3">
+                          <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
+                            SNAPSHOT
+                          </Badge>
+                          <span className="text-[10px] text-zinc-400 font-bold">
+                            {new Date(s.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-500 font-medium truncate leading-relaxed">
+                          {s.content.replace(/<[^>]*>?/gm, '').slice(0, 60)}...
+                        </p>
                       </div>
                     ))
                   )}
@@ -164,17 +164,17 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
             </SheetContent>
           </Sheet>
 
-          <Button 
-            size="sm" 
-            variant="ghost" 
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={takeSnapshot}
             className="h-10 text-zinc-500 hover:text-primary hover:bg-primary-light dark:hover:bg-primary-dark px-4 text-[10px] font-black tracking-widest uppercase transition-all rounded-full"
           >
             SNAPSHOT
           </Button>
 
-          <Button 
-            size="sm" 
+          <Button
+            size="sm"
             className="h-10 bg-primary hover:opacity-90 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
             onClick={() => onSave?.(editor.getHTML())}
           >
@@ -185,20 +185,20 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
 
       <ScrollArea className="flex-1 bg-white dark:bg-zinc-900 font-sans">
         <div className="max-w-4xl mx-auto py-12 px-12">
-           <EditorContent editor={editor} />
+          <EditorContent editor={editor} />
         </div>
       </ScrollArea>
 
       <div className="px-8 py-4 bg-white dark:bg-zinc-900 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2">
-             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-             <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">Status: Live</span>
-           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">Status: Live</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-           <Sparkles size={12} className="text-primary" />
-           <span className="text-[10px] font-black text-primary/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
+          <Sparkles size={12} className="text-primary" />
+          <span className="text-[10px] font-black text-primary/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
         </div>
       </div>
     </div>
@@ -207,9 +207,9 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
 
 function ToolbarButton({ onClick, icon, active = false }: { onClick: () => void, icon: React.ReactNode, active?: boolean }) {
   return (
-    <Button 
-      variant="ghost" 
-      size="icon" 
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={onClick}
       className={cn(
         "h-10 w-10 rounded-2xl transition-all",

@@ -30,13 +30,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  // Sync Brand Hue
-  const accentHue = useAppStore((state) => state.accentHue);
+  // Sync Brand Color (OKLCH)
+  const { accentHue, accentChroma, accentLuminance } = useAppStore();
+  
   useEffect(() => {
     if (mounted && typeof document !== "undefined") {
-      document.documentElement.style.setProperty("--brand-hue", accentHue.toString());
+      const root = document.documentElement;
+      root.style.setProperty("--brand-hue", accentHue.toString());
+      root.style.setProperty("--brand-chroma", accentChroma.toString());
+      
+      // Safety: Ensure minimum luminance in dark mode for accessibility
+      const adaptiveLuminance = theme === "dark" 
+        ? Math.max(0.45, accentLuminance) 
+        : accentLuminance;
+        
+      root.style.setProperty("--brand-luminance", adaptiveLuminance.toString());
     }
-  }, [accentHue, mounted]);
+  }, [accentHue, accentChroma, accentLuminance, mounted, theme]);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";

@@ -1,7 +1,6 @@
-"use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { OklchColor } from "@/lib/color-utils";
 
 /**
  * Creator Workbench - Global Store
@@ -30,7 +29,12 @@ interface AppState {
   updateProgress: (id: string, progress: number) => void;
   deleteItem: (id: string) => void;
   accentHue: number;
+  accentChroma: number;
+  accentLuminance: number;
+  favoriteColors: OklchColor[];
   setAccentHue: (hue: number) => void;
+  setAccentColor: (h: number, c: number, l: number) => void;
+  toggleFavorite: (color: OklchColor) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -129,10 +133,39 @@ export const useAppStore = create<AppState>()(
         }));
       },
       accentHue: 45, // Default Orange OKLCH Hue
+      accentChroma: 0.19,
+      accentLuminance: 0.65,
+      favoriteColors: [],
       setAccentHue: (hue) => {
         set({ accentHue: hue });
         if (typeof document !== "undefined") {
           document.documentElement.style.setProperty("--brand-hue", hue.toString());
+        }
+      },
+      setAccentColor: (h, c, l) => {
+        set({ accentHue: h, accentChroma: c, accentLuminance: l });
+        if (typeof document !== "undefined") {
+          document.documentElement.style.setProperty("--brand-hue", h.toString());
+          document.documentElement.style.setProperty("--brand-chroma", c.toString());
+          document.documentElement.style.setProperty("--brand-luminance", l.toString());
+        }
+      },
+      toggleFavorite: (color) => {
+        const { favoriteColors } = get();
+        const isFavorite = favoriteColors.some(
+          (f) => f.h === color.h && f.c === color.c && f.l === color.l
+        );
+
+        if (isFavorite) {
+          set({
+            favoriteColors: favoriteColors.filter(
+              (f) => !(f.h === color.h && f.c === color.c && f.l === color.l)
+            ),
+          });
+        } else {
+          // Limit to 18 favorites
+          const newFavorites = [color, ...favoriteColors].slice(0, 18);
+          set({ favoriteColors: newFavorites });
         }
       },
     }),

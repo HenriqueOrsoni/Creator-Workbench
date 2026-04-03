@@ -49,7 +49,7 @@ export default function UnifiedPage() {
       <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-light/50 dark:bg-primary-dark/20 rounded-full blur-[120px] -z-10 animate-pulse" />
       <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-primary-light/30 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
 
-      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md z-50 flex items-center justify-between px-12 font-sans">
+      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-12 font-sans">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
             <Zap className="w-6 h-6 text-white" />
@@ -58,8 +58,8 @@ export default function UnifiedPage() {
         </div>
 
         <div className="flex items-center gap-4 md:gap-8">
-          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:text-primary transition-colors font-sans">Ideação</button>
-          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:text-primary transition-colors font-sans">Produção</button>
+          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans">Ideação</button>
+          <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans">Produção</button>
           <CreateIdeaDialog
             trigger={
               <Button className="bg-zinc-900 dark:bg-primary dark:text-white hover:bg-zinc-800 dark:hover:bg-primary-hover text-white rounded-2xl px-8 font-bold uppercase text-xs tracking-[0.2em] transition-all hover:scale-105 active:scale-95 font-heading">

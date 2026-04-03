@@ -43,7 +43,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  
+
   /* System Gray Overrides */
   --color-zinc-900: var(--studio-deep);
   --color-zinc-950: var(--studio-deep-pure);
@@ -61,20 +61,23 @@
   --background: oklch(1 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.28 0.01 0);
-  
-  --studio-deep: oklch(0.28 0.01 0); /* Softer Black */
-  --studio-deep-pure: oklch(0.22 0.01 0); /* Even darker, but not pure black */
-  
+
+  --studio-deep: oklch(0.28 0.01 0);
+  /* Softer Black */
+  --studio-deep-pure: oklch(0.22 0.01 0);
+  /* Even darker, but not pure black */
+
   --foreground: var(--studio-deep);
-  
+
   /* Brand Constants */
-  --brand-hue: 45; 
+  --brand-hue: 45;
   --brand-chroma: 0.19;
-  --brand-luminance: 0.65; /* Punchier for light mode */
-  
+  --brand-luminance: 0.65;
+  /* Punchier for light mode */
+
   --primary: oklch(var(--brand-luminance) var(--brand-chroma) var(--brand-hue));
   --primary-foreground: oklch(0.985 0 0);
-  
+
   --primary-hover: oklch(calc(var(--brand-luminance) - 0.05) var(--brand-chroma) var(--brand-hue));
   --primary-light: oklch(0.97 0.02 var(--brand-hue));
   --primary-accent: oklch(0.90 0.10 var(--brand-hue));
@@ -114,11 +117,12 @@
   --popover: oklch(0.23 0 0);
   --popover-foreground: oklch(0.985 0 0);
 
-  --studio-deep: oklch(0.985 0 0); /* Neutral White for Dark Mode */
+  --studio-deep: oklch(0.985 0 0);
+  /* Neutral White for Dark Mode */
   --studio-deep-pure: oklch(1 0 0);
-  
-  --brand-luminance: 0.70; 
-  
+
+  --brand-luminance: 0.70;
+
   --primary: oklch(var(--brand-luminance) var(--brand-chroma) var(--brand-hue));
   --primary-foreground: oklch(0.12 0 0);
   --primary-hover: oklch(calc(var(--brand-luminance) + 0.05) var(--brand-chroma) var(--brand-hue));
