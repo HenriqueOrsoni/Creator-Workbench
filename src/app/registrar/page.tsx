@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ArrowRight, AlertCircle, Plus, MailCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
@@ -38,6 +39,7 @@ const verifyAndRegisterUser = async (data: { email: string; token: string; passw
 // ============================================================================
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   
   // Step 1 Data
@@ -79,7 +81,7 @@ export default function RegisterPage() {
       document.cookie = "creator_auth_token=fake-jwt-token-123; path=/; max-age=86400";
       console.log("Cadastro de sucesso! Dados:", response);
       
-      window.location.href = "/";
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "Erro desconhecido ao tentar registrar.");
     } finally {

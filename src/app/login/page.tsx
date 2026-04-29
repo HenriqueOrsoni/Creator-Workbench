@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
@@ -27,6 +28,7 @@ const authenticateUser = async (credentials: { email: string; password: string }
 // ============================================================================
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -48,7 +50,7 @@ export default function LoginPage() {
       console.log("Login de sucesso! Dados:", response);
       
       // Redireciona para o painel principal
-      window.location.href = "/";
+      router.push("/");
     } catch (err: any) {
       setError(err.message || "Erro desconhecido ao tentar acessar o sistema.");
     } finally {
