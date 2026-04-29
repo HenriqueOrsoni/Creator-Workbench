@@ -41,8 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 # AI Agent Specifics
-.agent/
-.gemini/
+.agent
+.gemini
 AGENTS.md
 CLAUDE.md
 GEMINI.md

@@ -120,10 +120,8 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
 
         <div className="flex items-center gap-4 shrink-0 ml-4">
           <Sheet>
-            <SheetTrigger>
-              <Button variant="ghost" size="sm" className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all">
-                <History size={16} className="mr-2" /> REVISÕES ({snapshots.length})
-              </Button>
+            <SheetTrigger render={<Button variant="ghost" size="sm" className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all" />}>
+              <History size={16} className="mr-2" /> REVISÕES ({snapshots.length})
             </SheetTrigger>
             <SheetContent className="bg-white dark:bg-zinc-900 border-none dark:border-l dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-l-[40px] p-8">
               <SheetHeader>
@@ -168,7 +166,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
             size="sm"
             variant="ghost"
             onClick={takeSnapshot}
-            className="h-10 text-zinc-500 hover:text-primary hover:bg-primary-light dark:hover:bg-primary-dark px-4 text-[10px] font-black tracking-widest uppercase transition-all rounded-full"
+            className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all"
           >
             SNAPSHOT
           </Button>

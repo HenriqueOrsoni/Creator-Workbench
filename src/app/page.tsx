@@ -10,12 +10,14 @@ import {
   Layout,
   ArrowUpRight,
   MoreVertical,
-  Settings2
+  Settings2,
+  Menu
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "../components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,9 +51,48 @@ export default function UnifiedPage() {
       <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-light/50 dark:bg-primary-dark/20 rounded-full blur-[120px] -z-10 animate-pulse" />
       <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-primary-light/30 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
 
-      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-12 font-sans">
+      <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 font-sans">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+          <Sheet>
+            <SheetTrigger render={
+              <Button variant="ghost" size="icon" className="-ml-3 mr-4 h-12 w-12 text-zinc-400 hover:text-primary transition-colors">
+                <Menu size={28} />
+              </Button>
+            } />
+            <SheetContent side="left" className="bg-white dark:bg-zinc-900 border-none dark:border-r dark:border-zinc-800 p-8 flex flex-col gap-8 w-[300px] shadow-2xl rounded-r-[40px]">
+              <SheetHeader>
+                <SheetTitle className="text-xl font-black uppercase tracking-tighter text-zinc-900 dark:text-zinc-100 flex items-center gap-3 font-heading">
+                  <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                    <Zap className="w-4 h-4 text-white" />
+                  </div>
+                  Menu<span className="text-primary">_CR</span>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-2 flex-1 mt-8">
+                <Button variant="ghost" className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
+                  <Layout size={16} className="mr-4" /> Dashboard Geral
+                </Button>
+                <Button variant="ghost" className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
+                  <Sparkles size={16} className="mr-4" /> Ideação
+                </Button>
+                <Button variant="ghost" className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
+                  <Settings2 size={16} className="mr-4" /> Configurações
+                </Button>
+              </div>
+              <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-4">Personalização</div>
+                <div className="flex items-center gap-4 px-4 mb-6">
+                  <ThemeColorPicker />
+                  <ThemeToggle />
+                </div>
+                <Button variant="ghost" className="w-full justify-start text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 h-12 rounded-2xl" onClick={() => { document.cookie = 'creator_auth_token=; Max-Age=0; path=/'; window.location.href = '/login'; }}>
+                  <Trash2 size={16} className="mr-4" /> Encerrar Sessão
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 hidden sm:flex">
             <Zap className="w-6 h-6 text-white" />
           </div>
           <span className="text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100">Workbench<span className="text-primary">_CR</span></span>
@@ -67,8 +108,6 @@ export default function UnifiedPage() {
               </Button>
             }
           />
-          <ThemeColorPicker />
-          <ThemeToggle />
         </div>
       </nav>
 

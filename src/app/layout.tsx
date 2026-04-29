@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "../components/shared/ThemeProvider";
+import { AuthGuard } from "../components/shared/AuthGuard";
 
 export default function RootLayout({
   children,
@@ -31,7 +32,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-inter">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AuthGuard>
+            {children}
+          </AuthGuard>
+        </ThemeProvider>
       </body>
     </html>
   );
