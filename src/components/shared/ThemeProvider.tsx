@@ -18,16 +18,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("studio-theme") as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      }
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
+    const initialTheme = savedTheme || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    
+    if (initialTheme === "dark") {
       document.documentElement.classList.add("dark");
     }
-    setMounted(true);
+    
+    // Defer React state updates to avoid synchronous cascading render warnings
+    setTimeout(() => {
+      setTheme(initialTheme);
+      setMounted(true);
+    }, 0);
   }, []);
 
   // Sync Brand Color (OKLCH)

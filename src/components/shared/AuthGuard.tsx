@@ -20,7 +20,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     } else if (hasToken && isPublicRoute) {
       router.replace("/");
     } else {
-      setIsAuthorized(true);
+      setTimeout(() => {
+        setIsAuthorized(true);
+      }, 0);
     }
   }, [pathname, router]);
 
