@@ -8,35 +8,7 @@ import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
-// ============================================================================
-// BACK-END INTEGRATION MOCKS (A serem substituídos pela API real)
-// ============================================================================
-const requestRegistrationToken = async (data: { name: string; email: string }) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Quando o Back-End chegar, ele enviará o e-mail real aqui
-      if (data.email.includes("@")) {
-        resolve({ success: true, message: "Token enviado para o e-mail." });
-      } else {
-        reject(new Error("Formato de e-mail inválido."));
-      }
-    }, 1500);
-  });
-};
-
-const verifyAndRegisterUser = async (data: { email: string; token: string; password: string }) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Quando o Back-End chegar, ele validará o token que o usuário digitou
-      if (data.token === "123456") { // Mock de um token válido
-        resolve({ token: "fake-jwt-token-123", user: { email: data.email, role: "Admin" } });
-      } else {
-        reject(new Error("Código de segurança inválido ou expirado. Tente '123456'."));
-      }
-    }, 1500);
-  });
-};
-// ============================================================================
+import { apiRequest, setCookie } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -60,10 +32,12 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      await requestRegistrationToken({ name, email });
-      setStep(2); // Avança para a etapa 2 com uma animação
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido ao tentar enviar o código.");
+      // Solicitar token de cadastro no backend
+      await apiRequest("POST", "/api/auth/register/request-token", { name, email });
+      setStep(2);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao tentar enviar o código.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -75,15 +49,22 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const response = await verifyAndRegisterUser({ email, token, password });
+      // Confirmar cadastro no backend
+      const response = await apiRequest("POST", "/api/auth/register/confirm", { email, token, password });
       
-      // Simula o login automático do AuthGuard para ele entrar na plataforma
-      document.cookie = "creator_auth_token=fake-jwt-token-123; path=/; max-age=86400";
-      console.log("Cadastro de sucesso! Dados:", response);
-      
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido ao tentar registrar.");
+      if (response && response.token) {
+        // Salva o token real no cookie
+        setCookie("creator_auth_token", response.token, 86400);
+        if (response.userId) {
+          setCookie("creator_user_id", response.userId.toString(), 86400);
+        }
+        router.push("/");
+      } else {
+        throw new Error("Token não retornado pelo servidor.");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao tentar registrar.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -243,7 +224,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
-                      Código Recebido (Use 123456 no teste)
+                      Código Recebido
                     </label>
                     <input 
                       type="text" 

@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { OklchColor } from "@/lib/color-utils";
+import { apiRequest } from "@/lib/api";
 
 /**
  * Creator Workbench - Global Store
- * Gerencia o estado de Ideação e Produção.
+ * Gerencia o estado de Ideação e Produção sincronizado com o backend.
  * Focado na Economia Criativa.
  */
 
@@ -12,22 +13,49 @@ export interface KanbanItem {
   id: string;
   title: string;
   description: string;
-  status: "Ideation" | "In_Production" | "Review" | "Done";
-  type: "Idea" | "Project";
+  state: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE";
   createdAt: number;
-  // Campos de conversão (RN01)
   targetAudience?: string;
-  pedagogicalGoal?: string;
+  pedagogicalObjective?: string;
   progress: number;
+}
+
+export interface BackendKanbanItem {
+  id: string | number;
+  title: string;
+  description?: string;
+  state: string;
+  createdAt: string;
+  targetAudience?: string;
+  pedagogicalObjective?: string;
+  progress?: number;
+}
+
+// Mapeamento bidirecional entre os enums e campos do backend e do frontend
+function mapBackendToFrontendItem(item: BackendKanbanItem): KanbanItem {
+  return {
+    id: item.id.toString(),
+    title: item.title,
+    description: item.description || "",
+    state: item.state as "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE",
+    createdAt: new Date(item.createdAt).getTime(),
+    targetAudience: item.targetAudience || "",
+    pedagogicalObjective: item.pedagogicalObjective || "",
+    progress: item.progress || 0
+  };
 }
 
 interface AppState {
   items: KanbanItem[];
-  addIdea: (title: string, description: string) => void;
-  convertToProject: (id: string, title: string, audience?: string, goal?: string) => boolean;
-  updateProject: (id: string, title: string, audience: string, goal: string) => void;
-  updateProgress: (id: string, progress: number) => void;
-  deleteItem: (id: string) => void;
+  selectedProjectId: string | null;
+  setSelectedProjectId: (id: string | null) => void;
+  fetchItems: () => Promise<void>;
+  addIdea: (title: string, description: string) => Promise<void>;
+  convertToProject: (id: string, title: string, audience?: string, objective?: string) => Promise<boolean>;
+  updateProject: (id: string, title: string, audience: string, objective: string, state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE", progress?: number) => Promise<void>;
+  updateState: (id: string, state: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE") => Promise<void>;
+  updateProgress: (id: string, progress: number) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
   accentHue: number;
   accentChroma: number;
   accentLuminance: number;
@@ -40,98 +68,123 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      items: [
-        {
-          id: "1",
-          title: "Série: Criatividade Viral",
-          description: "Planejamento de 10 vídeos curtos sobre psicologia do compartilhamento.",
-          status: "In_Production",
-          type: "Project",
-          createdAt: Date.now(),
-          progress: 3,
-          targetAudience: "Criadores de Conteúdo Iniciantes",
-          pedagogicalGoal: "Dominar gatilhos mentais para retenção."
-        },
-        {
-          id: "2",
-          title: "Podcast: O Futuro da Educação",
-          description: "Roteiro para o episódio piloto focado em IA Generativa.",
-          status: "Ideation",
-          type: "Idea",
-          createdAt: Date.now(),
-          progress: 0
-        },
-        {
-          id: "3",
-          title: "Workshop: Design Sprint para YouTubers",
-          description: "Metodologia ágil aplicada à produção de infoprodutos.",
-          status: "Ideation",
-          type: "Idea",
-          createdAt: Date.now(),
-          progress: 0
+      items: [],
+      selectedProjectId: null,
+      
+      setSelectedProjectId: (id) => set({ selectedProjectId: id }),
+
+      fetchItems: async () => {
+        try {
+          const rawItems = await apiRequest("GET", "/api/v1/kanban");
+          if (Array.isArray(rawItems)) {
+            const mapped = rawItems.map(mapBackendToFrontendItem);
+            set({ items: mapped });
+            
+            // Auto-seleciona o primeiro projeto ativo se nenhum estiver selecionado
+            const projects = mapped.filter(i => i.state !== "IDEATION");
+            if (projects.length > 0 && !get().selectedProjectId) {
+              set({ selectedProjectId: projects[0].id });
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao buscar itens do Kanban:", error);
         }
-      ],
-
-      addIdea: (title, description) => {
-        const newItem: KanbanItem = {
-          id: crypto.randomUUID(),
-          title,
-          description,
-          status: "Ideation",
-          type: "Idea",
-          createdAt: Date.now(),
-          progress: 0
-        };
-        set((state) => ({ items: [newItem, ...state.items] }));
       },
 
-      convertToProject: (id, title, audience = "", goal = "") => {
-        const state = get();
-        const item = state.items.find((i) => i.id === id);
-        
-        if (!item || !title) return false;
-
-        set((state) => ({
-          items: state.items.map((i) =>
-            i.id === id
-              ? {
-                  ...i,
-                  title,
-                  status: "In_Production",
-                  type: "Project",
-                  targetAudience: audience || "Definição Pendente",
-                  pedagogicalGoal: goal || "Definição Pendente",
-                  progress: 1
-                }
-              : i
-          ),
-        }));
-        return true;
+      addIdea: async (title, description) => {
+        try {
+          const rawItem = await apiRequest("POST", "/api/v1/kanban", { title, description });
+          if (rawItem) {
+            const mapped = mapBackendToFrontendItem(rawItem);
+            set((state) => ({ items: [mapped, ...state.items] }));
+          }
+        } catch (error) {
+          console.error("Erro ao criar ideia:", error);
+        }
       },
 
-      updateProject: (id, title, audience, goal) => {
-        set((state) => ({
-          items: state.items.map((i) =>
-            i.id === id 
-              ? { ...i, title, targetAudience: audience, pedagogicalGoal: goal } 
-              : i
-          ),
-        }));
+      convertToProject: async (id, title, audience = "", objective = "") => {
+        try {
+          const rawItem = await apiRequest("POST", `/api/v1/kanban/${id}/convert`, {
+            title,
+            targetAudience: audience,
+            pedagogicalObjective: objective
+          });
+          if (rawItem) {
+            const mapped = mapBackendToFrontendItem(rawItem);
+            set((state) => ({
+              items: state.items.map((i) => (i.id === id ? mapped : i)),
+              selectedProjectId: state.selectedProjectId || id // Seleciona se não houver um ativo
+            }));
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error("Erro ao converter ideia em projeto:", error);
+          return false;
+        }
       },
 
-      updateProgress: (id, progress) => {
-        set((state) => ({
-          items: state.items.map((i) =>
-            i.id === id ? { ...i, progress } : i
-          ),
-        }));
+      updateProject: async (id, title, audience, objective, state, progress) => {
+        try {
+          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, {
+            title,
+            targetAudience: audience,
+            pedagogicalObjective: objective,
+            state,
+            progress
+          });
+          if (rawItem) {
+            const mapped = mapBackendToFrontendItem(rawItem);
+            set((currentState) => ({
+              items: currentState.items.map((i) => (i.id === id ? mapped : i))
+            }));
+          }
+        } catch (error) {
+          console.error("Erro ao atualizar projeto:", error);
+        }
       },
 
-      deleteItem: (id) => {
-        set((state) => ({
-          items: state.items.filter((i) => i.id !== id),
-        }));
+      updateState: async (id, state) => {
+        try {
+          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { state });
+          if (rawItem) {
+            const mapped = mapBackendToFrontendItem(rawItem);
+            set((currentState) => ({
+              items: currentState.items.map((i) => (i.id === id ? mapped : i))
+            }));
+          }
+        } catch (error) {
+          console.error("Erro ao atualizar estado:", error);
+        }
       },
+
+      updateProgress: async (id, progress) => {
+        try {
+          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { progress });
+          if (rawItem) {
+            const mapped = mapBackendToFrontendItem(rawItem);
+            set((state) => ({
+              items: state.items.map((i) => (i.id === id ? mapped : i))
+            }));
+          }
+        } catch (error) {
+          console.error("Erro ao atualizar progresso:", error);
+        }
+      },
+
+      deleteItem: async (id) => {
+        try {
+          await apiRequest("DELETE", `/api/v1/kanban/${id}`);
+          set((state) => ({
+            items: state.items.filter((i) => i.id !== id),
+            selectedProjectId: state.selectedProjectId === id ? null : state.selectedProjectId
+          }));
+        } catch (error) {
+          console.error("Erro ao deletar item:", error);
+        }
+      },
+
       accentHue: 45, // Default Orange OKLCH Hue
       accentChroma: 0.19,
       accentLuminance: 0.65,
@@ -171,6 +224,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "creator-workbench-storage",
+      partialize: (state) => ({
+        accentHue: state.accentHue,
+        accentChroma: state.accentChroma,
+        accentLuminance: state.accentLuminance,
+        favoriteColors: state.favoriteColors,
+      }),
     }
   )
 );

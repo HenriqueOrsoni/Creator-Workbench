@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { motion } from "framer-motion";
-import { Palette, Check, SlidersHorizontal, Hash, Heart } from "lucide-react";
+import { Palette, Check, Hash, Heart } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -39,23 +38,15 @@ export function ThemeColorPicker() {
   const [isValidHex, setIsValidHex] = useState(true);
   const [isFocused, setIsFocused] = useState(false);
 
+  const currentHex = oklchToHex(accentLuminance, accentChroma, accentHue).toUpperCase();
+
   // Check if current color is favorited
   const isCurrentFavorite = favoriteColors.some(
     f => f.h === accentHue && f.c === accentChroma && f.l === accentLuminance
   );
 
-  // Sync Input Hex (Only when NOT typing to avoid fighting the user)
-  useEffect(() => {
-    if (isFocused) return;
-    const currentHex = oklchToHex(accentLuminance, accentChroma, accentHue);
-    // Only update if it's actually different to avoid unnecessary resets
-    if (hexInput !== currentHex.toUpperCase()) {
-      setHexInput(currentHex.toUpperCase());
-    }
-  }, [accentHue, accentChroma, accentLuminance, isFocused, hexInput]);
-
   const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.toUpperCase();
+    const value = e.target.value.toUpperCase();
 
     // Only allow Hex characters and #
     const allowedCharsRegex = /^[0-9A-F#]*$/;
@@ -220,9 +211,12 @@ export function ThemeColorPicker() {
             </div>
             <input
               type="text"
-              value={hexInput}
+              value={isFocused ? hexInput : currentHex}
               onChange={handleHexChange}
-              onFocus={() => setIsFocused(true)}
+              onFocus={() => {
+                setIsFocused(true);
+                setHexInput(currentHex);
+              }}
               onBlur={() => setIsFocused(false)}
               onKeyDown={(e) => e.stopPropagation()} // Stop Radix from stealing key events (type-ahead)
               onPointerDown={(e) => e.stopPropagation()} // Prevent focus management issues

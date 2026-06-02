@@ -8,24 +8,7 @@ import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
-// ============================================================================
-// BACK-END INTEGRATION MOCK
-// ============================================================================
-// O desenvolvedor de back-end deve substituir a função abaixo pela chamada 
-// real para a API (ex: usando fetch ou axios).
-const authenticateUser = async (credentials: { email: string; password: string }) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Simulação de regra de negócio simples (Remova depois e use a API real)
-      if (credentials.email === "operador@creator.studio" && credentials.password === "123456") {
-        resolve({ token: "fake-jwt-token-123", user: { name: "Operador", role: "Admin" } });
-      } else {
-        reject(new Error("Credenciais inválidas. Verifique o e-mail e a senha digitados."));
-      }
-    }, 1500);
-  });
-};
-// ============================================================================
+import { apiRequest, setCookie } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,22 +20,27 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null); // Reseta o erro ao tentar de novo
+    setError(null);
 
     try {
-      // Chamada isolada para a API (Mockada no momento)
-      const response = await authenticateUser({ email, password });
+      // Chamada real para a API de Login do Backend
+      const response = await apiRequest("POST", "/api/auth/login", { email, password });
       
-      // Aqui o Back-End salvaria o token da resposta (no Zustand, Cookies, etc)
-      // Para funcionar agora com o nosso novo Middleware, vamos salvar um cookie falso:
-      document.cookie = "creator_auth_token=fake-jwt-token-123; path=/; max-age=86400";
-      
-      console.log("Login de sucesso! Dados:", response);
-      
-      // Redireciona para o painel principal
-      router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Erro desconhecido ao tentar acessar o sistema.");
+      if (response && response.token) {
+        // Salva o token JWT real no cookie
+        setCookie("creator_auth_token", response.token, 86400); // 1 dia de validade
+        if (response.userId) {
+          setCookie("creator_user_id", response.userId.toString(), 86400);
+        }
+        
+        // Redireciona para o painel principal
+        router.push("/");
+      } else {
+        throw new Error("Token não retornado pelo servidor.");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao tentar acessar o sistema.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -52,3 +52,6 @@ walkthrough.md
 *.png
 *.webp
 *.mp4
+/ifsp-projeto-extensao-develop
+GUIA_INTEGRACAO_FRONTEND (1).md
+.vscode/settings.json

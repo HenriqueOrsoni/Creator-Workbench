@@ -14,11 +14,7 @@ import {
   Heading2,
   History,
   Sparkles,
-  Zap,
-  Save,
-  Undo2,
-  FileText,
-  Layout
+  FileText
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -30,19 +26,19 @@ import {
   SheetTrigger
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/api";
 
 /**
  * Componente: ScriptEditor
- * Editor de texto rico para roteirização.
+ * Editor de texto rico para roteirização conectado ao backend.
  * Estética Unificada: Creative (The Studio).
  */
 
 interface ScriptEditorProps {
-  initialContent?: string;
-  onSave?: (content: string) => void;
+  kanbanItemId: string;
 }
 
-export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps) {
+export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
 
   const editor = useEditor({
@@ -53,7 +49,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
       }),
     ],
     immediatelyRender: false,
-    content: initialContent,
+    content: "",
     editorProps: {
       attributes: {
         class: "prose max-w-none focus:outline-none min-h-[500px] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/20",
@@ -61,20 +57,91 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
     },
   });
 
-  const takeSnapshot = () => {
-    if (!editor) return;
+  const fetchScript = React.useCallback(async () => {
+    if (!kanbanItemId || !editor) return;
+    try {
+      const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script`);
+      if (data) {
+        editor.commands.setContent(data.content || "");
+      }
+    } catch {
+      console.warn("Nenhum roteiro salvo anteriormente. Iniciando em branco.");
+      editor.commands.setContent("");
+    }
+  }, [kanbanItemId, editor]);
+
+  interface BackendScriptVersion {
+    id: string | number;
+    createdAt: string;
+    content: string;
+  }
+
+  const fetchVersions = React.useCallback(async () => {
+    if (!kanbanItemId) return;
+    try {
+      const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script/versions`);
+      if (Array.isArray(data)) {
+        const mapped = data.map((v: BackendScriptVersion) => ({
+          id: v.id.toString(),
+          timestamp: new Date(v.createdAt).getTime(),
+          content: v.content
+        }));
+        setSnapshots(mapped);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar histórico de versões:", error);
+    }
+  }, [kanbanItemId]);
+
+  React.useEffect(() => {
+    if (editor && kanbanItemId) {
+      fetchScript();
+      fetchVersions();
+    }
+  }, [kanbanItemId, editor, fetchScript, fetchVersions]);
+
+  // --- Handlers de Ações ---
+
+  const handleSave = async () => {
+    if (!editor || !kanbanItemId) return;
     const content = editor.getHTML();
-    const newSnapshot = {
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      content,
-    };
-    setSnapshots([newSnapshot, ...snapshots]);
+    try {
+      await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
+      alert("Roteiro salvo com sucesso!");
+    } catch (error) {
+      alert("Erro ao salvar roteiro: " + (error as Error).message);
+    }
   };
 
-  const restoreSnapshot = (content: string) => {
-    if (!editor) return;
-    editor.commands.setContent(content);
+  const takeSnapshot = async () => {
+    if (!editor || !kanbanItemId) return;
+    try {
+      // Salva o estado atual primeiro para garantir que a versão seja sincronizada no banco
+      const content = editor.getHTML();
+      await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
+
+      // Cria a nova versão de snapshot no banco
+      await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions`);
+      fetchVersions();
+      alert("Snapshot de revisão criado com sucesso!");
+    } catch (error) {
+      alert("Erro ao criar snapshot: " + (error as Error).message);
+    }
+  };
+
+  const restoreSnapshot = async (versionId: string) => {
+    if (!editor || !kanbanItemId) return;
+    if (!window.confirm("Confirmar a restauração desta versão? Qualquer alteração não salva será substituída.")) return;
+
+    try {
+      const data = await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions/${versionId}/restore`);
+      if (data) {
+        editor.commands.setContent(data.content || "");
+        alert("Versão do roteiro restaurada com sucesso!");
+      }
+    } catch (error) {
+      alert("Erro ao restaurar versão: " + (error as Error).message);
+    }
   };
 
   if (!editor) return null;
@@ -141,7 +208,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
                       <div
                         key={s.id}
                         className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-primary-light dark:hover:bg-primary-dark transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
-                        onClick={() => restoreSnapshot(s.content)}
+                        onClick={() => restoreSnapshot(s.id)}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
@@ -174,7 +241,7 @@ export function ScriptEditor({ initialContent = "", onSave }: ScriptEditorProps)
           <Button
             size="sm"
             className="h-10 bg-primary hover:opacity-90 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
-            onClick={() => onSave?.(editor.getHTML())}
+            onClick={handleSave}
           >
             SALVAR
           </Button>

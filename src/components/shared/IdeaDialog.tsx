@@ -24,8 +24,8 @@ import {
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useAppStore } from "../../store/useAppStore";
-import { conversionSchema, type ConversionFormValues } from "../../lib/validation";
-import { Sparkles, Target, BookOpen, Layout, Settings2 } from "lucide-react";
+import { conversionSchema, projectUpdateSchema } from "../../lib/validation";
+import { Sparkles, Target, BookOpen, Layout, Settings2, BarChart2, CheckCircle2 } from "lucide-react";
 
 /**
  * Componente: IdeaDialog
@@ -33,11 +33,19 @@ import { Sparkles, Target, BookOpen, Layout, Settings2 } from "lucide-react";
  * Estética Unificada: Creative (The Studio).
  */
 
+interface IdeaFormValues {
+  title: string;
+  targetAudience: string;
+  pedagogicalObjective: string;
+  state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE";
+  progress?: number;
+}
+
 interface IdeaDialogProps {
   id: string;
   title: string;
   targetAudience?: string;
-  pedagogicalGoal?: string;
+  pedagogicalObjective?: string;
   trigger?: React.ReactElement;
   mode?: "convert" | "edit";
   open?: boolean;
@@ -48,7 +56,7 @@ export function IdeaDialog({
   id, 
   title, 
   targetAudience = "", 
-  pedagogicalGoal = "", 
+  pedagogicalObjective = "", 
   trigger, 
   mode = "convert",
   open: controlledOpen,
@@ -59,14 +67,17 @@ export function IdeaDialog({
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
   const convertToProject = useAppStore((state) => state.convertToProject);
   const updateProject = useAppStore((state) => state.updateProject);
+  const project = useAppStore((state) => state.items.find(i => i.id === id));
 
-  const form = useForm<ConversionFormValues>({
-    resolver: zodResolver(conversionSchema),
+  const form = useForm<IdeaFormValues>({
+    resolver: zodResolver(mode === "edit" ? projectUpdateSchema : conversionSchema),
     mode: "onChange",
     defaultValues: {
       title: title,
       targetAudience: targetAudience,
-      pedagogicalGoal: pedagogicalGoal,
+      pedagogicalObjective: pedagogicalObjective,
+      state: project?.state || "IN_PRODUCTION",
+      progress: project?.progress || 0,
     },
   });
 
@@ -76,17 +87,26 @@ export function IdeaDialog({
       form.reset({
         title: title,
         targetAudience: targetAudience,
-        pedagogicalGoal: pedagogicalGoal,
+        pedagogicalObjective: pedagogicalObjective,
+        state: project?.state || "IN_PRODUCTION",
+        progress: project?.progress || 0,
       });
     }
-  }, [open, title, targetAudience, pedagogicalGoal, form]);
+  }, [open, title, targetAudience, pedagogicalObjective, project, form]);
 
-  function onSubmit(values: ConversionFormValues) {
+  async function onSubmit(values: IdeaFormValues) {
     if (mode === "convert") {
-      const success = convertToProject(id, values.title, values.targetAudience, values.pedagogicalGoal);
+      const success = await convertToProject(id, values.title, values.targetAudience, values.pedagogicalObjective);
       if (success) setOpen(false);
     } else {
-      updateProject(id, values.title, values.targetAudience, values.pedagogicalGoal);
+      await updateProject(
+        id, 
+        values.title, 
+        values.targetAudience, 
+        values.pedagogicalObjective, 
+        values.state, 
+        Number(values.progress)
+      );
       setOpen(false);
     }
   }
@@ -112,7 +132,7 @@ export function IdeaDialog({
             <FormField
               control={form.control}
               name="title"
-              render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "title"> }) => (
+              render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "title"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
                     <Layout size={14} className="text-primary/50" />
@@ -133,7 +153,7 @@ export function IdeaDialog({
             <FormField
               control={form.control}
               name="targetAudience"
-              render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "targetAudience"> }) => (
+              render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "targetAudience"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
                     <Target size={14} className="text-primary/50" />
@@ -153,8 +173,8 @@ export function IdeaDialog({
 
             <FormField
               control={form.control}
-              name="pedagogicalGoal"
-              render={({ field }: { field: ControllerRenderProps<ConversionFormValues, "pedagogicalGoal"> }) => (
+              name="pedagogicalObjective"
+              render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "pedagogicalObjective"> }) => (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
                     <BookOpen size={14} className="text-primary/50" />
@@ -171,6 +191,63 @@ export function IdeaDialog({
                 </FormItem>
               )}
             />
+
+            {isEdit && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "state"> }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
+                        <CheckCircle2 size={14} className="text-primary/50" />
+                        Status do Pipeline
+                      </FormLabel>
+                      <FormControl>
+                        <select
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-2xl px-6 h-14 focus:border-primary/50 text-zinc-900 dark:text-zinc-100 font-bold transition-all duration-300 font-sans outline-none"
+                          {...field}
+                        >
+                          <option value="IDEATION">Ideação</option>
+                          <option value="IN_PRODUCTION">Em Produção</option>
+                          <option value="REVIEW">Em Revisão</option>
+                          <option value="DONE">Concluído</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage className="text-[10px] italic font-bold font-sans" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="progress"
+                  render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "progress"> }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
+                        <BarChart2 size={14} className="text-primary/50" />
+                        Progresso do Projeto
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-2xl px-6 h-14">
+                          <input 
+                            type="range"
+                            min="0"
+                            max="100"
+                            className="w-full accent-primary h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+                            {...field}
+                            value={field.value ?? 0}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                          <span className="text-xs font-black font-sans text-zinc-600 dark:text-zinc-300 min-w-[36px] text-right">{field.value ?? 0}%</span>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] italic font-bold font-sans" />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <DialogFooter className="pt-6 border-t mt-4 flex items-center gap-4 border-zinc-100 dark:border-zinc-800">
                <Button 
