@@ -11,7 +11,8 @@ export function getCookie(name: string): string | null {
 
 export function setCookie(name: string, value: string, maxAgeSeconds: number = 86400) {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}`;
 }
 
 export function deleteCookie(name: string) {

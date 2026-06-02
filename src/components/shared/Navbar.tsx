@@ -8,6 +8,7 @@ import { ThemeColorPicker } from "./ThemeColorPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
+import { deleteCookie } from "@/lib/api";
 
 export function Navbar() {
   return (
@@ -52,7 +53,7 @@ export function Navbar() {
               <Button 
                 variant="ghost" 
                 className="w-full justify-start text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 h-12 rounded-2xl" 
-                onClick={() => { document.cookie = 'creator_auth_token=; Max-Age=0; path=/'; window.location.href = '/login'; }}
+                onClick={() => { deleteCookie("creator_auth_token"); deleteCookie("creator_user_id"); window.location.href = '/login'; }}
               >
                 <Trash2 size={16} className="mr-4" /> Encerrar Sessão
               </Button>
