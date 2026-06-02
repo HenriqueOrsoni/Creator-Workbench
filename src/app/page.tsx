@@ -6,8 +6,15 @@ import { Sparkles, Plus, Layout, KanbanSquare } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAppStore } from "../store/useAppStore";
 import { CreateIdeaDialog } from "../components/shared/CreateIdeaDialog";
-import { CurriculumBuilder } from "../components/shared/CurriculumBuilder";
-import { ScriptEditor } from "../components/shared/ScriptEditor";
+import dynamic from "next/dynamic";
+
+const CurriculumBuilder = dynamic(() => import("../components/shared/CurriculumBuilder").then(mod => ({ default: mod.CurriculumBuilder })), {
+  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando...</div>,
+});
+
+const ScriptEditor = dynamic(() => import("../components/shared/ScriptEditor").then(mod => ({ default: mod.ScriptEditor })), {
+  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando...</div>,
+});
 import { Navbar } from "../components/shared/Navbar";
 import { StatsCard } from "../components/shared/StatsCard";
 import { KanbanBoard } from "../components/shared/KanbanBoard";

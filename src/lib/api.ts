@@ -19,7 +19,7 @@ export function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
 
 // Função para chamadas genéricas à API
 export async function apiRequest(method: string, path: string, body?: unknown) {
