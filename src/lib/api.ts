@@ -22,6 +22,14 @@ export function deleteCookie(name: string) {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+export function handleUnauthorized() {
+  deleteCookie("creator_auth_token");
+  deleteCookie("creator_user_id");
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
+    window.location.href = "/login";
+  }
+}
+
 // Função para chamadas genéricas à API
 export async function apiRequest(method: string, path: string, body?: unknown) {
   const token = getCookie("creator_auth_token");
@@ -36,12 +44,7 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
   });
 
   if (response.status === 401 || response.status === 403) {
-    // Se o token expirou ou é inválido, limpa os cookies e redireciona para o login
-    deleteCookie("creator_auth_token");
-    deleteCookie("creator_user_id");
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    handleUnauthorized();
     throw new Error("Sessão expirada ou não autorizada. Redirecionando...");
   }
 
