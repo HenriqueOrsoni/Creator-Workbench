@@ -33,8 +33,6 @@ export default function LoginPage() {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
         
-        console.log("Login de sucesso! Dados:", response);
-        
         // Redireciona para o painel principal
         router.push("/");
       } else {

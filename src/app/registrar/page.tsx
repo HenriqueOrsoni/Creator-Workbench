@@ -58,7 +58,6 @@ export default function RegisterPage() {
         if (response.userId) {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
-        console.log("Cadastro de sucesso! Dados:", response);
         router.push("/");
       } else {
         throw new Error("Token não retornado pelo servidor.");
@@ -225,7 +224,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
-                      Código Recebido (Use 123456 no teste)
+                      Código Recebido
                     </label>
                     <input 
                       type="text" 

@@ -11,7 +11,8 @@ export function getCookie(name: string): string | null {
 
 export function setCookie(name: string, value: string, maxAgeSeconds: number = 86400) {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}`;
 }
 
 export function deleteCookie(name: string) {
@@ -19,7 +20,7 @@ export function deleteCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 // Função para chamadas genéricas à API
 export async function apiRequest(method: string, path: string, body?: unknown) {
