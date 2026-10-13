@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Plus, Layout, KanbanSquare } from "lucide-react";
+import { Plus, Layout, KanbanSquare, GraduationCap, Lightbulb } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAppStore } from "../store/useAppStore";
 import { CreateIdeaDialog } from "../components/shared/CreateIdeaDialog";
@@ -15,6 +15,15 @@ const CurriculumBuilder = dynamic(() => import("../components/shared/CurriculumB
 const ScriptEditor = dynamic(() => import("../components/shared/ScriptEditor").then(mod => ({ default: mod.ScriptEditor })), {
   loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando...</div>,
 });
+
+const IdeasInbox = dynamic(() => import("../components/shared/IdeasInbox").then(mod => ({ default: mod.IdeasInbox })), {
+  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando Caixa de Entrada...</div>,
+});
+
+const CoursesView = dynamic(() => import("../components/shared/CoursesView").then(mod => ({ default: mod.CoursesView })), {
+  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando Cursos...</div>,
+});
+
 import { Navbar } from "../components/shared/Navbar";
 import { StatsCard } from "../components/shared/StatsCard";
 import { KanbanBoard } from "../components/shared/KanbanBoard";
@@ -23,19 +32,21 @@ import { Button } from "../components/ui/button";
 /**
  * Creator Workbench - Central Única Digital
  * Design Unificado: "The Studio" (Creative).
- * Localizado para PT-BR.
+ * Fase 2: Caixa de Entrada, Quadro Dinâmico e Cursos Pedagógicos.
  */
 
 export default function UnifiedPage() {
-  const { items, fetchItems, selectedProjectId } = useAppStore();
+  const { items, ideas, courses, fetchItems, fetchTeams, selectedProjectId } = useAppStore();
   const [activeTab, setActiveTab] = React.useState("kanban");
 
-  const ideas = items.filter(i => i.state === "IDEATION");
+  const legacyIdeas = items.filter(i => i.state === "IDEATION");
   const projects = items.filter(i => i.state !== "IDEATION");
+  const totalIdeasCount = ideas.length > 0 ? ideas.length : legacyIdeas.length;
 
   React.useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+    fetchTeams();
+  }, [fetchItems, fetchTeams]);
 
   const activeProject = projects.find(p => p.id === selectedProjectId) || projects[0];
 
@@ -60,22 +71,34 @@ export default function UnifiedPage() {
                   Create.
                 </span>
               </h1>
-              <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-18 gap-2">
-                <TabsTrigger value="kanban" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Quadro Kanban</TabsTrigger>
-                <TabsTrigger value="curriculum" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Matriz Curricular</TabsTrigger>
-                <TabsTrigger value="editor" className="rounded-xl px-12 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100">Estúdio de Escrita</TabsTrigger>
+              <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-18 gap-2 overflow-x-auto flex flex-nowrap max-w-full">
+                <TabsTrigger value="kanban" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
+                  Quadro Kanban
+                </TabsTrigger>
+                <TabsTrigger value="inbox" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
+                  Caixa de Entrada
+                </TabsTrigger>
+                <TabsTrigger value="courses" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
+                  Cursos & Módulos
+                </TabsTrigger>
+                <TabsTrigger value="curriculum" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
+                  Matriz Curricular
+                </TabsTrigger>
+                <TabsTrigger value="editor" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
+                  Estúdio de Escrita
+                </TabsTrigger>
               </TabsList>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex gap-4 lg:gap-8"
+              className="flex gap-4 lg:gap-6 flex-wrap"
             >
               <StatsCard
-                value={ideas.length}
-                label="Ideias_Insight"
-                icon={Sparkles}
+                value={totalIdeasCount}
+                label="Inbox_Ideias"
+                icon={Lightbulb}
                 iconHoverClass="group-hover:bg-primary"
               />
               <StatsCard
@@ -84,11 +107,25 @@ export default function UnifiedPage() {
                 icon={Layout}
                 iconHoverClass="group-hover:bg-zinc-900"
               />
+              <StatsCard
+                value={courses.length}
+                label="Cursos_Equipe"
+                icon={GraduationCap}
+                iconHoverClass="group-hover:bg-primary"
+              />
             </motion.div>
           </div>
 
           <TabsContent value="kanban" className="mt-0 outline-none">
             <KanbanBoard onSelectTab={(tab) => setActiveTab(tab)} />
+          </TabsContent>
+
+          <TabsContent value="inbox" className="mt-0 outline-none">
+            <IdeasInbox />
+          </TabsContent>
+
+          <TabsContent value="courses" className="mt-0 outline-none">
+            <CoursesView />
           </TabsContent>
 
           <TabsContent value="curriculum" className="mt-0 outline-none">
@@ -153,5 +190,3 @@ export default function UnifiedPage() {
     </div>
   );
 }
-
-
