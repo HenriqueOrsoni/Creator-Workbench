@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { KanbanBoard } from '@/components/shared/KanbanBoard';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -86,11 +86,27 @@ describe('4.3 Componentes do Kanban (FT-12 a FT-16)', () => {
   it('FT-15: Botão de avançar no card Em Produção chama updateState com REVIEW', async () => {
     render(<KanbanBoard />);
 
-    // Procura o botão de avançar na coluna Em Produção
-    const advanceButtons = screen.getAllByRole('button');
-    // Encontra o botão com seta para a direita ou aciona clique
     const card = screen.getByText('Projeto em Produção').closest('div');
     expect(card).toBeInTheDocument();
+  });
+
+  // FE-06: Confirmação antes de excluir um card do Kanban
+  it('FE-06: Clicar no botão de exclusão abre o diálogo de confirmação antes de chamar deleteItem', async () => {
+    render(<KanbanBoard />);
+
+    const deleteButtons = screen.getAllByTitle('Excluir item');
+    expect(deleteButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByText('Confirmar Exclusão')).toBeInTheDocument();
+    const confirmButton = screen.getByRole('button', { name: /sim, excluir/i });
+    expect(confirmButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+    expect(mockDeleteItem).toHaveBeenCalledWith('1');
   });
 
   // FT-16: Badge exibe contagem de itens por coluna

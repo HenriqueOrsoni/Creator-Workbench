@@ -8,33 +8,73 @@ import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
+import { toast } from "sonner";
+
+const step1Schema = z.object({
+  name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
+  email: z.string().min(1, "E-mail é obrigatório.").email("Endereço de e-mail inválido."),
+});
+
+const step2Schema = z
+  .object({
+    token: z.string().length(6, "O código deve conter exatamente 6 dígitos."),
+    password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+    confirmPassword: z.string().min(6, "Confirme sua senha de acesso."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
+  });
+
+type Step1Values = z.infer<typeof step1Schema>;
+type Step2Values = z.infer<typeof step2Schema>;
 
 export default function RegisterPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
+  const [userData, setUserData] = useState<{ name: string; email: string }>({ name: "", email: "" });
   
-  // Step 1 Data
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  
-  // Step 2 Data
-  const [token, setToken] = useState("");
-  const [password, setPassword] = useState("");
-
   // States
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(60);
+  const [isResending, setIsResending] = useState(false);
 
-  const handleRequestToken = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const formStep1 = useForm<Step1Values>({
+    resolver: zodResolver(step1Schema),
+    defaultValues: { name: "", email: "" },
+  });
+
+  const formStep2 = useForm<Step2Values>({
+    resolver: zodResolver(step2Schema),
+    defaultValues: { token: "", password: "", confirmPassword: "" },
+  });
+
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (step === 2 && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, countdown]);
+
+  const onStep1Submit = async (values: Step1Values) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Solicitar token de cadastro no backend
-      await apiRequest("POST", "/api/auth/register/request-token", { name, email });
+      await apiRequest("POST", "/api/auth/register/request-token", values);
+      setUserData(values);
       setStep(2);
+      setCountdown(60);
+      toast.success("Código de verificação enviado!");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao tentar enviar o código.";
       setError(errorMessage);
@@ -43,14 +83,17 @@ export default function RegisterPage() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onStep2Submit = async (values: Step2Values) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Confirmar cadastro no backend
-      const response = await apiRequest("POST", "/api/auth/register/confirm", { email, token, password });
+      const response = await apiRequest("POST", "/api/auth/register/confirm", {
+        email: userData.email,
+        token: values.token,
+        password: values.password,
+      });
       
       if (response && response.token) {
         // Salva o token real no cookie
@@ -58,6 +101,7 @@ export default function RegisterPage() {
         if (response.userId) {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
+        toast.success("Cadastro confirmado com sucesso!");
         router.push("/");
       } else {
         throw new Error("Token não retornado pelo servidor.");
@@ -67,6 +111,27 @@ export default function RegisterPage() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendToken = async () => {
+    if (countdown > 0 || isResending) return;
+    setIsResending(true);
+    setError(null);
+
+    try {
+      await apiRequest("POST", "/api/auth/register/request-token", {
+        name: userData.name,
+        email: userData.email,
+      });
+      setCountdown(60);
+      toast.success("Novo código de verificação enviado para o seu e-mail!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao reenviar código.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -156,7 +221,8 @@ export default function RegisterPage() {
               {step === 1 ? (
                 <motion.form 
                   key="step1"
-                  onSubmit={handleRequestToken}
+                  onSubmit={formStep1.handleSubmit(onStep1Submit)}
+                  noValidate
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -168,12 +234,14 @@ export default function RegisterPage() {
                     </label>
                     <input 
                       type="text" 
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      {...formStep1.register("name")}
                       required
                       className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                       placeholder="Seu Nome Completo"
                     />
+                    {formStep1.formState.errors.name && (
+                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep1.formState.errors.name.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -182,12 +250,14 @@ export default function RegisterPage() {
                     </label>
                     <input 
                       type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      {...formStep1.register("email")}
                       required
                       className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                       placeholder="operador@creator.studio"
                     />
+                    {formStep1.formState.errors.email && (
+                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep1.formState.errors.email.message}</p>
+                    )}
                   </div>
 
                   <Button 
@@ -208,46 +278,78 @@ export default function RegisterPage() {
               ) : (
                 <motion.form 
                   key="step2"
-                  onSubmit={handleRegister}
+                  onSubmit={formStep2.handleSubmit(onStep2Submit)}
+                  noValidate
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   className="space-y-5"
                 >
-                  <div className="bg-primary/10 border border-primary/20 text-primary p-4 rounded-2xl flex items-start gap-3 mb-6">
+                  <div className="bg-primary/10 border border-primary/20 text-primary p-4 rounded-2xl flex items-start gap-3 mb-4">
                     <MailCheck className="w-5 h-5 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-bold">Verifique sua caixa de entrada</p>
-                      <p className="text-xs opacity-80 mt-1">Enviamos um código de 6 dígitos para <strong>{email}</strong></p>
+                      <p className="text-xs opacity-80 mt-1">Enviamos um código de 6 dígitos para <strong>{userData.email}</strong></p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
-                      Código Recebido
-                    </label>
+                    <div className="flex justify-between items-center ml-2 mr-2">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                        Código Recebido
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleResendToken}
+                        disabled={countdown > 0 || isResending}
+                        className="text-[10px] font-bold uppercase tracking-widest text-primary disabled:text-zinc-400 disabled:cursor-not-allowed hover:underline"
+                      >
+                        {countdown > 0 ? `Reenviar código (${countdown}s)` : "Reenviar código"}
+                      </button>
+                    </div>
                     <input 
                       type="text" 
-                      value={token}
-                      onChange={(e) => setToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      {...formStep2.register("token")}
                       required
+                      maxLength={6}
                       className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-center text-xl tracking-[0.5em] font-black focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono"
                       placeholder="000000"
                     />
+                    {formStep2.formState.errors.token && (
+                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.token.message}</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
-                      Criar Senha de Acesso
+                      Criar Senha de Acesso (Mínimo 6 caracteres)
                     </label>
                     <input 
                       type="password" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      {...formStep2.register("password")}
                       required
                       className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono tracking-widest"
                       placeholder="••••••••"
                     />
+                    {formStep2.formState.errors.password && (
+                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.password.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
+                      Confirmar Senha
+                    </label>
+                    <input 
+                      type="password" 
+                      {...formStep2.register("confirmPassword")}
+                      required
+                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono tracking-widest"
+                      placeholder="••••••••"
+                    />
+                    {formStep2.formState.errors.confirmPassword && (
+                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.confirmPassword.message}</p>
+                    )}
                   </div>
 
                   <Button 

@@ -55,4 +55,5 @@ walkthrough.md
 *.mp4
 GUIA_INTEGRACAO_FRONTEND (1).md
 .vscode/settings.json
+*.code-workspace
 .gitignore

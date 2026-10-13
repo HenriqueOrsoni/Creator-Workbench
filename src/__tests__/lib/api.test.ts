@@ -1,4 +1,4 @@
-import { setCookie, getCookie, deleteCookie, apiRequest, handleUnauthorized } from '@/lib/api';
+import { setCookie, getCookie, deleteCookie, apiRequest } from '@/lib/api';
 
 describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
   const originalFetch = global.fetch;
@@ -50,7 +50,7 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
     expect(result).toEqual([{ id: 1, title: 'Item de teste' }]);
   });
 
-  // IT-13: Token expirado (401/403) limpa cookies e dispara tratamento de sessão
+  // IT-13: Token expirado (401) limpa cookies e dispara tratamento de sessão
   it('IT-13: apiRequest com resposta 401 Unauthorized limpa cookies e dispara invalidation', async () => {
     setCookie('creator_auth_token', 'expired-token', 86400);
     setCookie('creator_user_id', '1', 86400);
@@ -62,11 +62,31 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
     });
 
     await expect(apiRequest('GET', '/api/v1/kanban')).rejects.toThrow(
-      'Sessão expirada ou não autorizada. Redirecionando...'
+      'Sessão expirada. Redirecionando...'
     );
 
     expect(getCookie('creator_auth_token')).toBeNull();
     expect(getCookie('creator_user_id')).toBeNull();
+  });
+
+  // IT-13.1 (FE-28): Resposta 403 Forbidden não deve deslogar o usuário nem limpar cookies
+  it('IT-13.1: apiRequest com resposta 403 Forbidden não limpa cookies e lança erro de acesso negado', async () => {
+    setCookie('creator_auth_token', 'valid-reviewer-token', 86400);
+    setCookie('creator_user_id', '2', 86400);
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: 'Acesso negado para o papel Revisor.' }),
+    });
+
+    await expect(apiRequest('POST', '/api/v1/kanban/1/delete')).rejects.toThrow(
+      'Acesso negado para o papel Revisor.'
+    );
+
+    // Garante que o usuário NÃO foi deslogado
+    expect(getCookie('creator_auth_token')).toBe('valid-reviewer-token');
+    expect(getCookie('creator_user_id')).toBe('2');
   });
 
   // IT-14: API offline ou erro HTTP genérico lança mensagem de erro tratada

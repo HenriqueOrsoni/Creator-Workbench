@@ -9,7 +9,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  const [isAuthorized, setIsAuthorized] = useState(isPublicRoute);
+  const [isAuthorized] = useState(() => {
+    if (typeof document === "undefined") return false;
+    const hasToken = document.cookie.includes("creator_auth_token");
+    if (!hasToken && !isPublicRoute) return false;
+    if (hasToken && isPublicRoute) return false;
+    return true;
+  });
 
   useEffect(() => {
     const hasToken = document.cookie.includes("creator_auth_token");
@@ -18,8 +24,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     } else if (hasToken && isPublicRoute) {
       router.replace("/");
-    } else {
-      setIsAuthorized(true);
     }
   }, [pathname, router, isPublicRoute]);
 

@@ -8,9 +8,17 @@ import { ThemeColorPicker } from "./ThemeColorPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
-import { deleteCookie } from "@/lib/api";
+import { useAppStore } from "@/store/useAppStore";
 
 export function Navbar() {
+  const resetStore = useAppStore((state) => state.resetStore);
+
+  const handleLogout = () => {
+    deleteCookie("creator_auth_token");
+    deleteCookie("creator_user_id");
+    resetStore();
+    window.location.href = '/login';
+  };
   return (
     <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 font-sans">
       <div className="flex items-center gap-3">
@@ -53,7 +61,7 @@ export function Navbar() {
               <Button 
                 variant="ghost" 
                 className="w-full justify-start text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 h-12 rounded-2xl" 
-                onClick={() => { deleteCookie("creator_auth_token"); deleteCookie("creator_user_id"); window.location.href = '/login'; }}
+                onClick={handleLogout}
               >
                 <Trash2 size={16} className="mr-4" /> Encerrar Sessão
               </Button>

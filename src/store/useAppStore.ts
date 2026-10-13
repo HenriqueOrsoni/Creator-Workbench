@@ -45,9 +45,14 @@ function mapBackendToFrontendItem(item: BackendKanbanItem): KanbanItem {
   };
 }
 
+import { toast } from "sonner";
+
 interface AppState {
   items: KanbanItem[];
   selectedProjectId: string | null;
+  error: string | null;
+  clearError: () => void;
+  resetStore: () => void;
   setSelectedProjectId: (id: string | null) => void;
   fetchItems: () => Promise<void>;
   addIdea: (title: string, description: string) => Promise<void>;
@@ -70,11 +75,15 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       items: [],
       selectedProjectId: null,
+      error: null,
+      clearError: () => set({ error: null }),
+      resetStore: () => set({ items: [], selectedProjectId: null, error: null }),
       
       setSelectedProjectId: (id) => set({ selectedProjectId: id }),
 
       fetchItems: async () => {
         try {
+          set({ error: null });
           const rawItems = await apiRequest("GET", "/api/v1/kanban");
           if (Array.isArray(rawItems)) {
             const mapped = rawItems.map(mapBackendToFrontendItem);
@@ -87,24 +96,33 @@ export const useAppStore = create<AppState>()(
             }
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao carregar itens do Kanban";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao buscar itens do Kanban:", error);
         }
       },
 
       addIdea: async (title, description) => {
         try {
+          set({ error: null });
           const rawItem = await apiRequest("POST", "/api/v1/kanban", { title, description });
           if (rawItem) {
             const mapped = mapBackendToFrontendItem(rawItem);
             set((state) => ({ items: [mapped, ...state.items] }));
+            toast.success("Ideia registrada com sucesso!");
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao criar ideia";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao criar ideia:", error);
         }
       },
 
       convertToProject: async (id, title, audience = "", objective = "") => {
         try {
+          set({ error: null });
           const rawItem = await apiRequest("POST", `/api/v1/kanban/${id}/convert`, {
             title,
             targetAudience: audience,
@@ -116,10 +134,14 @@ export const useAppStore = create<AppState>()(
               items: state.items.map((i) => (i.id === id ? mapped : i)),
               selectedProjectId: state.selectedProjectId || id // Seleciona se não houver um ativo
             }));
+            toast.success("Projeto ativado no pipeline de produção!");
             return true;
           }
           return false;
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao converter ideia em projeto";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao converter ideia em projeto:", error);
           return false;
         }
@@ -127,6 +149,7 @@ export const useAppStore = create<AppState>()(
 
       updateProject: async (id, title, audience, objective, state, progress) => {
         try {
+          set({ error: null });
           const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, {
             title,
             targetAudience: audience,
@@ -139,14 +162,19 @@ export const useAppStore = create<AppState>()(
             set((currentState) => ({
               items: currentState.items.map((i) => (i.id === id ? mapped : i))
             }));
+            toast.success("Projeto atualizado!");
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao atualizar projeto";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao atualizar projeto:", error);
         }
       },
 
       updateState: async (id, state) => {
         try {
+          set({ error: null });
           const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { state });
           if (rawItem) {
             const mapped = mapBackendToFrontendItem(rawItem);
@@ -155,12 +183,16 @@ export const useAppStore = create<AppState>()(
             }));
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao atualizar estado";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao atualizar estado:", error);
         }
       },
 
       updateProgress: async (id, progress) => {
         try {
+          set({ error: null });
           const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { progress });
           if (rawItem) {
             const mapped = mapBackendToFrontendItem(rawItem);
@@ -169,18 +201,26 @@ export const useAppStore = create<AppState>()(
             }));
           }
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao atualizar progresso";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao atualizar progresso:", error);
         }
       },
 
       deleteItem: async (id) => {
         try {
+          set({ error: null });
           await apiRequest("DELETE", `/api/v1/kanban/${id}`);
           set((state) => ({
             items: state.items.filter((i) => i.id !== id),
             selectedProjectId: state.selectedProjectId === id ? null : state.selectedProjectId
           }));
+          toast.success("Item excluído com sucesso!");
         } catch (error) {
+          const message = error instanceof Error ? error.message : "Erro ao excluir item";
+          set({ error: message });
+          toast.error(message);
           console.error("Erro ao deletar item:", error);
         }
       },

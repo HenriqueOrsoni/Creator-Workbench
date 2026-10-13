@@ -8,12 +8,20 @@ jest.mock('@/lib/api', () => ({
   deleteCookie: jest.fn(),
 }));
 
+jest.mock('sonner', () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
 describe('4.1 Store Zustand (FT-01 a FT-06)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAppStore.setState({
       items: [],
       selectedProjectId: null,
+      error: null,
     });
   });
 
@@ -154,8 +162,8 @@ describe('4.1 Store Zustand (FT-01 a FT-06)', () => {
     expect(useAppStore.getState().selectedProjectId).toBe('42');
   });
 
-  // FT-06: Erro na API é tratado sem corromper o estado
-  it('FT-06: Erro na API durante fetchItems não corrompe o estado e é tratado', async () => {
+  // FT-06: Erro na API é tratado sem corromper o estado e propagado para a interface (TF-01)
+  it('FT-06: Erro na API durante fetchItems não corrompe o estado e define feedback de erro para a UI', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (apiModule.apiRequest as jest.Mock).mockRejectedValueOnce(new Error('Network error 500'));
 
@@ -163,6 +171,7 @@ describe('4.1 Store Zustand (FT-01 a FT-06)', () => {
 
     expect(consoleSpy).toHaveBeenCalled();
     expect(useAppStore.getState().items).toEqual([]);
+    expect(useAppStore.getState().error).toBe('Network error 500');
     consoleSpy.mockRestore();
   });
 });

@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
   DialogTrigger
 } from "../ui/dialog";
 import { Button } from "../ui/button";
@@ -24,6 +25,7 @@ import {
 import { Input } from "../ui/input";
 import { User, Mail, ShieldAlert, Key, Settings2 } from "lucide-react";
 import { apiRequest, getCookie, deleteCookie } from "@/lib/api";
+import { toast } from "sonner";
 
 const userSettingsSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -45,6 +47,9 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [confirmEmail, setConfirmEmail] = React.useState("");
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const form = useForm<UserSettingsFormValues>({
     resolver: zodResolver(userSettingsSchema),
@@ -101,38 +106,47 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
 
     try {
       await apiRequest("PUT", `/api/v1/users/${userId}`, payload);
-      alert("Configurações atualizadas com sucesso!");
+      toast.success("Configurações atualizadas com sucesso!");
       setOpen(false);
     } catch (err) {
-      setError((err as Error).message || "Erro ao atualizar dados.");
+      const msg = (err as Error).message || "Erro ao atualizar dados.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const openDeleteDialog = () => {
+    setConfirmEmail("");
+    setDeleteError(null);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmAccountDeletion = async () => {
     const userId = getCookie("creator_user_id");
     if (!userId) return;
 
-    const confirmFirst = window.confirm("ATENÇÃO: Tem certeza absoluta que deseja excluir a sua conta? Esta ação é irreversível!");
-    if (!confirmFirst) return;
-
-    const confirmSecond = window.prompt("Para confirmar a exclusão, digite o e-mail cadastrado:");
-    if (confirmSecond !== form.getValues("email")) {
-      alert("E-mail incorreto. Exclusão de conta cancelada.");
+    if (confirmEmail.trim().toLowerCase() !== form.getValues("email").trim().toLowerCase()) {
+      setDeleteError("O e-mail digitado não confere com o e-mail da sua conta.");
+      toast.error("E-mail incorreto. Digite seu e-mail cadastrado para confirmar.");
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    setDeleteError(null);
     try {
       await apiRequest("DELETE", `/api/v1/users/${userId}`);
       deleteCookie("creator_auth_token");
       deleteCookie("creator_user_id");
-      alert("Sua conta foi excluída com sucesso.");
+      toast.success("Sua conta foi excluída com sucesso.");
+      setIsDeleteModalOpen(false);
+      setOpen(false);
       window.location.href = "/login";
     } catch (err) {
-      setError((err as Error).message || "Erro ao excluir conta.");
+      const msg = (err as Error).message || "Erro ao excluir conta.";
+      setDeleteError(msg);
+      toast.error(msg);
       setIsLoading(false);
     }
   };
@@ -238,7 +252,7 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
               <Button
                 type="button"
                 variant="ghost"
-                onClick={handleDeleteAccount}
+                onClick={openDeleteDialog}
                 disabled={isLoading}
                 className="w-full text-zinc-400 hover:text-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/20 rounded-2xl font-bold uppercase tracking-[0.2em] text-[9px] h-12 transition-all duration-300 font-heading"
               >
@@ -248,6 +262,58 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
           </form>
         </Form>
       </DialogContent>
+
+      {/* Modal de Confirmação de Exclusão de Conta (FE-16, FE-35) */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <ShieldAlert size={18} /> Confirmar Exclusão de Conta
+            </DialogTitle>
+            <DialogDescription className="space-y-2">
+              <span className="block text-zinc-700 dark:text-zinc-300">
+                Esta ação é <strong>irreversível</strong>. Todos os seus dados, roteiros e projetos serão permanentemente removidos.
+              </span>
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400 pt-2">
+                Para confirmar a exclusão, digite seu e-mail cadastrado: <strong>{form.getValues("email")}</strong>
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              type="email"
+              value={confirmEmail}
+              onChange={(e) => {
+                setConfirmEmail(e.target.value);
+                setDeleteError(null);
+              }}
+              placeholder="Digite seu e-mail para confirmar"
+              className="h-11 rounded-xl text-sm"
+            />
+            {deleteError && (
+              <p className="text-xs text-red-500 font-medium mt-1.5">{deleteError}</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="rounded-xl font-bold"
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmAccountDeletion}
+              disabled={isLoading || !confirmEmail}
+              className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isLoading ? "Excluindo..." : "Excluir Definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

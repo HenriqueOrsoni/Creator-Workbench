@@ -8,23 +8,42 @@ import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
 import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
+
+const loginSchema = z.object({
+  email: z.string().min(1, "E-mail é obrigatório.").email("Endereço de e-mail inválido."),
+  password: z.string().min(1, "Senha é obrigatória."),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
 
     try {
       // Chamada real para a API de Login do Backend
-      const response = await apiRequest("POST", "/api/auth/login", { email, password });
+      const response = await apiRequest("POST", "/api/auth/login", data);
       
       if (response && response.token) {
         // Salva o token JWT real no cookie
@@ -106,7 +125,7 @@ export default function LoginPage() {
               <div className="h-1.5 w-12 bg-primary rounded-full group-hover:w-24 transition-all duration-500"></div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
               
               {/* ÁREA DE ERRO ANIMADA */}
               <AnimatePresence>
@@ -131,12 +150,14 @@ export default function LoginPage() {
                 </label>
                 <input 
                   type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  {...register("email")}
                   required
                   className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-5 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
                   placeholder="operador@creator.studio"
                 />
+                {errors.email && (
+                  <p className="text-xs text-red-500 font-bold ml-2 mt-1">{errors.email.message}</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -150,12 +171,14 @@ export default function LoginPage() {
                 </div>
                 <input 
                   type="password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register("password")}
                   required
                   className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-5 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono tracking-widest"
                   placeholder="••••••••"
                 />
+                {errors.password && (
+                  <p className="text-xs text-red-500 font-bold ml-2 mt-1">{errors.password.message}</p>
+                )}
               </div>
 
               <Button 

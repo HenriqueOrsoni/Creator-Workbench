@@ -25,8 +25,17 @@ import {
   SheetTitle,
   SheetTrigger
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { toast } from "sonner";
 
 /**
  * Componente: ScriptEditor
@@ -40,6 +49,7 @@ interface ScriptEditorProps {
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
+  const [versionToRestore, setVersionToRestore] = React.useState<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -107,9 +117,9 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     const content = editor.getHTML();
     try {
       await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
-      alert("Roteiro salvo com sucesso!");
+      toast.success("Roteiro salvo com sucesso!");
     } catch (error) {
-      alert("Erro ao salvar roteiro: " + (error as Error).message);
+      toast.error("Erro ao salvar roteiro: " + (error as Error).message);
     }
   };
 
@@ -123,24 +133,24 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       // Cria a nova versão de snapshot no banco
       await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions`);
       fetchVersions();
-      alert("Snapshot de revisão criado com sucesso!");
+      toast.success("Snapshot de revisão criado com sucesso!");
     } catch (error) {
-      alert("Erro ao criar snapshot: " + (error as Error).message);
+      toast.error("Erro ao criar snapshot: " + (error as Error).message);
     }
   };
 
-  const restoreSnapshot = async (versionId: string) => {
-    if (!editor || !kanbanItemId) return;
-    if (!window.confirm("Confirmar a restauração desta versão? Qualquer alteração não salva será substituída.")) return;
-
+  const confirmRestoreSnapshot = async () => {
+    if (!editor || !kanbanItemId || !versionToRestore) return;
     try {
-      const data = await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions/${versionId}/restore`);
+      const data = await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions/${versionToRestore}/restore`);
       if (data) {
         editor.commands.setContent(data.content || "");
-        alert("Versão do roteiro restaurada com sucesso!");
+        toast.success("Versão do roteiro restaurada com sucesso!");
       }
     } catch (error) {
-      alert("Erro ao restaurar versão: " + (error as Error).message);
+      toast.error("Erro ao restaurar versão: " + (error as Error).message);
+    } finally {
+      setVersionToRestore(null);
     }
   };
 
@@ -208,14 +218,14 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       <div
                         key={s.id}
                         className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-primary-light dark:hover:bg-primary-dark transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
-                        onClick={() => restoreSnapshot(s.id)}
+                        onClick={() => setVersionToRestore(s.id)}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
                             SNAPSHOT
                           </Badge>
                           <span className="text-[10px] text-zinc-400 font-bold">
-                            {new Date(s.timestamp).toLocaleTimeString()}
+                            {new Date(s.timestamp).toLocaleDateString()} {new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <p className="text-[11px] text-zinc-500 font-medium truncate leading-relaxed">
@@ -266,6 +276,38 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           <span className="text-[10px] font-black text-primary/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
         </div>
       </div>
+
+      {/* Diálogo de Confirmação de Restauração de Snapshot (FE-16) */}
+      <Dialog 
+        open={versionToRestore !== null} 
+        onOpenChange={(open) => { 
+          if (!open) setVersionToRestore(null); 
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Restauração</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja restaurar esta versão do roteiro? As alterações atuais não salvas serão substituídas pelo conteúdo deste snapshot.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setVersionToRestore(null)}
+              className="rounded-xl font-bold"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmRestoreSnapshot}
+              className="rounded-xl font-bold bg-primary text-white hover:opacity-90"
+            >
+              Restaurar Versão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -43,9 +43,20 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     handleUnauthorized();
-    throw new Error("Sessão expirada ou não autorizada. Redirecionando...");
+    throw new Error("Sessão expirada. Redirecionando...");
+  }
+
+  if (response.status === 403) {
+    let errorMessage = "Acesso negado para esta operação.";
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch {
+      // Ignora falha de parsing se a resposta não for JSON
+    }
+    throw new Error(errorMessage);
   }
 
   if (!response.ok) {

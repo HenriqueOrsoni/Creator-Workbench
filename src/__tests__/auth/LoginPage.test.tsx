@@ -82,4 +82,23 @@ describe('4.2 Componentes de Autenticação — LoginPage (FT-07)', () => {
       expect(mockPush).toHaveBeenCalledWith('/');
     });
   });
+
+  // TF-06: Validação Zod no formulário de login (FE-43)
+  it('FT-07 (TF-06): Exibe mensagem de validação do Zod para e-mail com formato inválido', async () => {
+    render(<LoginPage />);
+
+    const emailInput = screen.getByPlaceholderText('operador@creator.studio');
+    const passwordInput = screen.getByPlaceholderText('••••••••');
+    const submitButton = screen.getByRole('button', { name: /iniciar sessão/i });
+
+    fireEvent.change(emailInput, { target: { value: 'email-invalido' } });
+    fireEvent.change(passwordInput, { target: { value: '123456' } });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Endereço de e-mail inválido.')).toBeInTheDocument();
+    });
+
+    expect(apiModule.apiRequest).not.toHaveBeenCalled();
+  });
 });

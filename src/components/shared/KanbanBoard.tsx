@@ -15,6 +15,14 @@ import {
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../ui/dialog";
 import { useAppStore, KanbanItem } from "../../store/useAppStore";
 import { IdeaDialog } from "./IdeaDialog";
 
@@ -58,6 +66,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   const [activeConvertId, setActiveConvertId] = React.useState<string | null>(null);
   const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
   const [selectedItemForDialog, setSelectedItemForDialog] = React.useState<KanbanItem | null>(null);
+  const [itemToDelete, setItemToDelete] = React.useState<KanbanItem | null>(null);
 
   const getItemsByColumn = (state: string) => {
     return items.filter(item => item.state === state);
@@ -165,8 +174,9 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  onClick={() => deleteItem(item.id)}
+                                  onClick={() => setItemToDelete(item)}
                                   className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
+                                  title="Excluir item"
                                 >
                                   <Trash2 size={14} />
                                 </Button>
@@ -326,6 +336,48 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
           }}
         />
       )}
+
+      {/* Diálogo de Confirmação de Exclusão (FE-06) */}
+      <Dialog 
+        open={itemToDelete !== null} 
+        onOpenChange={(open) => { 
+          if (!open) setItemToDelete(null); 
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir o item{" "}
+              <strong className="text-zinc-900 dark:text-zinc-100">
+                &ldquo;{itemToDelete?.title}&rdquo;
+              </strong>
+              ? Esta ação é irreversível e removerá o item do sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setItemToDelete(null)}
+              className="rounded-xl font-bold"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (itemToDelete) {
+                  await deleteItem(itemToDelete.id);
+                  setItemToDelete(null);
+                }
+              }}
+              className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
