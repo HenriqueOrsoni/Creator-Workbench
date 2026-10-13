@@ -8,7 +8,9 @@ import { ThemeColorPicker } from "./ThemeColorPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
+import { TeamSwitcher } from "./TeamSwitcher";
 import { useAppStore } from "@/store/useAppStore";
+import { deleteCookie } from "@/lib/api";
 
 export function Navbar() {
   const resetStore = useAppStore((state) => state.resetStore);
@@ -72,9 +74,12 @@ export function Navbar() {
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 hidden sm:flex">
           <Zap className="w-6 h-6 text-white" />
         </div>
-        <span className="text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100">
+        <span className="text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100 hidden sm:inline">
           Workbench<span className="text-primary">_CR</span>
         </span>
+        <div className="ml-2">
+          <TeamSwitcher />
+        </div>
       </div>
 
       <div className="flex items-center gap-4 md:gap-8">
