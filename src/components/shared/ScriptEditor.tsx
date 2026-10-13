@@ -14,7 +14,10 @@ import {
   Heading2,
   History,
   Sparkles,
-  FileText
+  FileText,
+  Download,
+  Printer,
+  Clock
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 
 /**
@@ -48,6 +52,7 @@ interface ScriptEditorProps {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
+  const { exportScript } = useAppStore();
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
   const [versionToRestore, setVersionToRestore] = React.useState<string | null>(null);
 
@@ -66,6 +71,12 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       },
     },
   });
+
+  const text = editor && typeof editor.getText === "function"
+    ? editor.getText()
+    : (editor && typeof editor.getHTML === "function" ? editor.getHTML().replace(/<[^>]*>/g, "") : "");
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const estimatedMinutes = Math.max(1, Math.ceil(wordCount / 140));
 
   const fetchScript = React.useCallback(async () => {
     if (!kanbanItemId || !editor) return;
@@ -123,14 +134,34 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     }
   };
 
+  const handleExportMarkdown = async () => {
+    if (!kanbanItemId) return;
+    await handleSave();
+    const data = await exportScript(kanbanItemId);
+    if (data) {
+      const blob = new Blob([data.markdownFormatted], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeTitle = data.cardTitle ? data.cardTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "roteiro";
+      link.download = `roteiro-${safeTitle}.md`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Roteiro baixado em Markdown (.md)!");
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const takeSnapshot = async () => {
     if (!editor || !kanbanItemId) return;
     try {
-      // Salva o estado atual primeiro para garantir que a versão seja sincronizada no banco
       const content = editor.getHTML();
       await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
-
-      // Cria a nova versão de snapshot no banco
       await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions`);
       fetchVersions();
       toast.success("Snapshot de revisão criado com sucesso!");
@@ -250,6 +281,26 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
 
           <Button
             size="sm"
+            variant="ghost"
+            onClick={handleExportMarkdown}
+            className="h-10 text-[10px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 uppercase tracking-widest font-black transition-all gap-1.5"
+            title="Baixar roteiro em arquivo Markdown (.md)"
+          >
+            <Download size={14} /> EXPORTAR .MD
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handlePrint}
+            className="h-10 text-[10px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 uppercase tracking-widest font-black transition-all gap-1.5"
+            title="Imprimir ou Salvar em PDF"
+          >
+            <Printer size={14} /> IMPRIMIR
+          </Button>
+
+          <Button
+            size="sm"
             className="h-10 bg-primary hover:opacity-90 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
             onClick={handleSave}
           >
@@ -269,6 +320,11 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
             <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">Status: Live</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 pl-4 border-l border-zinc-200 dark:border-zinc-800">
+            <Clock size={13} className="text-primary" />
+            <span>{wordCount} palavras • ~{estimatedMinutes} min de locução</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

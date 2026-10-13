@@ -24,6 +24,7 @@ jest.mock('@tiptap/react', () => ({
       setContent: mockSetContent,
     },
     getHTML: mockGetHTML,
+    getText: jest.fn().mockReturnValue('Conteúdo do Roteiro de Teste'),
   }),
   EditorContent: () => <div data-testid="editor-content">Conteúdo TipTap</div>,
 }));
@@ -111,5 +112,14 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
     await waitFor(() => {
       expect(screen.getByText(/revisões \(2\)/i)).toBeInTheDocument();
     });
+  });
+
+  // Fase 3: Exportação e Métricas
+  it('Fase 3: Renderiza botões de exportação e estimativa de locução', () => {
+    render(<ScriptEditor kanbanItemId="1" />);
+
+    expect(screen.getByRole('button', { name: /exportar \.md/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /imprimir/i })).toBeInTheDocument();
+    expect(screen.getByText(/palavras • ~1 min de locução/i)).toBeInTheDocument();
   });
 });

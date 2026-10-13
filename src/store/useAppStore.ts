@@ -178,6 +178,49 @@ export interface ApiModuleDto {
   createdAt?: string;
 }
 
+export interface TeamMember {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  joinedAt: string;
+}
+
+export interface ApiTeamMemberDto {
+  id: string | number;
+  userId: string | number;
+  name: string;
+  email: string;
+  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  joinedAt: string;
+}
+
+export interface ScriptExportData {
+  cardId: string;
+  cardTitle: string;
+  targetAudience: string;
+  pedagogicalObjective: string;
+  rawContent: string;
+  markdownFormatted: string;
+  wordCount: number;
+  estimatedMinutes: number;
+}
+
+export interface ScriptVersionData {
+  id: string;
+  versionNumber: number;
+  content: string;
+  createdAt: string;
+}
+
+export interface ApiScriptVersionDto {
+  id: string | number;
+  versionNumber?: number;
+  content: string;
+  createdAt: string;
+}
+
 function mapBackendToFrontendItem(item: BackendKanbanItem): KanbanItem {
   return {
     id: item.id.toString(),
@@ -210,13 +253,18 @@ interface AppState {
   updateProgress: (id: string, progress: number) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
 
-  // Fase 2: Equipes & Membros
+  // Fase 2 & 3: Equipes & Membros
   teams: Team[];
   activeTeamId: string | null;
   activeTeam: Team | null;
+  teamMembers: TeamMember[];
   fetchTeams: () => Promise<void>;
   setActiveTeamId: (teamId: string) => Promise<void>;
   createTeam: (name: string) => Promise<Team | null>;
+  fetchTeamMembers: (teamId?: string) => Promise<void>;
+  addTeamMember: (email: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
+  updateTeamMemberRole: (memberId: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
+  removeTeamMember: (memberId: string) => Promise<boolean>;
 
   // Fase 2: Quadro Dinâmico & Caixa de Entrada (Inbox)
   board: { teamId: string; teamName: string; columns: BoardColumn[] } | null;
@@ -247,6 +295,11 @@ interface AppState {
   createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string) => Promise<void>;
   deleteCourseLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
+  // Fase 3: Estúdio de Roteiro Avançado (Exportação e Versões)
+  exportScript: (cardId: string) => Promise<ScriptExportData | null>;
+  fetchScriptVersions: (cardId: string) => Promise<ScriptVersionData[]>;
+  restoreScriptVersion: (cardId: string, versionId: string) => Promise<boolean>;
+
   // Personalização
   accentHue: number;
   accentChroma: number;
@@ -266,6 +319,7 @@ export const useAppStore = create<AppState>()(
       teams: [],
       activeTeamId: null,
       activeTeam: null,
+      teamMembers: [],
       board: null,
       ideas: [],
       courses: [],
@@ -279,6 +333,7 @@ export const useAppStore = create<AppState>()(
         teams: [],
         activeTeamId: null,
         activeTeam: null,
+        teamMembers: [],
         board: null,
         ideas: [],
         courses: [],
@@ -354,6 +409,79 @@ export const useAppStore = create<AppState>()(
           const msg = error instanceof Error ? error.message : "Erro ao criar equipe";
           toast.error(msg);
           return null;
+        }
+      },
+
+      fetchTeamMembers: async (teamId) => {
+        const targetTeamId = teamId || get().activeTeamId;
+        if (!targetTeamId) return;
+
+        try {
+          const rawMembers = await apiRequest("GET", `/api/v1/teams/${targetTeamId}/members`);
+          if (Array.isArray(rawMembers)) {
+            const mappedMembers: TeamMember[] = rawMembers.map((m: ApiTeamMemberDto) => ({
+              id: m.id.toString(),
+              userId: m.userId.toString(),
+              name: m.name,
+              email: m.email,
+              role: m.role || "CREATOR",
+              joinedAt: m.joinedAt
+            }));
+            set({ teamMembers: mappedMembers });
+          }
+        } catch (error) {
+          console.error("Erro ao carregar membros da equipe:", error);
+        }
+      },
+
+      addTeamMember: async (email, role) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/members`, { email, role });
+          if (raw) {
+            toast.success("Membro adicionado à equipe com sucesso!");
+            await get().fetchTeamMembers(teamId);
+            return true;
+          }
+          return false;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao adicionar membro";
+          toast.error(msg);
+          return false;
+        }
+      },
+
+      updateTeamMemberRole: async (memberId, role) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/members/${memberId}`, { role });
+          toast.success("Papel do membro atualizado!");
+          await get().fetchTeamMembers(teamId);
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao atualizar papel";
+          toast.error(msg);
+          return false;
+        }
+      },
+
+      removeTeamMember: async (memberId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}/members/${memberId}`);
+          toast.success("Membro removido da equipe com sucesso!");
+          await get().fetchTeamMembers(teamId);
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao remover membro";
+          toast.error(msg);
+          return false;
         }
       },
 
@@ -913,6 +1041,60 @@ export const useAppStore = create<AppState>()(
           set({ error: message });
           toast.error(message);
           console.error("Erro ao deletar item:", error);
+        }
+      },
+
+      // --- Estúdio de Roteiro Avançado (Exportação e Versões) ---
+      exportScript: async (cardId) => {
+        try {
+          const raw = await apiRequest("GET", `/api/v1/kanban/${cardId}/script/export`);
+          if (raw) {
+            return {
+              cardId: raw.cardId.toString(),
+              cardTitle: raw.cardTitle,
+              targetAudience: raw.targetAudience,
+              pedagogicalObjective: raw.pedagogicalObjective,
+              rawContent: raw.rawContent || "",
+              markdownFormatted: raw.markdownFormatted || "",
+              wordCount: raw.wordCount || 0,
+              estimatedMinutes: raw.estimatedMinutes || 0
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error("Erro ao exportar roteiro:", error);
+          toast.error("Erro ao exportar roteiro");
+          return null;
+        }
+      },
+
+      fetchScriptVersions: async (cardId) => {
+        try {
+          const rawVersions = await apiRequest("GET", `/api/v1/kanban/${cardId}/script/versions`);
+          if (Array.isArray(rawVersions)) {
+            return rawVersions.map((v: ApiScriptVersionDto, idx: number) => ({
+              id: v.id.toString(),
+              versionNumber: v.versionNumber || (rawVersions.length - idx),
+              content: v.content || "",
+              createdAt: v.createdAt
+            }));
+          }
+          return [];
+        } catch (error) {
+          console.error("Erro ao buscar versões do roteiro:", error);
+          return [];
+        }
+      },
+
+      restoreScriptVersion: async (cardId, versionId) => {
+        try {
+          await apiRequest("POST", `/api/v1/kanban/${cardId}/script/versions/${versionId}/restore`);
+          toast.success("Versão restaurada com sucesso!");
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao restaurar versão";
+          toast.error(msg);
+          return false;
         }
       },
 
