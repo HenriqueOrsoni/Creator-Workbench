@@ -16,10 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
 
+import { TeamMembersDialog } from "./TeamMembersDialog";
+
 export function TeamSwitcher() {
   const { teams, activeTeam, activeTeamId, fetchTeams, setActiveTeamId, createTeam } = useAppStore();
   const [openSelect, setOpenSelect] = React.useState(false);
   const [openCreate, setOpenCreate] = React.useState(false);
+  const [openMembers, setOpenMembers] = React.useState(false);
   const [newTeamName, setNewTeamName] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
@@ -54,7 +57,7 @@ export function TeamSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-2 font-sans">
+    <div className="flex items-center gap-1.5 font-sans">
       <Dialog open={openSelect} onOpenChange={setOpenSelect}>
         <DialogTrigger render={
           <Button
@@ -122,15 +125,39 @@ export function TeamSwitcher() {
               variant="outline"
               onClick={() => {
                 setOpenSelect(false);
+                setOpenMembers(true);
+              }}
+              className="w-full rounded-xl text-xs font-bold uppercase tracking-wider gap-2 h-10"
+            >
+              <Users className="w-4 h-4" /> Gerenciar Membros
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenSelect(false);
                 setOpenCreate(true);
               }}
               className="w-full rounded-xl text-xs font-bold uppercase tracking-wider gap-2 h-10 border-dashed"
             >
-              <Plus className="w-4 h-4" /> Criar Nova Equipe
+              <Plus className="w-4 h-4" /> Criar Equipe
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Botão de Atalho Direto para Membros */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpenMembers(true)}
+        className="h-10 w-10 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+        title="Gerenciar membros da equipe"
+      >
+        <Users className="w-4 h-4" />
+      </Button>
+
+      {/* Dialog de Membros da Equipe */}
+      <TeamMembersDialog open={openMembers} onOpenChange={setOpenMembers} />
 
       {/* Dialog para criação de equipe */}
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
