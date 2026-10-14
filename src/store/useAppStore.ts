@@ -347,7 +347,7 @@ export const useAppStore = create<AppState>()(
         try {
           set({ error: null });
           const rawTeams = await apiRequest("GET", "/api/v1/teams");
-          if (Array.isArray(rawTeams)) {
+          if (Array.isArray(rawTeams) && rawTeams.length > 0) {
             const mappedTeams: Team[] = rawTeams.map(t => ({
               id: t.id.toString(),
               name: t.name,
@@ -358,7 +358,7 @@ export const useAppStore = create<AppState>()(
 
             let activeId = get().activeTeamId;
             if (!activeId || !mappedTeams.some(t => t.id === activeId)) {
-              activeId = mappedTeams.length > 0 ? mappedTeams[0].id : null;
+              activeId = mappedTeams[0].id;
             }
 
             const active = mappedTeams.find(t => t.id === activeId) || null;
@@ -369,9 +369,25 @@ export const useAppStore = create<AppState>()(
               await get().fetchIdeas();
               await get().fetchCourses();
             }
+            return;
           }
-        } catch (error) {
-          console.error("Erro ao carregar equipes:", error);
+        } catch {
+          // Backend sem endpoint de equipes ainda: fallback silencioso para estúdio padrão
+        }
+
+        if (get().teams.length === 0) {
+          const defaultTeam: Team = {
+            id: "1",
+            name: "Meu Estúdio",
+            role: "ADMIN",
+            membersCount: 1,
+            createdAt: new Date().toISOString()
+          };
+          set({
+            teams: [defaultTeam],
+            activeTeamId: "1",
+            activeTeam: defaultTeam
+          });
         }
       },
 

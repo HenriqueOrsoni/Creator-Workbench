@@ -26,7 +26,9 @@ export function handleUnauthorized() {
   deleteCookie("creator_auth_token");
   deleteCookie("creator_user_id");
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
-    window.location.href = "/login";
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
   }
 }
 
@@ -44,6 +46,21 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
   });
 
   if (response.status === 401) {
+    if (path.startsWith("/api/auth/")) {
+      let errorMessage = "Credenciais inválidas. Verifique seu e-mail e senha.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        // Ignora falha de parsing
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (path.startsWith("/api/v1/teams")) {
+      throw new Error("Módulo de equipes ainda não disponível no servidor.");
+    }
+
     handleUnauthorized();
     throw new Error("Sessão expirada. Redirecionando...");
   }
