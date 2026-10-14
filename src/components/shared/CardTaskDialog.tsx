@@ -53,28 +53,28 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-sans">
+      <DialogContent className="sm:max-w-[480px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
             <ListChecks className="w-4 h-4" /> Checklist de Tarefas
           </div>
-          <DialogTitle className="text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 font-heading">
+          <DialogTitle className="text-xl font-bold tracking-tight text-foreground font-heading">
             {currentCard.title}
           </DialogTitle>
-          <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+          <DialogDescription className="text-xs text-muted-foreground">
             O progresso do card é calculado automaticamente com base nas tarefas concluídas.
           </DialogDescription>
         </DialogHeader>
 
         {/* Barra de Progresso do Checklist */}
-        <div className="my-3 p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center justify-between text-xs font-bold mb-2">
-            <span className="text-zinc-600 dark:text-zinc-400">
+        <div className="my-3 p-3.5 bg-muted/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between text-xs font-medium mb-2">
+            <span className="text-muted-foreground">
               {tasksDone} de {tasksTotal} tarefas concluídas
             </span>
-            <span className="font-black text-primary">{progressPercent}%</span>
+            <span className="font-bold text-primary">{progressPercent}%</span>
           </div>
-          <div className="w-full h-2.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-300 rounded-full"
               style={{ width: `${progressPercent}%` }}
@@ -83,32 +83,32 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
         </div>
 
         {/* Lista de Tarefas */}
-        <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-1 my-2">
+        <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto pr-1 my-2">
           {tasks.length === 0 ? (
-            <div className="py-8 text-center text-xs text-zinc-400 font-medium">
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
               Nenhuma tarefa adicionada ainda. Adicione as etapas de produção abaixo!
             </div>
           ) : (
             tasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-zinc-50/80 dark:bg-zinc-800/60 border border-zinc-200/50 dark:border-zinc-700/50 group hover:border-zinc-300 dark:hover:border-zinc-600 transition-all"
+                className="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border group hover:border-primary/40 transition-all shadow-2xs"
               >
                 <button
                   type="button"
                   onClick={() => toggleTask(currentCard.id, task.id)}
-                  className="flex items-center gap-3 flex-1 text-left"
+                  className="flex items-center gap-2.5 flex-1 text-left"
                 >
                   {task.completed ? (
                     <CheckSquare className="w-4 h-4 text-primary shrink-0" />
                   ) : (
-                    <Square className="w-4 h-4 text-zinc-400 shrink-0" />
+                    <Square className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
                   <span
-                    className={`text-xs font-bold ${
+                    className={`text-xs font-medium ${
                       task.completed
-                        ? "line-through text-zinc-400 dark:text-zinc-500"
-                        : "text-zinc-800 dark:text-zinc-200"
+                        ? "line-through text-muted-foreground"
+                        : "text-foreground"
                     }`}
                   >
                     {task.title}
@@ -118,7 +118,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   variant="ghost"
                   size="icon"
                   onClick={() => deleteTask(currentCard.id, task.id)}
-                  className="h-7 w-7 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-all"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive rounded-md transition-all"
                   title="Excluir tarefa"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -129,17 +129,17 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
         </div>
 
         {/* Form Adicionar Tarefa */}
-        <form onSubmit={handleAddTask} className="flex gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+        <form onSubmit={handleAddTask} className="flex gap-2 pt-3 border-t border-border">
           <Input
             placeholder="Ex: Gravar áudio da intro, cortar silêncios..."
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="h-10 rounded-xl text-xs flex-1"
+            className="h-10 rounded-lg text-xs flex-1 border-border bg-background"
           />
           <Button
             type="submit"
             disabled={loading || !newTitle.trim()}
-            className="rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary gap-1 px-4 h-10"
+            className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 gap-1 px-4 h-10 shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> Adicionar
           </Button>

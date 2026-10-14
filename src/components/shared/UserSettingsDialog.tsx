@@ -154,43 +154,43 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger ? trigger : <button className="hidden" aria-hidden="true" />} />
-      <DialogContent className="sm:max-w-[450px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-none dark:border dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-xl font-sans antialiased">
-        <DialogHeader className="space-y-4">
-          <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 text-left font-heading">
-            <Settings2 className="text-primary animate-spin-slow" />
-            Configurações_<span className="text-primary">Operador</span>
+      <DialogContent className="sm:max-w-[440px] bg-card border border-border text-foreground shadow-lg rounded-xl font-sans">
+        <DialogHeader className="space-y-1.5 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground font-heading">
+            <Settings2 className="text-primary w-5 h-5" />
+            Configurações da Conta
           </DialogTitle>
-          <DialogDescription className="text-xs uppercase tracking-widest text-zinc-400 font-bold text-left font-sans">
-            Gerencie suas credenciais de acesso e segurança de perfil.
+          <DialogDescription className="text-xs text-muted-foreground font-medium">
+            Gerencie suas credenciais de acesso e perfil profissional.
           </DialogDescription>
         </DialogHeader>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl text-xs font-bold font-sans">
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-lg text-xs font-medium font-sans">
             {error}
           </div>
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
             <FormField
               control={form.control}
               name="name"
               render={({ field }: { field: ControllerRenderProps<UserSettingsFormValues, "name"> }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <User size={14} className="text-primary/50" />
+                  <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                    <User size={13} className="text-primary" />
                     Nome Completo
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Seu Nome"
                       disabled={isLoading}
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-12 transition-all duration-300 font-sans shadow-none"
+                      className="bg-background border-border rounded-lg h-10 text-sm"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-[10px] italic font-bold font-sans" />
+                  <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
             />
@@ -200,19 +200,19 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
               name="email"
               render={({ field }: { field: ControllerRenderProps<UserSettingsFormValues, "email"> }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <Mail size={14} className="text-primary/50" />
+                  <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                    <Mail size={13} className="text-primary" />
                     E-mail Institucional
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="operador@creator.studio"
+                      placeholder="usuario@creator.studio"
                       disabled={isLoading}
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-12 transition-all duration-300 font-sans shadow-none"
+                      className="bg-background border-border rounded-lg h-10 text-sm"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-[10px] italic font-bold font-sans" />
+                  <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
             />
@@ -222,8 +222,8 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
               name="password"
               render={({ field }: { field: ControllerRenderProps<UserSettingsFormValues, "password"> }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <Key size={14} className="text-primary/50" />
+                  <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                    <Key size={13} className="text-primary" />
                     Nova Senha (Deixe em branco para manter)
                   </FormLabel>
                   <FormControl>
@@ -231,20 +231,20 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                       type="password"
                       placeholder="••••••••"
                       disabled={isLoading}
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-12 transition-all duration-300 font-sans shadow-none"
+                      className="bg-background border-border rounded-lg h-10 text-sm"
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage className="text-[10px] italic font-bold font-sans" />
+                  <FormMessage className="text-[11px]" />
                 </FormItem>
               )}
             />
 
-            <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-4">
+            <div className="pt-3 border-t border-border flex flex-col gap-2.5">
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary hover:opacity-90 text-white rounded-2xl shadow-lg shadow-primary/20 font-black uppercase tracking-[0.2em] text-[10px] h-12 transition-all duration-300 font-heading"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold text-xs h-10 shadow-xs"
               >
                 Salvar Alterações
               </Button>
@@ -254,9 +254,9 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                 variant="ghost"
                 onClick={openDeleteDialog}
                 disabled={isLoading}
-                className="w-full text-zinc-400 hover:text-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/20 rounded-2xl font-bold uppercase tracking-[0.2em] text-[9px] h-12 transition-all duration-300 font-heading"
+                className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg font-medium text-xs h-9"
               >
-                <ShieldAlert size={14} className="mr-2" /> Excluir Conta do Operador
+                <ShieldAlert size={14} className="mr-1.5 text-destructive" /> Excluir Conta do Operador
               </Button>
             </div>
           </form>
@@ -265,16 +265,16 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
 
       {/* Modal de Confirmação de Exclusão de Conta (FE-16, FE-35) */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
           <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2">
+            <DialogTitle className="text-destructive flex items-center gap-2 text-lg font-bold">
               <ShieldAlert size={18} /> Confirmar Exclusão de Conta
             </DialogTitle>
-            <DialogDescription className="space-y-2">
-              <span className="block text-zinc-700 dark:text-zinc-300">
+            <DialogDescription className="space-y-2 text-xs text-muted-foreground">
+              <span className="block text-foreground font-medium">
                 Esta ação é <strong>irreversível</strong>. Todos os seus dados, roteiros e projetos serão permanentemente removidos.
               </span>
-              <span className="block text-xs text-zinc-500 dark:text-zinc-400 pt-2">
+              <span className="block pt-1">
                 Para confirmar a exclusão, digite seu e-mail cadastrado: <strong>{form.getValues("email")}</strong>
               </span>
             </DialogDescription>
@@ -288,17 +288,17 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                 setDeleteError(null);
               }}
               placeholder="Digite seu e-mail para confirmar"
-              className="h-11 rounded-xl text-sm"
+              className="h-10 rounded-lg text-sm border-border bg-background"
             />
             {deleteError && (
-              <p className="text-xs text-red-500 font-medium mt-1.5">{deleteError}</p>
+              <p className="text-xs text-destructive font-medium mt-1.5">{deleteError}</p>
             )}
           </div>
           <DialogFooter className="gap-2 sm:gap-2 mt-4">
             <Button
               variant="outline"
               onClick={() => setIsDeleteModalOpen(false)}
-              className="rounded-xl font-bold"
+              className="rounded-lg font-semibold text-xs h-9 px-4"
               disabled={isLoading}
             >
               Cancelar
@@ -307,7 +307,7 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
               variant="destructive"
               onClick={confirmAccountDeletion}
               disabled={isLoading || !confirmEmail}
-              className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-lg font-semibold text-xs h-9 px-4 bg-destructive text-white hover:bg-destructive/90"
             >
               {isLoading ? "Excluindo..." : "Excluir Definitivamente"}
             </Button>

@@ -79,13 +79,13 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-sans">
+      <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2 font-heading text-zinc-900 dark:text-zinc-100">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2 font-heading text-foreground">
             <KeyRound className="w-5 h-5 text-primary" />
             Recuperar_Acesso
           </DialogTitle>
-          <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+          <DialogDescription className="text-xs text-muted-foreground">
             {step === 1
               ? "Informe o e-mail cadastrado para receber o código de 6 dígitos."
               : "Digite o código recebido no e-mail e defina sua nova senha."}
@@ -95,18 +95,18 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
         {step === 1 ? (
           <form onSubmit={handleRequestCode} className="space-y-4 my-4">
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5 font-heading">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 E-mail Cadastrado *
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3.5" />
+                <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
                 <Input
                   type="email"
                   required
                   placeholder="seu.email@exemplo.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl pl-10 h-11 text-sm bg-zinc-50 dark:bg-zinc-800"
+                  className="rounded-lg pl-9 h-10 text-sm border-border bg-background"
                 />
               </div>
             </div>
@@ -114,7 +114,7 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
             <Button
               type="submit"
               disabled={loading || !email.trim()}
-              className="w-full rounded-xl text-xs font-black uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary h-11 gap-2 mt-4"
+              className="w-full rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 h-10 gap-2 mt-4 shadow-xs"
             >
               {loading ? "Enviando..." : "Enviar Código"} <ArrowRight className="w-4 h-4" />
             </Button>
@@ -122,7 +122,7 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
         ) : (
           <form onSubmit={handleConfirmReset} className="space-y-4 my-4">
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5 font-heading">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Código de 6 Dígitos *
               </label>
               <Input
@@ -131,12 +131,12 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
                 placeholder="Ex: 482917"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="rounded-xl h-11 text-center font-mono tracking-widest text-base font-bold bg-zinc-50 dark:bg-zinc-800"
+                className="rounded-lg h-10 text-center font-mono tracking-widest text-base font-semibold border-border bg-background"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5 font-heading">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                 Nova Senha (Mínimo 6 caracteres) *
               </label>
               <Input
@@ -146,7 +146,7 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
                 placeholder="••••••••"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="rounded-xl h-11 text-sm bg-zinc-50 dark:bg-zinc-800"
+                className="rounded-lg h-10 text-sm border-border bg-background"
               />
             </div>
 
@@ -155,14 +155,14 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
                 type="button"
                 variant="ghost"
                 onClick={() => setStep(1)}
-                className="rounded-xl text-xs font-bold"
+                className="rounded-lg text-xs font-semibold h-10 px-4"
               >
                 Voltar
               </Button>
               <Button
                 type="submit"
                 disabled={loading || !code.trim() || !newPassword.trim()}
-                className="flex-1 rounded-xl text-xs font-black uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary h-11 gap-2"
+                className="flex-1 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 h-10 gap-2 shadow-xs"
               >
                 {loading ? "Redefinindo..." : "Salvar Nova Senha"}
               </Button>

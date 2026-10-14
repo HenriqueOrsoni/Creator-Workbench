@@ -204,12 +204,12 @@ interface BoardCardItem extends KanbanItem {
   return (
     <div className="space-y-6 font-sans">
       {/* Barra Superior do Quadro Dinâmico */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-xs font-bold uppercase tracking-wider py-1 px-3 bg-white/70 dark:bg-zinc-800/70">
+          <Badge variant="outline" className="text-xs font-semibold py-1 px-2.5 bg-background border-border rounded-md shadow-xs">
             {board ? board.teamName : "Quadro Geral"}
           </Badge>
-          <span className="text-xs text-zinc-400 font-medium">
+          <span className="text-xs text-muted-foreground font-medium">
             {dynamicColumns.reduce((acc, col) => acc + col.cards.length, 0)} cards em produção
           </span>
         </div>
@@ -218,41 +218,41 @@ interface BoardCardItem extends KanbanItem {
           variant="outline"
           size="sm"
           onClick={() => setOpenAddColumn(true)}
-          className="rounded-xl text-xs font-bold uppercase tracking-wider gap-1.5 h-9 border-dashed"
+          className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-dashed"
         >
           <Plus className="w-3.5 h-3.5" /> Adicionar Coluna
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start overflow-x-auto pb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start overflow-x-auto pb-4">
         {dynamicColumns.map((col, colIndex) => {
           const colItems = col.cards;
           return (
             <div 
               key={col.id}
-              className="flex flex-col bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-zinc-800 rounded-[32px] p-6 min-h-[500px] lg:min-h-[600px] transition-all hover:border-primary/5"
+              className="flex flex-col bg-muted/30 border border-border rounded-xl p-3.5 min-h-[500px] lg:min-h-[560px] transition-colors"
             >
               {/* Header da Coluna */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-3.5 px-1">
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${col.color || "bg-primary"}`} />
-                  <h3 className="font-black uppercase tracking-tight text-sm text-zinc-900 dark:text-zinc-100 font-heading">
+                  <div className={`w-2.5 h-2.5 rounded-full ${col.color || "bg-primary"}`} />
+                  <h3 className="font-semibold text-xs text-foreground font-heading uppercase tracking-wide">
                     {col.name}
                   </h3>
                 </div>
-                <Badge variant="outline" className="bg-zinc-100 dark:bg-zinc-800 border-none font-bold text-zinc-400 text-xs px-2.5 py-0.5 rounded-full">
+                <Badge variant="outline" className="bg-background border-border font-semibold text-muted-foreground text-[11px] px-2 py-0.5 rounded-md">
                   {colItems.length}
                 </Badge>
               </div>
 
               {/* Lista de Cards com Animação */}
-              <div className="flex-1 flex flex-col gap-4">
+              <div className="flex-1 flex flex-col gap-2.5">
                 <AnimatePresence mode="popLayout">
                   {colItems.length === 0 ? (
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex-1 flex items-center justify-center py-20 text-center text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-[9px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl"
+                      className="flex-1 flex items-center justify-center py-16 text-center text-muted-foreground font-medium text-xs border border-dashed border-border rounded-lg"
                     >
                       Nenhum item
                     </motion.div>
@@ -263,14 +263,14 @@ interface BoardCardItem extends KanbanItem {
                         <motion.div
                           key={item.id}
                           layout
-                          initial={{ opacity: 0, y: 15 }}
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ duration: 0.3 }}
+                          transition={{ duration: 0.2 }}
                         >
                           <Card 
                             onClick={() => setSelectedProjectId(item.id)}
-                            className={`cursor-pointer p-6 border-none dark:border bg-white dark:bg-zinc-800 shadow-[5px_5px_15px_rgba(240,240,240,0.5)] dark:shadow-none rounded-2xl hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-300 relative flex flex-col gap-4 group ${isActive ? 'ring-2 ring-primary' : 'dark:border-zinc-700'}`}
+                            className={`cursor-pointer p-3.5 border border-border bg-card shadow-xs rounded-lg hover:border-primary/40 transition-colors relative flex flex-col gap-2.5 group ${isActive ? 'ring-1.5 ring-primary border-primary' : ''}`}
                           >
                             {/* Card Header */}
                             <div className="flex items-start justify-between gap-4">
@@ -465,12 +465,12 @@ interface BoardCardItem extends KanbanItem {
 
       {/* Modal de Confirmação de Exclusão */}
       <Dialog open={Boolean(itemToDelete)} onOpenChange={(open) => !open && setItemToDelete(null)}>
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border-border shadow-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 font-heading">
+            <DialogTitle className="text-base font-bold tracking-tight text-foreground font-heading">
               Confirmar Exclusão
             </DialogTitle>
-            <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               Tem certeza que deseja remover o item &quot;{itemToDelete?.title}&quot;? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
@@ -478,14 +478,14 @@ interface BoardCardItem extends KanbanItem {
             <Button 
               variant="outline" 
               onClick={() => setItemToDelete(null)}
-              className="rounded-xl text-xs font-bold"
+              className="rounded-lg text-xs font-medium"
             >
               Cancelar
             </Button>
             <Button 
               variant="destructive" 
               onClick={handleConfirmDelete}
-              className="rounded-xl text-xs font-bold uppercase tracking-wider"
+              className="rounded-lg text-xs font-semibold"
             >
               Sim, Excluir
             </Button>
@@ -495,20 +495,20 @@ interface BoardCardItem extends KanbanItem {
 
       {/* Modal Adicionar Coluna */}
       <Dialog open={openAddColumn} onOpenChange={setOpenAddColumn}>
-        <DialogContent className="sm:max-w-[380px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[380px] rounded-xl p-6 bg-card border-border shadow-lg">
           <form onSubmit={handleCreateColumn}>
             <DialogHeader>
-              <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 font-heading">
-                <Plus className="w-5 h-5 text-primary" />
+              <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+                <Plus className="w-4 h-4 text-primary" />
                 Nova Coluna no Quadro
               </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+              <DialogDescription className="text-xs text-muted-foreground">
                 Personalize as etapas de produção da sua equipe.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="my-5">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5">
+            <div className="my-4">
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
                 Nome da Coluna *
               </label>
               <Input
@@ -516,19 +516,19 @@ interface BoardCardItem extends KanbanItem {
                 placeholder="Ex: Roteirização, Pós-Produção, Dublagem"
                 value={newColumnName}
                 onChange={(e) => setNewColumnName(e.target.value)}
-                className="rounded-xl h-11 text-sm"
+                className="rounded-lg h-9 text-xs"
                 autoFocus
               />
             </div>
 
             <DialogFooter className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setOpenAddColumn(false)} className="rounded-xl text-xs font-bold">
+              <Button type="button" variant="ghost" onClick={() => setOpenAddColumn(false)} className="rounded-lg text-xs font-medium">
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={!newColumnName.trim()}
-                className="rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary"
+                className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
               >
                 Criar Coluna
               </Button>

@@ -93,27 +93,27 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-2xl">
-        <DialogHeader className="pb-3 border-b border-zinc-100 dark:border-zinc-800">
-          <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2 font-heading text-zinc-900 dark:text-zinc-100">
+      <DialogContent className="sm:max-w-[540px] rounded-xl p-6 bg-card border border-border shadow-lg">
+        <DialogHeader className="pb-3 border-b border-border">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2 font-heading text-foreground">
             <Users className="w-5 h-5 text-primary" />
             Membros da Equipe
           </DialogTitle>
-          <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+          <DialogDescription className="text-xs text-muted-foreground">
             {activeTeam?.name} • Gerencie permissões e adicione colaboradores para produzir e revisar conteúdos.
           </DialogDescription>
         </DialogHeader>
 
         {/* Formulário de Adicionar Membro (Visível para Admins) */}
         {isAdmin && (
-          <form onSubmit={handleAddMember} className="my-3 p-4 rounded-2xl bg-zinc-50/70 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+          <form onSubmit={handleAddMember} className="my-3 p-4 rounded-lg bg-muted/30 border border-border space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground">
               <UserPlus className="w-4 h-4 text-primary" />
               Convidar Novo Membro
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="sm:col-span-2 relative">
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
                 <Input
                   id="member-email-input"
                   type="email"
@@ -121,14 +121,14 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   placeholder="e-mail do colaborador"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl h-10 pl-9 text-xs"
+                  className="rounded-lg h-10 pl-9 text-xs border-border bg-background"
                 />
               </div>
               <select
                 id="member-role-select"
                 value={role}
                 onChange={(e) => setRole(e.target.value as "ADMIN" | "CREATOR" | "REVIEWER")}
-                className="h-10 rounded-xl px-3 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-medium"
+                className="h-10 rounded-lg px-3 text-xs bg-background border border-border text-foreground font-medium"
               >
                 <option value="CREATOR">Criador</option>
                 <option value="REVIEWER">Revisor</option>
@@ -138,7 +138,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
             <Button
               type="submit"
               disabled={loading || !email.trim()}
-              className="w-full h-9 rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary gap-1.5"
+              className="w-full h-9 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 shadow-xs"
             >
               {loading ? "Adicionando..." : "Adicionar Membro"}
             </Button>
@@ -146,9 +146,9 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
         )}
 
         {/* Lista de Membros */}
-        <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
           {teamMembers.length === 0 ? (
-            <div className="py-8 text-center text-xs text-zinc-400 font-medium">
+            <div className="py-8 text-center text-xs text-muted-foreground font-medium">
               Nenhum membro encontrado.
             </div>
           ) : (
@@ -160,25 +160,25 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
               return (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-zinc-850 border border-zinc-200/70 dark:border-zinc-800 hover:border-zinc-300 transition-colors gap-3"
+                  className="flex items-center justify-between p-3 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors gap-3 shadow-2xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-700 dark:text-zinc-300 shrink-0">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
                       {initials}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                        <span className="text-xs font-semibold text-foreground truncate">
                           {member.name || member.email}
                         </span>
                         <Badge
                           variant="outline"
-                          className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${getRoleBadgeVariant(member.role)}`}
+                          className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${getRoleBadgeVariant(member.role)}`}
                         >
                           {getRoleLabel(member.role)}
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                         {member.email}
                       </p>
                     </div>
@@ -190,7 +190,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                         aria-label={`Papel de ${member.name || member.email}`}
                         value={member.role}
                         onChange={(e) => handleRoleChange(member, e.target.value as "ADMIN" | "CREATOR" | "REVIEWER")}
-                        className="h-8 rounded-lg px-2 text-[11px] bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-bold"
+                        className="h-7 rounded-md px-2 text-[11px] bg-background border border-border text-foreground font-medium"
                       >
                         <option value="CREATOR">Criador</option>
                         <option value="REVIEWER">Revisor</option>
@@ -201,7 +201,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemove(member.id)}
-                        className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
                         title="Remover da equipe"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

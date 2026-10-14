@@ -62,24 +62,24 @@ export function TeamSwitcher() {
         <DialogTrigger render={
           <Button
             variant="outline"
-            className="flex items-center gap-2 h-10 px-3.5 rounded-xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 hover:border-primary/40 font-bold text-xs uppercase tracking-wider"
+            className="flex items-center gap-2 h-9 px-3 rounded-lg border-border bg-background hover:bg-muted font-medium text-xs transition-colors shadow-xs"
           >
-            <Users className="w-4 h-4 text-primary" />
-            <span className="max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Carregando equipe..."}</span>
+            <Users className="w-3.5 h-3.5 text-primary" />
+            <span className="max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
             {activeTeam && (
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-black">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
                 {activeTeam.role}
               </Badge>
             )}
           </Button>
         } />
-        <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border-border shadow-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 font-heading">
-              <Users className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+              <Users className="w-4 h-4 text-primary" />
               Equipes & Colaboração
             </DialogTitle>
-            <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               Alterne entre equipes ou crie novos espaços para seus projetos e cursos.
             </DialogDescription>
           </DialogHeader>
@@ -94,19 +94,19 @@ export function TeamSwitcher() {
                     setActiveTeamId(t.id);
                     setOpenSelect(false);
                   }}
-                  className={`flex items-center justify-between p-3 rounded-2xl text-left transition-all border ${
+                  className={`flex items-center justify-between p-3 rounded-lg text-left transition-all border ${
                     isSelected
-                      ? "bg-primary/10 border-primary text-primary dark:text-white"
-                      : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200/60 dark:border-zinc-700/60 hover:border-zinc-400 text-zinc-800 dark:text-zinc-200"
+                      ? "bg-primary/10 border-primary text-primary dark:text-emerald-400 font-medium"
+                      : "bg-muted/30 border-border hover:border-zinc-400 dark:hover:border-zinc-700 text-foreground"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center font-black text-xs">
+                    <div className="w-7 h-7 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs">
                       {t.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div className="text-xs font-bold">{t.name}</div>
-                      <div className="text-[10px] text-zinc-400 flex items-center gap-1.5 mt-0.5">
+                      <div className="text-xs font-semibold">{t.name}</div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         {getRoleIcon(t.role)}
                         <span>{t.role}</span>
                         <span>•</span>
@@ -120,16 +120,16 @@ export function TeamSwitcher() {
             })}
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-border">
             <Button
               variant="outline"
               onClick={() => {
                 setOpenSelect(false);
                 setOpenMembers(true);
               }}
-              className="w-full rounded-xl text-xs font-bold uppercase tracking-wider gap-2 h-10"
+              className="w-full rounded-lg text-xs font-semibold gap-2 h-9"
             >
-              <Users className="w-4 h-4" /> Gerenciar Membros
+              <Users className="w-3.5 h-3.5" /> Gerenciar Membros
             </Button>
             <Button
               variant="outline"
@@ -137,9 +137,9 @@ export function TeamSwitcher() {
                 setOpenSelect(false);
                 setOpenCreate(true);
               }}
-              className="w-full rounded-xl text-xs font-bold uppercase tracking-wider gap-2 h-10 border-dashed"
+              className="w-full rounded-lg text-xs font-semibold gap-2 h-9 border-dashed"
             >
-              <Plus className="w-4 h-4" /> Criar Equipe
+              <Plus className="w-3.5 h-3.5" /> Criar Equipe
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -150,7 +150,7 @@ export function TeamSwitcher() {
         variant="ghost"
         size="icon"
         onClick={() => setOpenMembers(true)}
-        className="h-10 w-10 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+        className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
         title="Gerenciar membros da equipe"
       >
         <Users className="w-4 h-4" />
@@ -161,20 +161,20 @@ export function TeamSwitcher() {
 
       {/* Dialog para criação de equipe */}
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="sm:max-w-[400px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[400px] rounded-xl p-6 bg-card border-border shadow-lg">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 font-heading">
-                <Plus className="w-5 h-5 text-primary" />
+              <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+                <Plus className="w-4 h-4 text-primary" />
                 Criar Nova Equipe
               </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+              <DialogDescription className="text-xs text-muted-foreground">
                 Uma equipe possui seu próprio quadro Kanban dinâmico, caixa de entrada e cursos.
               </DialogDescription>
             </DialogHeader>
 
             <div className="my-5">
-              <label htmlFor="team-name-input" className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-2">
+              <label htmlFor="team-name-input" className="block text-xs font-semibold text-foreground mb-1.5">
                 Nome da Equipe
               </label>
               <Input
@@ -182,7 +182,7 @@ export function TeamSwitcher() {
                 placeholder="Ex: Laboratório de Mídias, Canal Tech"
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
-                className="h-11 rounded-xl text-sm"
+                className="h-9 rounded-lg text-xs"
                 autoFocus
               />
             </div>
@@ -192,14 +192,14 @@ export function TeamSwitcher() {
                 type="button"
                 variant="ghost"
                 onClick={() => setOpenCreate(false)}
-                className="rounded-xl text-xs font-bold"
+                className="rounded-lg text-xs font-medium"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={loading || !newTeamName.trim()}
-                className="rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary"
+                className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
               >
                 {loading ? "Criando..." : "Criar Equipe"}
               </Button>

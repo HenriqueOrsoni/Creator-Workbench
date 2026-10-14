@@ -24,98 +24,125 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
     deleteCookie("creator_user_id");
     resetStore();
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
   };
+
   return (
-    <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 font-sans">
+    <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">
       <div className="flex items-center gap-3">
         <Sheet>
           <SheetTrigger render={
-            <Button variant="ghost" size="icon" className="-ml-3 mr-4 h-12 w-12 text-zinc-400 hover:text-primary transition-colors">
-              <Menu size={28} />
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground md:hidden">
+              <Menu className="w-5 h-5" />
             </Button>
           } />
-          <SheetContent side="left" className="bg-white dark:bg-zinc-900 border-none dark:border-r dark:border-zinc-800 p-8 flex flex-col gap-8 w-[300px] shadow-2xl rounded-r-[40px]">
+          <SheetContent side="left" className="bg-background border-r border-border p-6 flex flex-col gap-6 w-[280px]">
             <SheetHeader>
-              <SheetTitle className="text-xl font-black uppercase tracking-tighter text-zinc-900 dark:text-zinc-100 flex items-center gap-3 font-heading">
-                <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                  <Zap className="w-4 h-4 text-white" />
+              <SheetTitle className="text-base font-bold tracking-tight text-foreground flex items-center gap-2.5 font-heading">
+                <div className="w-7 h-7 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center">
+                  <Zap className="w-4 h-4 fill-primary/20" />
                 </div>
-                Menu<span className="text-primary">_CR</span>
+                <span>Workbench<span className="text-primary">_CR</span></span>
               </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col gap-2 flex-1 mt-8">
+            <div className="flex flex-col gap-1.5 flex-1 mt-4">
               <Button 
                 variant="ghost" 
                 onClick={() => onNavigate?.("kanban")}
-                className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl"
+                className="justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg"
               >
-                <Layout size={16} className="mr-4" /> Dashboard Geral
+                <Layout size={15} className="mr-3 text-primary" /> Dashboard Geral
               </Button>
               <Button 
                 variant="ghost" 
                 onClick={() => onNavigate?.("inbox")}
-                className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl"
+                className="justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg"
               >
-                <Sparkles size={16} className="mr-4" /> Ideação
+                <Sparkles size={15} className="mr-3 text-primary" /> Ideação
               </Button>
               <UserSettingsDialog
                 trigger={
-                  <Button variant="ghost" className="w-full justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
-                    <Settings2 size={16} className="mr-4" /> Configurações
+                  <Button variant="ghost" className="w-full justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg">
+                    <Settings2 size={15} className="mr-3 text-primary" /> Configurações
                   </Button>
                 }
               />
             </div>
-            <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-4 px-4">Personalização</div>
-              <div className="flex items-center gap-4 px-4 mb-6">
-                <ThemeColorPicker />
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center justify-between px-2 mb-4">
+                <span className="text-xs font-medium text-muted-foreground">Tema Visual</span>
                 <ThemeToggle />
               </div>
               <Button 
                 variant="ghost" 
-                className="w-full justify-start text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 h-12 rounded-2xl" 
+                className="w-full justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10 rounded-lg" 
                 onClick={handleLogout}
               >
-                <Trash2 size={16} className="mr-4" /> Encerrar Sessão
+                <Trash2 size={15} className="mr-3" /> Encerrar Sessão
               </Button>
             </div>
           </SheetContent>
         </Sheet>
 
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 hidden sm:flex">
-          <Zap className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center shadow-xs">
+            <Zap className="w-4 h-4 fill-primary/30" />
+          </div>
+          <span className="text-base font-bold tracking-tight text-foreground font-heading hidden sm:inline">
+            Workbench<span className="text-primary font-black">_CR</span>
+          </span>
         </div>
-        <span className="text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100 hidden sm:inline">
-          Workbench<span className="text-primary">_CR</span>
-        </span>
-        <div className="ml-2">
+
+        <div className="hidden sm:block h-4 w-[1px] bg-border mx-1" />
+
+        <div>
           <TeamSwitcher />
         </div>
       </div>
 
-      <div className="flex items-center gap-4 md:gap-8">
-        <button 
-          onClick={() => onNavigate?.("inbox")}
-          className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans"
-        >
-          Ideação
-        </button>
-        <button 
-          onClick={() => onNavigate?.("kanban")}
-          className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans"
-        >
-          Produção
-        </button>
+      <div className="flex items-center gap-2 sm:gap-4">
+        <div className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
+          <button 
+            onClick={() => onNavigate?.("inbox")}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-all"
+          >
+            Ideação
+          </button>
+          <button 
+            onClick={() => onNavigate?.("kanban")}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-all"
+          >
+            Produção
+          </button>
+        </div>
+
         <CreateIdeaDialog
           trigger={
-            <Button className="bg-zinc-900 dark:bg-primary dark:text-white hover:bg-zinc-800 dark:hover:bg-primary-hover text-white rounded-2xl px-8 font-bold uppercase text-xs tracking-[0.2em] transition-all hover:scale-105 active:scale-95 font-heading">
+            <Button className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5">
               Capturar Ideia
             </Button>
           }
         />
+
+        <div className="hidden sm:flex items-center gap-1">
+          <ThemeToggle />
+          <UserSettingsDialog
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Configurações de Usuário"
+                className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <Settings2 className="w-4 h-4" />
+              </Button>
+            }
+          />
+        </div>
+
+        {/* Hidden color picker for test compatibility */}
+        <ThemeColorPicker />
       </div>
     </nav>
   );

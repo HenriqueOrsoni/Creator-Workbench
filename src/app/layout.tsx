@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -7,13 +7,13 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Creator Workbench | The Studio",
+  title: "Creator Workbench | Gestão de Conteúdo Digital",
   description: "Sistema de gestão de operações para conteúdo educacional digital.",
 };
 
@@ -29,10 +29,10 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${outfit.variable} h-full antialiased`}
+      className={`${inter.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-inter">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         <ThemeProvider>
           <AuthGuard>
             {children}

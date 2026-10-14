@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { Plus, Layout, KanbanSquare, GraduationCap, Lightbulb } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAppStore } from "../store/useAppStore";
@@ -9,31 +8,25 @@ import { CreateIdeaDialog } from "../components/shared/CreateIdeaDialog";
 import dynamic from "next/dynamic";
 
 const CurriculumBuilder = dynamic(() => import("../components/shared/CurriculumBuilder").then(mod => ({ default: mod.CurriculumBuilder })), {
-  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando...</div>,
+  loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Matriz Curricular...</div>,
 });
 
 const ScriptEditor = dynamic(() => import("../components/shared/ScriptEditor").then(mod => ({ default: mod.ScriptEditor })), {
-  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando...</div>,
+  loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Estúdio de Escrita...</div>,
 });
 
 const IdeasInbox = dynamic(() => import("../components/shared/IdeasInbox").then(mod => ({ default: mod.IdeasInbox })), {
-  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando Caixa de Entrada...</div>,
+  loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Caixa de Entrada...</div>,
 });
 
 const CoursesView = dynamic(() => import("../components/shared/CoursesView").then(mod => ({ default: mod.CoursesView })), {
-  loading: () => <div className="flex items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans">Carregando Cursos...</div>,
+  loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Cursos...</div>,
 });
 
 import { Navbar } from "../components/shared/Navbar";
 import { StatsCard } from "../components/shared/StatsCard";
 import { KanbanBoard } from "../components/shared/KanbanBoard";
 import { Button } from "../components/ui/button";
-
-/**
- * Creator Workbench - Central Única Digital
- * Design Unificado: "The Studio" (Creative).
- * Fase 2: Caixa de Entrada, Quadro Dinâmico e Cursos Pedagógicos.
- */
 
 export default function UnifiedPage() {
   const { items, ideas, courses, fetchItems, fetchTeams, selectedProjectId } = useAppStore();
@@ -51,71 +44,84 @@ export default function UnifiedPage() {
   const activeProject = projects.find(p => p.id === selectedProjectId) || projects[0];
 
   return (
-    <div className="min-h-screen bg-background text-zinc-900 dark:text-zinc-100 selection:bg-primary/20 overflow-x-hidden font-sans antialiased relative transition-colors duration-500">
-      <div className="absolute inset-0 bg-dot-grid dark:bg-dot-grid-dark opacity-[0.4] dark:opacity-[0.2] pointer-events-none -z-20" />
-      <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-light/50 dark:bg-primary-dark/20 rounded-full blur-[120px] -z-10 animate-pulse" />
-      <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-primary-light/30 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
-
+    <div className="min-h-screen bg-background text-foreground font-sans antialiased relative transition-colors selection:bg-primary/20">
       <Navbar onNavigate={(tab) => setActiveTab(tab)} />
 
-      <main className="pt-[140px] pb-24 grid grid-cols-1 px-6 lg:px-24">
+      <main className="pt-20 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-16">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <h1 className="text-[8vw] lg:text-[4.5vw] leading-[0.85] font-black tracking-tighter uppercase mb-6 font-heading group">
-                Dream.<br />
-                <span className="text-primary italic ml-[2vw]">
-                  Create.
-                </span>
+          {/* HEADER & CONTROLS */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-border pb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Operações Digitais</span>
+                <span className="text-muted-foreground/40">•</span>
+                <span className="text-xs text-muted-foreground font-medium">Workspace Criativo</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-heading">
+                Painel de Controle
               </h1>
-              <TabsList className="bg-zinc-100/50 dark:bg-zinc-800 p-2 rounded-2xl h-18 gap-2 overflow-x-auto flex flex-nowrap max-w-full">
-                <TabsTrigger value="kanban" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
-                  Quadro Kanban
-                </TabsTrigger>
-                <TabsTrigger value="inbox" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
-                  Caixa de Entrada
-                </TabsTrigger>
-                <TabsTrigger value="courses" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
-                  Cursos & Módulos
-                </TabsTrigger>
-                <TabsTrigger value="curriculum" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
-                  Matriz Curricular
-                </TabsTrigger>
-                <TabsTrigger value="editor" className="rounded-xl px-8 py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-lg dark:data-[state=active]:shadow-none dark:data-[state=active]:border dark:data-[state=active]:border-zinc-600 font-black uppercase text-xs tracking-widest transition-all font-sans dark:text-zinc-400 dark:data-[state=active]:text-zinc-100 shrink-0">
-                  Estúdio de Escrita
-                </TabsTrigger>
-              </TabsList>
-            </motion.div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-xl">
+                Planejamento pedagógico, esteira de produção Kanban e gestão curricular.
+              </p>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex gap-4 lg:gap-6 flex-wrap"
-            >
+            {/* METRICS ROW */}
+            <div className="flex gap-3 sm:gap-4 flex-wrap">
               <StatsCard
                 value={totalIdeasCount}
-                label="Inbox_Ideias"
+                label="Ideias no Inbox"
                 icon={Lightbulb}
-                iconHoverClass="group-hover:bg-primary"
               />
               <StatsCard
                 value={projects.length}
-                label="Status_Produção"
+                label="Projetos em Produção"
                 icon={Layout}
-                iconHoverClass="group-hover:bg-zinc-900"
               />
               <StatsCard
                 value={courses.length}
-                label="Cursos_Equipe"
+                label="Cursos Cadastrados"
                 icon={GraduationCap}
-                iconHoverClass="group-hover:bg-primary"
               />
-            </motion.div>
+            </div>
           </div>
 
+          {/* TAB NAVIGATION PILLS */}
+          <div className="mb-6 overflow-x-auto pb-1">
+            <TabsList className="bg-muted/60 p-1 rounded-lg border border-border h-auto inline-flex gap-1">
+              <TabsTrigger 
+                value="kanban" 
+                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                Quadro Kanban
+              </TabsTrigger>
+              <TabsTrigger 
+                value="inbox" 
+                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                Caixa de Entrada
+              </TabsTrigger>
+              <TabsTrigger 
+                value="courses" 
+                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                Cursos & Módulos
+              </TabsTrigger>
+              <TabsTrigger 
+                value="curriculum" 
+                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                Matriz Curricular
+              </TabsTrigger>
+              <TabsTrigger 
+                value="editor" 
+                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                Estúdio de Escrita
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* TAB CONTENTS */}
           <TabsContent value="kanban" className="mt-0 outline-none">
             <KanbanBoard onSelectTab={(tab) => setActiveTab(tab)} />
           </TabsContent>
@@ -129,21 +135,21 @@ export default function UnifiedPage() {
           </TabsContent>
 
           <TabsContent value="curriculum" className="mt-0 outline-none">
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-zinc-100 dark:border-zinc-800 max-w-4xl mx-auto">
+            <div className="bg-card p-6 sm:p-8 rounded-xl border border-border max-w-4xl mx-auto shadow-xs">
               {activeProject ? (
                 <CurriculumBuilder
                   kanbanItemId={activeProject.id}
                   courseTitle={activeProject.title}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans gap-6 text-center">
-                  <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-300 dark:text-zinc-600">
-                    <KanbanSquare size={28} />
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-xs font-medium gap-4 text-center">
+                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
+                    <KanbanSquare size={22} />
                   </div>
                   <span>Nenhum projeto ativo selecionado</span>
                   <Button 
                     onClick={() => setActiveTab("kanban")}
-                    className="bg-primary text-white rounded-full font-black uppercase tracking-widest text-[9px] px-8 h-12"
+                    className="bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg font-semibold text-xs px-4 h-9 shadow-xs"
                   >
                     Selecionar Projeto no Kanban
                   </Button>
@@ -152,18 +158,18 @@ export default function UnifiedPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="editor" className="mt-0 outline-none h-[calc(100vh-300px)]">
+          <TabsContent value="editor" className="mt-0 outline-none">
             {activeProject ? (
               <ScriptEditor key={activeProject.id} kanbanItemId={activeProject.id} />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-zinc-400 text-sm font-bold uppercase tracking-widest font-sans gap-6 text-center bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-3xl p-12">
-                <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-300 dark:text-zinc-600">
-                  <KanbanSquare size={28} />
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-xs font-medium gap-4 text-center bg-card border border-border rounded-xl p-8 max-w-4xl mx-auto shadow-xs">
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
+                  <KanbanSquare size={22} />
                 </div>
-                <span>Nenhum projeto ativo selecionado</span>
+                <span>Nenhum projeto ativo selecionado para redação de roteiro</span>
                 <Button 
                   onClick={() => setActiveTab("kanban")}
-                  className="bg-primary text-white rounded-full font-black uppercase tracking-widest text-[9px] px-8 h-12"
+                  className="bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg font-semibold text-xs px-4 h-9 shadow-xs"
                 >
                   Selecionar Projeto no Kanban
                 </Button>
@@ -173,17 +179,16 @@ export default function UnifiedPage() {
         </Tabs>
       </main>
 
-      <div className="fixed bottom-12 right-12 z-[100]">
+      {/* FLOATING ACTION BUTTON */}
+      <div className="fixed bottom-6 right-6 z-40">
         <CreateIdeaDialog
           trigger={
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              whileTap={{ scale: 0.9 }}
-              className="w-20 h-20 bg-zinc-900 dark:bg-zinc-800 rounded-full flex items-center justify-center text-white shadow-2xl relative group focus:outline-none dark:border dark:border-zinc-700"
+            <button
+              className="w-11 h-11 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg flex items-center justify-center shadow-md transition-colors focus:outline-none"
+              title="Capturar Nova Ideia"
             >
-              <Plus size={32} />
-              <div className="absolute inset-0 bg-primary rounded-full scale-0 group-hover:scale-100 -z-10 transition-transform duration-300" />
-            </motion.button>
+              <Plus className="w-5 h-5" />
+            </button>
           }
         />
       </div>

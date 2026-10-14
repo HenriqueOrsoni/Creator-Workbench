@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useAppStore } from "@/store/useAppStore";
 
 type Theme = "light" | "dark";
 
@@ -31,23 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, 0);
   }, []);
 
-  // Sync Brand Color (OKLCH)
-  const { accentHue, accentChroma, accentLuminance } = useAppStore();
-  
-  useEffect(() => {
-    if (mounted && typeof document !== "undefined") {
-      const root = document.documentElement;
-      root.style.setProperty("--brand-hue", accentHue.toString());
-      root.style.setProperty("--brand-chroma", accentChroma.toString());
-      
-      // Safety: Ensure minimum luminance in dark mode for accessibility
-      const adaptiveLuminance = theme === "dark" 
-        ? Math.max(0.45, accentLuminance) 
-        : accentLuminance;
-        
-      root.style.setProperty("--brand-luminance", adaptiveLuminance.toString());
-    }
-  }, [accentHue, accentChroma, accentLuminance, mounted, theme]);
+
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";

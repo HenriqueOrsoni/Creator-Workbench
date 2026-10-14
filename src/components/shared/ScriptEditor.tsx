@@ -210,78 +210,78 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-col bg-white dark:bg-zinc-900 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-[40px] overflow-hidden h-full border-none dark:border dark:border-zinc-800">
+    <div className="flex flex-col bg-card shadow-xs rounded-xl overflow-hidden h-full border border-border">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-8 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-50 dark:border-zinc-800 overflow-x-auto shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border overflow-x-auto shrink-0">
         <div className="flex items-center gap-1 shrink-0">
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive('bold')}
-            icon={<Bold size={18} />}
+            icon={<Bold size={16} />}
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive('italic')}
-            icon={<Italic size={18} />}
+            icon={<Italic size={16} />}
           />
-          <div className="w-[1px] h-6 bg-zinc-100 dark:bg-zinc-800 mx-2" />
+          <div className="w-[1px] h-5 bg-border mx-1.5" />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive('heading', { level: 1 })}
-            icon={<Heading1 size={20} />}
+            icon={<Heading1 size={17} />}
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive('heading', { level: 2 })}
-            icon={<Heading2 size={20} />}
+            icon={<Heading2 size={17} />}
           />
-          <div className="w-[1px] h-6 bg-zinc-100 dark:bg-zinc-800 mx-2" />
+          <div className="w-[1px] h-5 bg-border mx-1.5" />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive('bulletList')}
-            icon={<List size={18} />}
+            icon={<List size={16} />}
           />
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive('orderedList')}
-            icon={<ListOrdered size={18} />}
+            icon={<ListOrdered size={16} />}
           />
         </div>
 
-        <div className="flex items-center gap-4 shrink-0 ml-4">
+        <div className="flex items-center gap-2 shrink-0 ml-4">
           <Sheet>
-            <SheetTrigger render={<Button variant="ghost" size="sm" className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all" />}>
-              <History size={16} className="mr-2" /> REVISÕES ({snapshots.length})
+            <SheetTrigger render={<Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg" />}>
+              <History size={14} className="mr-1.5" /> Revisões ({snapshots.length})
             </SheetTrigger>
-            <SheetContent className="bg-white dark:bg-zinc-900 border-none dark:border-l dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xl rounded-l-[40px] p-8">
+            <SheetContent className="bg-card border-l border-border text-foreground shadow-xl rounded-l-xl p-6">
               <SheetHeader>
-                <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-zinc-100 italic">Histórico_<span className="text-primary">Fluxo</span></SheetTitle>
+                <SheetTitle className="text-lg font-bold text-foreground">Histórico de Versões</SheetTitle>
               </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-120px)] mt-8">
-                <div className="space-y-6 pr-4">
+              <ScrollArea className="h-[calc(100vh-120px)] mt-6">
+                <div className="space-y-3 pr-3">
                   {snapshots.length === 0 ? (
-                    <div className="py-24 flex flex-col items-center justify-center text-zinc-300 dark:text-zinc-700 text-center gap-6">
-                      <div className="w-20 h-20 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] flex items-center justify-center">
-                        <FileText size={40} className="text-zinc-200 dark:text-zinc-700" />
+                    <div className="py-20 flex flex-col items-center justify-center text-muted-foreground text-center gap-4">
+                      <div className="w-12 h-12 bg-muted/40 rounded-lg flex items-center justify-center">
+                        <FileText size={24} className="text-muted-foreground" />
                       </div>
-                      <p className="text-xs uppercase tracking-[0.2em] font-black max-w-[200px]">Nenhum snapshot restaurável detectado.</p>
+                      <p className="text-xs font-medium max-w-[200px]">Nenhum snapshot restaurável detectado.</p>
                     </div>
                   ) : (
                     snapshots.map((s) => (
                       <div
                         key={s.id}
-                        className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-[32px] hover:bg-primary-light dark:hover:bg-primary-dark transition-all group cursor-pointer text-left border-none dark:border dark:border-zinc-700"
+                        className="p-3.5 bg-muted/30 hover:bg-muted/60 rounded-lg transition-all group cursor-pointer text-left border border-border"
                         onClick={() => setVersionToRestore(s.id)}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <Badge variant="outline" className="bg-primary text-white border-none rounded-full text-[8px] uppercase tracking-widest px-3 py-1 font-black">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[9px] uppercase tracking-wider px-2 py-0.5 font-semibold">
                             SNAPSHOT
                           </Badge>
-                          <span className="text-[10px] text-zinc-400 font-bold">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {new Date(s.timestamp).toLocaleDateString()} {new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-500 font-medium truncate leading-relaxed">
+                        <p className="text-xs text-muted-foreground truncate leading-relaxed">
                           {s.content.replace(/<[^>]*>?/gm, '').slice(0, 60)}...
                         </p>
                       </div>
@@ -296,62 +296,62 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             size="sm"
             variant="ghost"
             onClick={takeSnapshot}
-            className="h-10 text-[10px] text-zinc-400 hover:text-primary uppercase tracking-widest font-black transition-all"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg"
           >
-            SNAPSHOT
+            Snapshot
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
             onClick={handleExportMarkdown}
-            className="h-10 text-[10px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 uppercase tracking-widest font-black transition-all gap-1.5"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg gap-1.5"
             title="Baixar roteiro em arquivo Markdown (.md)"
           >
-            <Download size={14} /> EXPORTAR .MD
+            <Download size={13} /> Exportar .MD
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
             onClick={handlePrint}
-            className="h-10 text-[10px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 uppercase tracking-widest font-black transition-all gap-1.5"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg gap-1.5"
             title="Imprimir ou Salvar em PDF"
           >
-            <Printer size={14} /> IMPRIMIR
+            <Printer size={13} /> Imprimir
           </Button>
 
           <Button
             size="sm"
-            className="h-10 bg-primary hover:opacity-90 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-4 rounded-lg shadow-xs transition-all active:scale-95"
             onClick={handleSave}
           >
-            SALVAR
+            Salvar
           </Button>
         </div>
       </div>
 
-      <ScrollArea className="flex-1 bg-white dark:bg-zinc-900 font-sans">
-        <div className="max-w-4xl mx-auto py-12 px-12">
+      <ScrollArea className="flex-1 bg-background font-sans">
+        <div className="max-w-4xl mx-auto py-8 px-8">
           <EditorContent editor={editor} />
         </div>
       </ScrollArea>
 
-      <div className="px-8 py-4 bg-white dark:bg-zinc-900 border-t border-zinc-50 dark:border-zinc-800 flex items-center justify-between shrink-0">
+      <div className="px-4 py-2.5 bg-card border-t border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-zinc-400 tracking-[0.2em] uppercase">Status: Live</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Status: Live</span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 pl-4 border-l border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground pl-4 border-l border-border">
             <Clock size={13} className="text-primary" />
             <span>{wordCount} palavras • ~{estimatedMinutes} min de locução</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Sparkles size={12} className="text-primary" />
-          <span className="text-[10px] font-black text-primary/70 tracking-[0.2em] uppercase italic">Focado no Criador</span>
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={13} className="text-primary" />
+          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Focado no Criador</span>
         </div>
       </div>
 
@@ -362,10 +362,10 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           if (!open) setVersionToRestore(null); 
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-xl p-6 bg-card border border-border shadow-lg">
           <DialogHeader>
-            <DialogTitle>Confirmar Restauração</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg font-bold text-foreground">Confirmar Restauração</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
               Tem certeza que deseja restaurar esta versão do roteiro? As alterações atuais não salvas serão substituídas pelo conteúdo deste snapshot.
             </DialogDescription>
           </DialogHeader>
@@ -373,13 +373,13 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             <Button
               variant="outline"
               onClick={() => setVersionToRestore(null)}
-              className="rounded-xl font-bold"
+              className="rounded-lg font-semibold text-xs h-9 px-4"
             >
               Cancelar
             </Button>
             <Button
               onClick={confirmRestoreSnapshot}
-              className="rounded-xl font-bold bg-primary text-white hover:opacity-90"
+              className="rounded-lg font-semibold text-xs h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Restaurar Versão
             </Button>
@@ -397,8 +397,8 @@ function ToolbarButton({ onClick, icon, active = false }: { onClick: () => void,
       size="icon"
       onClick={onClick}
       className={cn(
-        "h-10 w-10 rounded-2xl transition-all",
-        active ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+        "h-8 w-8 rounded-md transition-all",
+        active ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       )}
     >
       {icon}

@@ -265,47 +265,47 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
           </button>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-3xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 font-heading">
-            Estrutura_<span className="text-primary">Curricular</span>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">
+            Estrutura <span className="text-primary">Curricular</span>
           </h2>
-          <p className="text-xs text-zinc-400 font-bold mt-1 uppercase tracking-widest font-sans">PROJETO: {courseTitle}</p>
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">Projeto: {courseTitle}</p>
         </div>
         <Button 
           onClick={handleOpenAddModule}
-          className="bg-primary hover:opacity-90 text-white rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 transition-all font-heading self-start sm:self-auto"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg h-9 px-4 font-semibold text-xs tracking-wide shadow-xs self-start sm:self-auto"
         >
-          <Plus size={16} className="mr-2" /> NOVO_MÓDULO
+          <Plus size={15} className="mr-1.5" /> NOVO_MÓDULO
         </Button>
       </div>
 
       {modules.length === 0 ? (
-        <div className="py-16 text-center text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-[32px]">
+        <div className="py-16 text-center text-muted-foreground font-medium text-xs border border-dashed border-border rounded-xl">
           Nenhum módulo cadastrado. Adicione um novo módulo para começar.
         </div>
       ) : (
-        <Accordion multiple className="w-full space-y-6">
+        <Accordion multiple className="w-full space-y-4">
           {modules.map((module) => (
             <AccordionItem
               key={module.id}
               value={module.id}
-              className="border-none bg-white dark:bg-zinc-900 shadow-[10px_10px_30px_#efefef] dark:shadow-none dark:border dark:border-zinc-800 rounded-[32px] overflow-hidden transition-all hover:shadow-primary/5 group/module"
+              className="border border-border bg-card shadow-xs rounded-xl overflow-hidden transition-all group/module"
             >
-              <div className="flex items-center justify-between pr-6 bg-white dark:bg-zinc-900">
-                <AccordionTrigger className="px-8 py-6 hover:no-underline transition-colors group flex-1">
-                  <div className="flex items-center gap-4 text-left">
-                    <div className="w-12 h-12 bg-primary-light rounded-2xl flex items-center justify-center">
+              <div className="flex items-center justify-between pr-4 bg-card">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline transition-colors group flex-1">
+                  <div className="flex items-center gap-3.5 text-left">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <span className="font-bold text-primary text-xs font-heading">
                         {module.title.slice(0, 2).match(/^\d+$/) ? module.title.slice(0, 2) : "M"}
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-black uppercase tracking-tight text-lg text-zinc-900 dark:text-zinc-100 group-hover:text-primary transition-colors font-heading break-all line-clamp-1">
+                      <h3 className="font-bold tracking-tight text-base text-foreground group-hover:text-primary transition-colors font-heading break-all line-clamp-1">
                         {module.title}
                       </h3>
-                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-sans">
-                        {module.lessons.length} AULAS PLANEJADAS
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {module.lessons.length} {module.lessons.length === 1 ? "aula planejada" : "aulas planejadas"}
                       </span>
                     </div>
                   </div>
@@ -313,33 +313,33 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger render={
-                    <Button variant="ghost" size="icon" className="h-10 w-10 text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl">
-                      <MoreVertical size={20} />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg">
+                      <MoreVertical size={16} />
                     </Button>
                   } />
-                  <DropdownMenuContent className="bg-white border-zinc-100 rounded-xl shadow-xl p-2 min-w-[200px] font-sans">
+                  <DropdownMenuContent className="bg-popover border border-border rounded-lg shadow-md p-1 min-w-[180px] font-sans">
                     <DropdownMenuItem 
                       onClick={() => handleOpenRenameModule(module.id, module.title)}
-                      className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-600 hover:text-primary cursor-pointer rounded-lg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-foreground cursor-pointer rounded-md transition-colors"
                     >
-                      <Edit2 size={16} /> Renomear Módulo
+                      <Edit2 size={14} /> Renomear Módulo
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleOpenDeleteModule(module.id)}
-                      className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-red-500 hover:text-red-600 cursor-pointer rounded-lg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-destructive cursor-pointer rounded-md transition-colors"
                     >
-                      <Trash2 size={16} /> Excluir Módulo
+                      <Trash2 size={14} /> Excluir Módulo
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               
               <AccordionContent className="p-0">
-                <div className="flex flex-col px-4 pb-4">
+                <div className="flex flex-col px-4 pb-4 space-y-1">
                   {module.lessons.map((lesson) => (
                     <div
                       key={lesson.id}
-                      className="px-6 py-5 flex items-center justify-between rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group/lesson"
+                      className="px-4 py-3 flex items-center justify-between rounded-lg hover:bg-muted/40 transition-colors group/lesson border border-transparent hover:border-border"
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover/lesson:bg-primary-accent dark:group-hover/lesson:bg-primary-dark/30 group-hover/lesson:text-primary transition-colors">
@@ -408,9 +408,9 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
                   
                   <button 
                     onClick={() => handleOpenAddLesson(module.id)}
-                    className="w-full py-6 text-xs font-bold text-zinc-400 hover:text-primary hover:bg-primary-light dark:hover:bg-primary-dark/20 transition-all uppercase tracking-[0.2em] italic rounded-2xl mt-2 font-heading"
+                    className="w-full py-3 text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/5 border border-dashed border-border hover:border-primary/40 transition-all rounded-lg mt-2 flex items-center justify-center gap-1.5"
                   >
-                    [+] ADICIONAR NOVA AULA AO FLUXO
+                    <Plus size={14} /> Adicionar Nova Aula ao Módulo
                   </button>
                 </div>
               </AccordionContent>
@@ -421,52 +421,52 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
 
       {/* --- Dialog Customizado Unificado --- */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-zinc-900 !p-8 rounded-[32px] border-none shadow-2xl font-sans max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-zinc-100">
-              {metadata.title.split(' ')[0]}_<span className="text-primary">{metadata.title.split(' ').slice(1).join(' ')}</span>
+        <DialogContent className="max-w-md bg-card border border-border !p-6 rounded-xl shadow-lg font-sans max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-bold text-foreground font-heading">
+              {metadata.title}
             </DialogTitle>
-            <DialogDescription className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mt-2 leading-relaxed">
+            <DialogDescription className="text-xs text-muted-foreground font-medium mt-1 leading-relaxed">
               {metadata.description}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleDialogSubmit} className="space-y-6">
+          <form onSubmit={handleDialogSubmit} className="space-y-4">
             {errorMsg && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-500/10 rounded-2xl flex items-center gap-3">
-                <AlertCircle className="text-red-500 shrink-0" size={20} />
-                <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">{errorMsg}</span>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2.5">
+                <AlertCircle className="text-destructive shrink-0" size={16} />
+                <span className="text-xs font-medium text-destructive">{errorMsg}</span>
               </div>
             )}
             {/* Renderizar Inputs com base no tipo de Dialog */}
             {(dialogType === "create-module" || dialogType === "rename-module" || dialogType === "create-lesson" || dialogType === "rename-lesson") && (
-              <div className="space-y-3">
-                <Label className="block mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
-                  {dialogType.includes("module") ? "Nome do Módulo" : "Nome da Aula"}
+              <div className="space-y-2">
+                <Label className="block text-xs font-semibold text-muted-foreground">
+                  {dialogType.includes("module") ? "Nome do Módulo *" : "Nome da Aula *"}
                 </Label>
                 <Input
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   placeholder={dialogType.includes("module") ? "Ex: Módulo 01 - Fundamentos" : "Ex: Aula 01 - Introdução"}
                   required
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl !h-12 !px-5 text-zinc-900 dark:text-zinc-100 font-bold placeholder:text-zinc-300 dark:placeholder:text-zinc-600 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus:outline-none"
+                  className="w-full bg-background border border-border rounded-lg h-10 px-3.5 text-foreground text-sm font-medium focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 focus:outline-none"
                 />
               </div>
             )}
 
             {dialogType === "create-lesson" && (
-              <div className="space-y-3">
-                <Label className="block mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">
+              <div className="space-y-2">
+                <Label className="block text-xs font-semibold text-muted-foreground">
                   Tipo do Conteúdo
                 </Label>
                 <Select value={typeInput} onValueChange={(val) => { if (val) setTypeInput(val as "video" | "text" | "quiz"); }}>
-                  <SelectTrigger className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl !h-12 !px-5 text-zinc-900 dark:text-zinc-100 font-bold focus:outline-none flex justify-between items-center">
+                  <SelectTrigger className="w-full bg-background border border-border rounded-lg h-10 px-3.5 text-foreground text-xs font-medium focus:outline-none flex justify-between items-center">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-xl p-2 min-w-[200px]">
-                    <SelectItem value="video" className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors">Vídeo Aula</SelectItem>
-                    <SelectItem value="text" className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors">Conteúdo Escrito</SelectItem>
-                    <SelectItem value="quiz" className="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors">Questionário / Quiz</SelectItem>
+                  <SelectContent className="bg-popover border border-border rounded-lg shadow-md p-1 min-w-[180px]">
+                    <SelectItem value="video" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors">Vídeo Aula</SelectItem>
+                    <SelectItem value="text" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors">Conteúdo Escrito</SelectItem>
+                    <SelectItem value="quiz" className="px-3 py-2 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors">Questionário / Quiz</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -474,18 +474,18 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
 
             {/* Ações de exclusão de aviso */}
             {(dialogType === "delete-module" || dialogType === "delete-lesson") && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-500/10 rounded-2xl flex items-center gap-3">
-                <AlertCircle className="text-red-500 shrink-0" size={20} />
-                <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Atenção: Esta ação removerá definitivamente os dados do banco.</span>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2.5">
+                <AlertCircle className="text-destructive shrink-0" size={16} />
+                <span className="text-xs font-medium text-destructive">Atenção: Esta ação removerá definitivamente os dados associados.</span>
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-8 bg-transparent border-none p-0">
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-6 bg-transparent border-none p-0 justify-end">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setDialogOpen(false)}
-                className="flex-1 text-[10px] text-zinc-400 hover:text-zinc-600 uppercase tracking-widest font-black transition-all rounded-full h-12"
+                className="text-xs text-muted-foreground hover:text-foreground font-semibold rounded-lg h-10 px-4"
               >
                 Cancelar
               </Button>
@@ -493,10 +493,10 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
                 type="submit"
                 disabled={isSubmitting}
                 className={cn(
-                  "flex-1 text-[10px] text-white font-black uppercase tracking-widest rounded-full h-12 transition-all shadow-lg",
+                  "text-xs text-primary-foreground font-semibold rounded-lg h-10 px-5 shadow-xs",
                   dialogType?.startsWith("delete") 
-                    ? "bg-red-500 hover:bg-red-600 shadow-red-500/20" 
-                    : "bg-primary hover:opacity-90 shadow-primary/20"
+                    ? "bg-destructive hover:bg-destructive/90 text-white" 
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
                 )}
               >
                 {isSubmitting ? "Processando..." : dialogType?.startsWith("delete") ? "Confirmar Exclusão" : "Confirmar Salvar"}

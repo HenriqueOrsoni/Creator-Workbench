@@ -22,7 +22,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 group active:scale-90"
+      className="relative w-9 h-9 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 flex items-center justify-center transition-colors hover:border-primary/50 group"
       aria-label="Toggle Theme"
     >
       <AnimatePresence mode="wait">

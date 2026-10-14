@@ -14,18 +14,17 @@ export function StatsCard({
   value,
   label,
   icon: Icon,
-  iconHoverClass = "group-hover:bg-primary",
 }: StatsCardProps) {
   return (
-    <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 flex flex-col justify-between flex-1 min-w-[120px] aspect-square group hover:border-primary/20 transition-all">
-      <div className={`w-10 h-10 bg-zinc-50 dark:bg-zinc-700 rounded-xl flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors ${iconHoverClass}`}>
-        <Icon size={20} />
+    <div className="bg-card border border-border p-3.5 sm:p-4 rounded-xl flex items-center gap-3.5 shadow-xs transition-colors hover:border-primary/40 min-w-[160px] sm:min-w-[180px]">
+      <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4" />
       </div>
       <div>
-        <div className="text-2xl md:text-3xl font-black font-heading line-height-1 leading-none dark:text-zinc-100">
+        <div className="text-xl sm:text-2xl font-bold font-heading leading-tight text-foreground tracking-tight">
           {value}
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-1">
+        <div className="text-[11px] font-medium text-muted-foreground mt-0.5">
           {label}
         </div>
       </div>

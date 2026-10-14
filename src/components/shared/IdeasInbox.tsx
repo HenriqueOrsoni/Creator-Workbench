@@ -92,39 +92,39 @@ export function IdeasInbox() {
   return (
     <div className="space-y-8 font-sans">
       {/* Header da Caixa de Entrada */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white/60 dark:bg-zinc-900/40 p-6 rounded-[28px] border border-zinc-200/60 dark:border-zinc-800 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card p-5 rounded-xl border border-border shadow-xs">
         <div>
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-primary mb-1">
-            <Lightbulb className="w-4 h-4" /> Caixa de Entrada • Inbox
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+            <Lightbulb className="w-3.5 h-3.5" /> Caixa de Entrada • Inbox
           </div>
-          <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-zinc-100 font-heading">
+          <h2 className="text-xl font-bold tracking-tight text-foreground font-heading">
             Ideias & Brainstorming
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Capture reflexões livres sem poluir o fluxo de produção. Quando estiver pronto, converta em projeto.
           </p>
         </div>
 
         <Button
           onClick={() => setOpenCreate(true)}
-          className="rounded-2xl px-6 h-12 bg-zinc-900 hover:bg-zinc-800 dark:bg-primary text-white font-bold uppercase text-xs tracking-wider gap-2 shadow-lg shadow-primary/10"
+          className="rounded-lg px-3.5 h-9 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-xs tracking-wide gap-1.5 shadow-xs transition-colors"
         >
-          <Plus className="w-4 h-4" /> Nova Ideia
+          <Plus className="w-3.5 h-3.5" /> Nova Ideia
         </Button>
       </div>
 
       {/* Barra de Filtro de Etiquetas e Ordenação por Votos (FE-01, FE-02) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Tag className="w-3.5 h-3.5 text-zinc-400 mr-1" />
+          <Tag className="w-3.5 h-3.5 text-muted-foreground mr-1" />
           {TAGS.map(tag => (
             <button
               key={tag}
               onClick={() => setSelectedTag(tag)}
-              className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
+              className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${
                 selectedTag === tag
-                  ? "bg-zinc-900 text-white dark:bg-primary shadow-sm"
-                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               {tag}
@@ -137,7 +137,7 @@ export function IdeasInbox() {
             variant="outline"
             size="sm"
             onClick={() => setSortBy(sortBy === "recent" ? "votes" : "recent")}
-            className="rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1.5 h-9"
+            className="rounded-lg text-xs font-medium gap-1.5 h-8 border-border bg-background"
           >
             <Filter className="w-3 h-3" />
             {sortBy === "recent" ? "Ordenar por: Recentes" : "Ordenar por: Mais Votadas"}
@@ -147,80 +147,80 @@ export function IdeasInbox() {
 
       {/* Grid de Ideias */}
       {displayedIdeas.length === 0 ? (
-        <div className="text-center py-24 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-[32px] border border-dashed border-zinc-200 dark:border-zinc-800">
-          <Sparkles className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
-          <h3 className="text-base font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+        <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed border-border">
+          <Sparkles className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+          <h3 className="text-sm font-semibold text-foreground">
             Nenhuma ideia pendente na Caixa de Entrada
           </h3>
-          <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
+          <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
             Todas as ideias foram convertidas em projetos ou ainda não foram registradas.
           </p>
           <Button
             onClick={() => setOpenCreate(true)}
             variant="outline"
-            className="mt-6 rounded-xl text-xs font-bold uppercase tracking-wider gap-2"
+            className="mt-4 rounded-lg text-xs font-semibold gap-2 h-9"
           >
-            <Plus className="w-4 h-4" /> Registrar Primeira Ideia
+            <Plus className="w-3.5 h-3.5" /> Registrar Primeira Ideia
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayedIdeas.map((idea) => (
             <Card
               key={idea.id}
-              className="p-6 rounded-[28px] bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:shadow-xl hover:border-primary/30 transition-all flex flex-col justify-between"
+              className="p-4 rounded-xl bg-card border border-border shadow-xs hover:border-primary/40 transition-colors flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800">
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <Badge variant="outline" className="text-[11px] font-semibold bg-muted/50 border-border text-muted-foreground rounded-md">
                     Ideia Bruta
                   </Badge>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleToggleVote(idea.id)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
                         votedCards[idea.id]
-                          ? "bg-primary text-white shadow-sm"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
                       }`}
                       title="Votar nesta ideia (FE-02)"
                     >
-                      <ThumbsUp className={`w-3 h-3 ${votedCards[idea.id] ? "fill-white" : ""}`} />
+                      <ThumbsUp className={`w-3 h-3 ${votedCards[idea.id] ? "fill-primary-foreground" : ""}`} />
                       <span>{votes[idea.id] || 0}</span>
                     </button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteCard(idea.id)}
-                      className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
                       title="Excluir ideia"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
 
-                <h3 className="text-base font-black text-zinc-900 dark:text-zinc-100 font-heading mb-2">
+                <h3 className="text-sm font-bold text-foreground font-heading mb-1.5">
                   {idea.title}
                 </h3>
                 {idea.description && (
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-3 mb-4 leading-relaxed">
+                  <p className="text-xs text-muted-foreground line-clamp-3 mb-3 leading-relaxed">
                     {idea.description}
                   </p>
                 )}
 
                 {(idea.targetAudience || idea.pedagogicalObjective) && (
-                  <div className="p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl space-y-1.5 mb-4 text-[11px]">
+                  <div className="p-2.5 bg-muted/40 rounded-lg space-y-1 mb-3 text-xs">
                     {idea.targetAudience && (
-                      <div className="flex items-center gap-1.5 text-zinc-500">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Target className="w-3.5 h-3.5 text-primary shrink-0" />
                         <span className="truncate">{idea.targetAudience}</span>
                       </div>
                     )}
                     {idea.pedagogicalObjective && (
-                      <div className="flex items-center gap-1.5 text-zinc-500">
-                        <BookOpen className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
                         <span className="truncate">{idea.pedagogicalObjective}</span>
                       </div>
                     )}
@@ -228,7 +228,7 @@ export function IdeasInbox() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="pt-3 border-t border-border mt-1">
                 <Button
                   onClick={() => {
                     setConvertingCard(idea);
@@ -236,9 +236,9 @@ export function IdeasInbox() {
                       setSelectedColumnId(columns[0].id);
                     }
                   }}
-                  className="w-full rounded-xl text-xs font-black uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary gap-2 h-10 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground gap-1.5 h-8.5 transition-colors"
                 >
-                  Converter em Projeto <ArrowRight className="w-4 h-4" />
+                  Converter em Projeto <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
             </Card>
@@ -248,21 +248,21 @@ export function IdeasInbox() {
 
       {/* Dialog Criar Nova Ideia */}
       <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="sm:max-w-[480px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[480px] rounded-xl p-6 bg-card border-border shadow-lg">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 font-heading">
-                <Sparkles className="w-5 h-5 text-primary" />
+              <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+                <Sparkles className="w-4 h-4 text-primary" />
                 Capturar Nova Ideia
               </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+              <DialogDescription className="text-xs text-muted-foreground">
                 Registre um insight na Caixa de Entrada antes de estruturá-lo em projeto.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 my-5">
+            <div className="space-y-3.5 my-4">
               <div>
-                <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5">
+                <label className="block text-xs font-semibold text-foreground mb-1">
                   Título da Ideia *
                 </label>
                 <Input
@@ -270,56 +270,56 @@ export function IdeasInbox() {
                   placeholder="Ex: Minicurso sobre Algoritmos de Busca"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="rounded-xl h-11 text-sm"
+                  className="rounded-lg h-9 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5">
+                <label className="block text-xs font-semibold text-foreground mb-1">
                   Descrição / Notas
                 </label>
                 <Textarea
                   placeholder="Anotações rápidas sobre tópicos, referências ou formatos..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="rounded-xl text-xs min-h-[90px]"
+                  className="rounded-lg text-xs min-h-[80px]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-semibold text-foreground mb-1">
                     Público-Alvo
                   </label>
                   <Input
                     placeholder="Ex: Iniciantes em CS"
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
-                    className="rounded-xl h-10 text-xs"
+                    className="rounded-lg h-9 text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-semibold text-foreground mb-1">
                     Objetivo Pedagógico
                   </label>
                   <Input
                     placeholder="Ex: Compreender BFS e DFS"
                     value={pedagogicalObjective}
                     onChange={(e) => setPedagogicalObjective(e.target.value)}
-                    className="rounded-xl h-10 text-xs"
+                    className="rounded-lg h-9 text-xs"
                   />
                 </div>
               </div>
             </div>
 
             <DialogFooter className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setOpenCreate(false)} className="rounded-xl text-xs font-bold">
+              <Button type="button" variant="ghost" onClick={() => setOpenCreate(false)} className="rounded-lg text-xs font-medium">
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={loading || !title.trim()}
-                className="rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary"
+                className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
               >
                 {loading ? "Salvando..." : "Guardar na Inbox"}
               </Button>
@@ -330,19 +330,19 @@ export function IdeasInbox() {
 
       {/* Dialog Converter Ideia em Projeto */}
       <Dialog open={Boolean(convertingCard)} onOpenChange={(open) => !open && setConvertingCard(null)}>
-        <DialogContent className="sm:max-w-[440px] rounded-3xl p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+        <DialogContent className="sm:max-w-[440px] rounded-xl p-6 bg-card border-border shadow-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 font-heading">
-              <ArrowRight className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+              <ArrowRight className="w-4 h-4 text-primary" />
               Ativar Projeto no Quadro
             </DialogTitle>
-            <DialogDescription className="text-xs text-zinc-500 dark:text-zinc-400">
+            <DialogDescription className="text-xs text-muted-foreground">
               Escolha para qual coluna do quadro dinâmico o projeto &quot;{convertingCard?.title}&quot; deve entrar.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="my-5 space-y-3">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-zinc-500">
+          <div className="my-4 space-y-2.5">
+            <label className="block text-xs font-semibold text-foreground">
               Coluna Inicial do Quadro
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -351,10 +351,10 @@ export function IdeasInbox() {
                   key={col.id}
                   type="button"
                   onClick={() => setSelectedColumnId(col.id)}
-                  className={`p-3 rounded-xl border text-xs font-bold text-left transition-all ${
+                  className={`p-2.5 rounded-lg border text-xs font-semibold text-left transition-colors ${
                     selectedColumnId === col.id
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400"
+                      : "border-border hover:border-zinc-400 dark:hover:border-zinc-700"
                   }`}
                 >
                   {col.name}
@@ -364,13 +364,13 @@ export function IdeasInbox() {
           </div>
 
           <DialogFooter className="flex gap-2">
-            <Button variant="ghost" onClick={() => setConvertingCard(null)} className="rounded-xl text-xs font-bold">
+            <Button variant="ghost" onClick={() => setConvertingCard(null)} className="rounded-lg text-xs font-medium">
               Cancelar
             </Button>
             <Button
               onClick={handleConvert}
               disabled={loading}
-              className="rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-900 text-white dark:bg-primary"
+              className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
             >
               {loading ? "Ativando..." : "Confirmar e Mover ao Quadro"}
             </Button>

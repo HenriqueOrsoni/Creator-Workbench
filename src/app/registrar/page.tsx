@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, ArrowRight, AlertCircle, Plus, MailCheck } from "lucide-react";
+import { Zap, ArrowRight, AlertCircle, MailCheck, UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
@@ -38,7 +38,6 @@ export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [userData, setUserData] = useState<{ name: string; email: string }>({ name: "", email: "" });
   
-  // States
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(60);
@@ -69,7 +68,6 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Solicitar token de cadastro no backend
       await apiRequest("POST", "/api/auth/register/request-token", values);
       setUserData(values);
       setStep(2);
@@ -88,7 +86,6 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Confirmar cadastro no backend
       const response = await apiRequest("POST", "/api/auth/register/confirm", {
         email: userData.email,
         token: values.token,
@@ -96,18 +93,17 @@ export default function RegisterPage() {
       });
       
       if (response && response.token) {
-        // Salva o token real no cookie
         setCookie("creator_auth_token", response.token, 86400);
         if (response.userId) {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
-        toast.success("Cadastro confirmado com sucesso!");
+        toast.success("Cadastro realizado com sucesso!");
         router.push("/");
       } else {
         throw new Error("Token não retornado pelo servidor.");
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao tentar registrar.";
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido ao confirmar cadastro.";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -125,7 +121,7 @@ export default function RegisterPage() {
         email: userData.email,
       });
       setCountdown(60);
-      toast.success("Novo código de verificação enviado para o seu e-mail!");
+      toast.success("Novo código enviado para seu e-mail!");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro ao reenviar código.";
       setError(msg);
@@ -136,82 +132,61 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-zinc-900 dark:text-zinc-100 selection:bg-primary/20 overflow-x-hidden font-sans antialiased relative transition-colors duration-500 flex flex-col">
-      <div className="absolute inset-0 bg-dot-grid dark:bg-dot-grid-dark opacity-[0.4] dark:opacity-[0.2] pointer-events-none -z-20" />
-      <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-light/50 dark:bg-primary-dark/20 rounded-full blur-[120px] -z-10 animate-pulse" />
-      <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-primary-light/30 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
-
-      {/* NAVBAR */}
-      <nav className="w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 font-sans absolute top-0 left-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <Zap className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans transition-colors relative selection:bg-primary/20">
+      {/* HEADER */}
+      <header className="w-full h-16 border-b border-border bg-background/80 backdrop-blur-md px-6 lg:px-12 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center">
+            <Zap className="w-4 h-4 fill-primary/30" />
           </div>
-          <span className="text-xl md:text-2xl font-black tracking-tighter uppercase font-heading dark:text-zinc-100">Workbench<span className="text-primary">_CR</span></span>
+          <span className="text-base font-bold tracking-tight font-heading text-foreground">
+            Workbench<span className="text-primary font-black">_CR</span>
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <ThemeColorPicker />
+        <div className="flex items-center gap-3">
           <ThemeToggle />
+          <ThemeColorPicker />
         </div>
-      </nav>
+      </header>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col lg:flex-row pt-[88px] w-full max-w-[1600px] mx-auto">
-        {/* LEFT SECTION - Massive Typography */}
-        <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-24 pt-16 lg:pt-0 z-10">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 mb-8 lg:mb-12">
-              <Plus className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-[18vw] lg:text-[8vw] leading-[0.85] font-black tracking-tighter uppercase mb-6 font-heading group">
-              Join.<br />
-              <span className="text-primary italic ml-[2vw] inline-block hover:scale-105 transition-transform duration-500 cursor-default">
-                Studio.
-              </span>
-            </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-widest text-xs sm:text-sm max-w-md ml-[1vw]">
-              Inscrição de novos operadores para o painel de gerenciamento estratégico.
-            </p>
-          </motion.div>
-        </div>
-
-        {/* RIGHT SECTION - Registration Form */}
-        <div className="w-full lg:w-[600px] flex items-center justify-center p-8 sm:p-12 lg:p-16 z-10 mt-8 lg:mt-0">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="w-full max-w-[500px] bg-white dark:bg-zinc-800 p-8 sm:p-12 rounded-[2.5rem] shadow-[20px_20px_60px_#efefef] dark:shadow-none border border-white dark:border-zinc-700 hover:border-primary/20 transition-all duration-500 group"
-          >
-            <div className="mb-8 flex justify-between items-end">
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-md">
+          {/* CARD */}
+          <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
+            <div className="mb-6 flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tight font-heading dark:text-zinc-100 mb-2">
-                  Nova Credencial
-                </h2>
-                <div className="flex gap-2 mt-2">
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${step === 1 ? 'w-12 bg-primary' : 'w-4 bg-zinc-200 dark:bg-zinc-700'}`}></div>
-                  <div className={`h-1.5 rounded-full transition-all duration-500 ${step === 2 ? 'w-12 bg-primary' : 'w-4 bg-zinc-200 dark:bg-zinc-700'}`}></div>
+                <div className="w-10 h-10 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center mb-3">
+                  <UserPlus className="w-5 h-5 text-primary" />
                 </div>
+                <h1 className="text-xl font-bold tracking-tight font-heading text-foreground">
+                  {step === 1 ? "Nova Credencial" : "Confirmar Acesso"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {step === 1 ? "Cadastre seu operador no Creator Workbench." : `Código enviado para ${userData.email}`}
+                </p>
+              </div>
+
+              {/* STEP INDICATORS */}
+              <div className="flex gap-1.5 mt-2">
+                <div className={`h-1.5 rounded-full transition-all ${step === 1 ? 'w-6 bg-primary' : 'w-2 bg-muted'}`} />
+                <div className={`h-1.5 rounded-full transition-all ${step === 2 ? 'w-6 bg-primary' : 'w-2 bg-muted'}`} />
               </div>
             </div>
 
-            <AnimatePresence mode="wait">
+            {/* ERROR ALERT */}
+            <AnimatePresence>
               {error && (
                 <motion.div
-                  key="error"
-                  initial={{ opacity: 0, height: 0, y: -10 }}
-                  animate={{ opacity: 1, height: "auto", y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -10 }}
-                  className="overflow-hidden mb-5"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mb-4"
                 >
-                  <div className="bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 p-4 rounded-2xl flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                    <p className="text-sm font-bold">{error}</p>
+                  <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg flex items-start gap-2.5 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <p>{error}</p>
                   </div>
                 </motion.div>
               )}
@@ -223,54 +198,54 @@ export default function RegisterPage() {
                   key="step1"
                   onSubmit={formStep1.handleSubmit(onStep1Submit)}
                   noValidate
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-5"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-4"
                 >
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
                       Nome do Operador
                     </label>
                     <input 
                       type="text" 
                       {...formStep1.register("name")}
                       required
-                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                      className="w-full h-10 bg-background border border-border rounded-lg px-3.5 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors"
                       placeholder="Seu Nome Completo"
                     />
                     {formStep1.formState.errors.name && (
-                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep1.formState.errors.name.message}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{formStep1.formState.errors.name.message}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
                       E-mail Institucional
                     </label>
                     <input 
                       type="email" 
                       {...formStep1.register("email")}
                       required
-                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
+                      className="w-full h-10 bg-background border border-border rounded-lg px-3.5 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors"
                       placeholder="operador@creator.studio"
                     />
                     {formStep1.formState.errors.email && (
-                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep1.formState.errors.email.message}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{formStep1.formState.errors.email.message}</p>
                     )}
                   </div>
 
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-zinc-900 dark:bg-primary text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] h-16 hover:bg-zinc-800 dark:hover:bg-primary-hover transition-all active:scale-95 font-heading flex items-center justify-center gap-4 group/btn mt-6"
+                    className="w-full h-10 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 mt-2 shadow-xs"
                   >
                     {isLoading ? (
-                      <span className="animate-pulse">Autenticando e-mail...</span>
+                      <span>Autenticando e-mail...</span>
                     ) : (
                       <>
                         Receber Código de Acesso
-                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-2 transition-transform" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </>
                     )}
                   </Button>
@@ -280,31 +255,31 @@ export default function RegisterPage() {
                   key="step2"
                   onSubmit={formStep2.handleSubmit(onStep2Submit)}
                   noValidate
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-5"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-4"
                 >
-                  <div className="bg-primary/10 border border-primary/20 text-primary p-4 rounded-2xl flex items-start gap-3 mb-4">
-                    <MailCheck className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg flex items-start gap-2.5 text-xs">
+                    <MailCheck className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                     <div>
-                      <p className="text-sm font-bold">Verifique sua caixa de entrada</p>
-                      <p className="text-xs opacity-80 mt-1">Enviamos um código de 6 dígitos para <strong>{userData.email}</strong></p>
+                      <p className="font-semibold">Verifique sua caixa de entrada</p>
+                      <p className="opacity-80 text-[11px] mt-0.5">Enviamos um código de 6 dígitos para <strong>{userData.email}</strong></p>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center ml-2 mr-2">
-                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-semibold text-foreground">
                         Código Recebido
                       </label>
                       <button
                         type="button"
                         onClick={handleResendToken}
                         disabled={countdown > 0 || isResending}
-                        className="text-[10px] font-bold uppercase tracking-widest text-primary disabled:text-zinc-400 disabled:cursor-not-allowed hover:underline"
+                        className="text-xs font-medium text-primary disabled:text-muted-foreground disabled:cursor-not-allowed hover:underline"
                       >
-                        {countdown > 0 ? `Reenviar código (${countdown}s)` : "Reenviar código"}
+                        {countdown > 0 ? `Reenviar (${countdown}s)` : "Reenviar código"}
                       </button>
                     </div>
                     <input 
@@ -312,57 +287,57 @@ export default function RegisterPage() {
                       {...formStep2.register("token")}
                       required
                       maxLength={6}
-                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-center text-xl tracking-[0.5em] font-black focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono"
+                      className="w-full h-11 bg-background border border-border rounded-lg px-3 text-center text-lg tracking-[0.4em] font-bold text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 font-mono"
                       placeholder="000000"
                     />
                     {formStep2.formState.errors.token && (
-                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.token.message}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{formStep2.formState.errors.token.message}</p>
                     )}
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
-                      Criar Senha de Acesso (Mínimo 6 caracteres)
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
+                      Criar Senha de Acesso
                     </label>
                     <input 
                       type="password" 
                       {...formStep2.register("password")}
                       required
-                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono tracking-widest"
+                      className="w-full h-10 bg-background border border-border rounded-lg px-3.5 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors font-mono"
                       placeholder="••••••••"
                     />
                     {formStep2.formState.errors.password && (
-                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.password.message}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{formStep2.formState.errors.password.message}</p>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
                       Confirmar Senha
                     </label>
                     <input 
                       type="password" 
                       {...formStep2.register("confirmPassword")}
                       required
-                      className="w-full bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent rounded-2xl px-6 py-4 text-sm font-bold focus:border-primary/30 focus:bg-white dark:focus:bg-zinc-800 transition-all outline-none dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-600 font-mono tracking-widest"
+                      className="w-full h-10 bg-background border border-border rounded-lg px-3.5 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors font-mono"
                       placeholder="••••••••"
                     />
                     {formStep2.formState.errors.confirmPassword && (
-                      <p className="text-xs text-red-500 font-bold ml-2 mt-1">{formStep2.formState.errors.confirmPassword.message}</p>
+                      <p className="text-[11px] text-destructive font-medium mt-1">{formStep2.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
 
                   <Button 
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-zinc-900 dark:bg-primary text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] h-16 hover:bg-zinc-800 dark:hover:bg-primary-hover transition-all active:scale-95 font-heading flex items-center justify-center gap-4 group/btn mt-6"
+                    className="w-full h-10 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 mt-2 shadow-xs"
                   >
                     {isLoading ? (
-                      <span className="animate-pulse">Validando Credencial...</span>
+                      <span>Validando...</span>
                     ) : (
                       <>
                         Confirmar e Acessar
-                        <Zap className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                        <Zap className="w-3.5 h-3.5" />
                       </>
                     )}
                   </Button>
@@ -374,7 +349,7 @@ export default function RegisterPage() {
                         setStep(1);
                         setError(null);
                       }}
-                      className="text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:text-primary transition-colors"
+                      className="text-xs text-muted-foreground hover:text-foreground hover:underline transition-colors font-medium"
                     >
                       Voltar e corrigir e-mail
                     </button>
@@ -383,15 +358,15 @@ export default function RegisterPage() {
               )}
             </AnimatePresence>
 
-            <div className="pt-6 text-center mt-4 border-t border-zinc-100 dark:border-zinc-700/50">
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                Já é operador?{' '}
-                <a href="/login" className="text-primary hover:underline hover:opacity-80 transition-all ml-1">
+            <div className="pt-5 mt-6 border-t border-border text-center">
+              <p className="text-xs text-muted-foreground">
+                Já é operador?{" "}
+                <a href="/login" className="text-primary font-semibold hover:underline">
                   Iniciar Sessão
                 </a>
               </p>
             </div>
-          </motion.div>
+          </div>
         </div>
       </main>
     </div>
