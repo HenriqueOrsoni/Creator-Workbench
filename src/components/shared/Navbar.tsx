@@ -12,14 +12,20 @@ import { TeamSwitcher } from "./TeamSwitcher";
 import { useAppStore } from "@/store/useAppStore";
 import { deleteCookie } from "@/lib/api";
 
-export function Navbar() {
+interface NavbarProps {
+  onNavigate?: (tab: "kanban" | "inbox" | "courses" | "curriculum" | "editor") => void;
+}
+
+export function Navbar({ onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
 
   const handleLogout = () => {
     deleteCookie("creator_auth_token");
     deleteCookie("creator_user_id");
     resetStore();
-    window.location.href = '/login';
+    if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
+      window.location.href = '/login';
+    }
   };
   return (
     <nav className="fixed top-0 left-0 w-full h-[88px] border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/40 dark:bg-zinc-950/50 backdrop-blur-md z-50 flex items-center justify-between px-6 lg:px-12 font-sans">
@@ -40,10 +46,18 @@ export function Navbar() {
               </SheetTitle>
             </SheetHeader>
             <div className="flex flex-col gap-2 flex-1 mt-8">
-              <Button variant="ghost" className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
+              <Button 
+                variant="ghost" 
+                onClick={() => onNavigate?.("kanban")}
+                className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl"
+              >
                 <Layout size={16} className="mr-4" /> Dashboard Geral
               </Button>
-              <Button variant="ghost" className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl">
+              <Button 
+                variant="ghost" 
+                onClick={() => onNavigate?.("inbox")}
+                className="justify-start text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-primary hover:bg-zinc-50 dark:hover:bg-zinc-800 h-12 rounded-2xl"
+              >
                 <Sparkles size={16} className="mr-4" /> Ideação
               </Button>
               <UserSettingsDialog
@@ -83,8 +97,18 @@ export function Navbar() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-8">
-        <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans">Ideação</button>
-        <button className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans">Produção</button>
+        <button 
+          onClick={() => onNavigate?.("inbox")}
+          className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans"
+        >
+          Ideação
+        </button>
+        <button 
+          onClick={() => onNavigate?.("kanban")}
+          className="hidden sm:block text-sm font-bold uppercase tracking-widest hover:text-primary transition-colors font-sans"
+        >
+          Produção
+        </button>
         <CreateIdeaDialog
           trigger={
             <Button className="bg-zinc-900 dark:bg-primary dark:text-white hover:bg-zinc-800 dark:hover:bg-primary-hover text-white rounded-2xl px-8 font-bold uppercase text-xs tracking-[0.2em] transition-all hover:scale-105 active:scale-95 font-heading">

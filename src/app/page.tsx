@@ -56,7 +56,7 @@ export default function UnifiedPage() {
       <div className="fixed top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-light/50 dark:bg-primary-dark/20 rounded-full blur-[120px] -z-10 animate-pulse" />
       <div className="fixed bottom-[-5%] left-[-10%] w-[400px] h-[400px] bg-primary-light/30 dark:bg-zinc-900/30 rounded-full blur-[100px] -z-10" />
 
-      <Navbar />
+      <Navbar onNavigate={(tab) => setActiveTab(tab)} />
 
       <main className="pt-[140px] pb-24 grid grid-cols-1 px-6 lg:px-24">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

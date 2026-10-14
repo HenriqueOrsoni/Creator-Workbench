@@ -115,11 +115,15 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
   });
 
   // Fase 3: Exportação e Métricas
-  it('Fase 3: Renderiza botões de exportação e estimativa de locução', () => {
+  it('Fase 3: Renderiza botões de exportação e estimativa de locução', async () => {
     render(<ScriptEditor kanbanItemId="1" />);
 
     expect(screen.getByRole('button', { name: /exportar \.md/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /imprimir/i })).toBeInTheDocument();
     expect(screen.getByText(/palavras • ~1 min de locução/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(apiModule.apiRequest).toHaveBeenCalled();
+    });
   });
 });

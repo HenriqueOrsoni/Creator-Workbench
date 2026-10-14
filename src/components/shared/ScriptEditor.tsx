@@ -138,19 +138,41 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     if (!kanbanItemId) return;
     await handleSave();
     const data = await exportScript(kanbanItemId);
-    if (data) {
-      const blob = new Blob([data.markdownFormatted], { type: "text/markdown;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const safeTitle = data.cardTitle ? data.cardTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "roteiro";
-      link.download = `roteiro-${safeTitle}.md`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success("Roteiro baixado em Markdown (.md)!");
+    let markdown = data?.markdownFormatted;
+    let cardTitle = data?.cardTitle;
+
+    if (!markdown) {
+      // Fallback para geração no cliente caso o backend ainda não possua o endpoint de exportação
+      const html = editor?.getHTML() || "";
+      const cleanText = editor?.getText() || "";
+      const words = cleanText.trim() ? cleanText.trim().split(/\s+/).length : 0;
+      const minutes = Math.max(1, Math.ceil(words / 140));
+
+      markdown = `# Roteiro de Produção\n\n` +
+        `**Métricas de Locução:** ${words} palavras • ~${minutes} min (base: 140 ppm)\n\n---\n\n` +
+        html
+          .replace(/<h1>(.*?)<\/h1>/gi, "# $1\n\n")
+          .replace(/<h2>(.*?)<\/h2>/gi, "## $1\n\n")
+          .replace(/<h3>(.*?)<\/h3>/gi, "### $1\n\n")
+          .replace(/<p>(.*?)<\/p>/gi, "$1\n\n")
+          .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
+          .replace(/<em>(.*?)<\/em>/gi, "*$1*")
+          .replace(/<li>(.*?)<\/li>/gi, "- $1\n")
+          .replace(/<[^>]*>/g, "");
+      cardTitle = "roteiro";
     }
+
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const safeTitle = cardTitle ? cardTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "roteiro";
+    link.download = `roteiro-${safeTitle}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Roteiro baixado em Markdown (.md)!");
   };
 
   const handlePrint = () => {

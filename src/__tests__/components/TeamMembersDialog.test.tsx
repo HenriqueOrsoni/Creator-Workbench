@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TeamMembersDialog } from '@/components/shared/TeamMembersDialog';
 import { useAppStore, TeamMember } from '@/store/useAppStore';
 
@@ -64,6 +64,8 @@ describe('Fase 3 - TeamMembersDialog Component', () => {
     const submitBtn = screen.getByRole('button', { name: /adicionar membro/i });
     fireEvent.click(submitBtn);
 
-    expect(mockAddTeamMember).toHaveBeenCalledWith('novo@colaborador.com', 'CREATOR');
+    await waitFor(() => {
+      expect(mockAddTeamMember).toHaveBeenCalledWith('novo@colaborador.com', 'CREATOR');
+    });
   });
 });
