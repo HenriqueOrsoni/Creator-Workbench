@@ -23,9 +23,9 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { useAppStore } from "../../store/useAppStore";
+import { useAppStore, type KanbanItem } from "../../store/useAppStore";
 import { conversionSchema, projectUpdateSchema } from "../../lib/validation";
-import { Sparkles, Target, BookOpen, Layout, Settings2, BarChart2, CheckCircle2 } from "lucide-react";
+import { Sparkles, Target, BookOpen, Layout, Settings2, BarChart2, CheckCircle2, Calendar } from "lucide-react";
 
 /**
  * Componente: IdeaDialog
@@ -39,11 +39,13 @@ interface IdeaFormValues {
   pedagogicalObjective: string;
   state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE";
   progress?: number;
+  dueDate?: string;
 }
 
 interface IdeaDialogProps {
-  id: string;
-  title: string;
+  id?: string;
+  title?: string;
+  item?: KanbanItem | null;
   targetAudience?: string;
   pedagogicalObjective?: string;
   trigger?: React.ReactElement;
@@ -55,6 +57,7 @@ interface IdeaDialogProps {
 export function IdeaDialog({ 
   id, 
   title, 
+  item,
   targetAudience = "", 
   pedagogicalObjective = "", 
   trigger, 
@@ -62,22 +65,28 @@ export function IdeaDialog({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange
 }: IdeaDialogProps) {
+  const effectiveId = id || item?.id || "";
+  const effectiveTitle = title || item?.title || "";
+  const effectiveAudience = targetAudience || item?.targetAudience || "";
+  const effectiveObjective = pedagogicalObjective || item?.pedagogicalObjective || "";
+
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
   const convertToProject = useAppStore((state) => state.convertToProject);
   const updateProject = useAppStore((state) => state.updateProject);
-  const project = useAppStore((state) => state.items.find(i => i.id === id));
+  const project = useAppStore((state) => state.items.find(i => i.id === effectiveId));
 
   const form = useForm<IdeaFormValues>({
     resolver: zodResolver(mode === "edit" ? projectUpdateSchema : conversionSchema),
     mode: "onChange",
     defaultValues: {
-      title: title,
-      targetAudience: targetAudience,
-      pedagogicalObjective: pedagogicalObjective,
+      title: effectiveTitle,
+      targetAudience: effectiveAudience,
+      pedagogicalObjective: effectiveObjective,
       state: project?.state || "IN_PRODUCTION",
       progress: project?.progress || 0,
+      dueDate: "",
     },
   });
 
@@ -85,22 +94,23 @@ export function IdeaDialog({
   React.useEffect(() => {
     if (open) {
       form.reset({
-        title: title,
-        targetAudience: targetAudience,
-        pedagogicalObjective: pedagogicalObjective,
+        title: effectiveTitle,
+        targetAudience: effectiveAudience,
+        pedagogicalObjective: effectiveObjective,
         state: project?.state || "IN_PRODUCTION",
         progress: project?.progress || 0,
+        dueDate: "",
       });
     }
-  }, [open, title, targetAudience, pedagogicalObjective, project, form]);
+  }, [open, effectiveTitle, effectiveAudience, effectiveObjective, project, form]);
 
   async function onSubmit(values: IdeaFormValues) {
     if (mode === "convert") {
-      const success = await convertToProject(id, values.title, values.targetAudience, values.pedagogicalObjective);
+      const success = await convertToProject(effectiveId, values.title, values.targetAudience, values.pedagogicalObjective);
       if (success) setOpen(false);
     } else {
       await updateProject(
-        id, 
+        effectiveId, 
         values.title, 
         values.targetAudience, 
         values.pedagogicalObjective, 
@@ -241,6 +251,28 @@ export function IdeaDialog({
                           />
                           <span className="text-xs font-black font-sans text-zinc-600 dark:text-zinc-300 min-w-[36px] text-right">{field.value ?? 0}%</span>
                         </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] italic font-bold font-sans" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "dueDate"> }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
+                        <Calendar size={14} className="text-primary/50" />
+                        Prazo de Entrega (Opcional)
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date"
+                          className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl px-6 h-14 focus:border-primary/50 text-zinc-900 dark:text-zinc-100 font-bold transition-all duration-300 font-sans shadow-none"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage className="text-[10px] italic font-bold font-sans" />
                     </FormItem>

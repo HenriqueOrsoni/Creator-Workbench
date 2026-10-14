@@ -20,6 +20,7 @@ export const conversionSchema = z.object({
   pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
   state: z.enum(["IDEATION", "IN_PRODUCTION", "REVIEW", "DONE"]).optional(),
   progress: z.number().min(0).max(100).optional(),
+  dueDate: z.string().optional(),
 });
 
 export const projectUpdateSchema = z.object({
@@ -28,6 +29,7 @@ export const projectUpdateSchema = z.object({
   pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
   state: z.enum(["IDEATION", "IN_PRODUCTION", "REVIEW", "DONE"]),
   progress: z.number().min(0).max(100),
+  dueDate: z.string().optional(),
 });
 
 export type ConversionFormValues = z.infer<typeof conversionSchema>;

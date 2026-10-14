@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen } from "lucide-react";
+import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen, ThumbsUp, Tag, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -55,6 +55,30 @@ export function IdeasInbox() {
     setOpenCreate(false);
   };
 
+  const [votes, setVotes] = React.useState<Record<string, number>>({});
+  const [votedCards, setVotedCards] = React.useState<Record<string, boolean>>({});
+  const [selectedTag, setSelectedTag] = React.useState<string>("TODOS");
+  const [sortBy, setSortBy] = React.useState<"recent" | "votes">("recent");
+
+  const TAGS = ["TODOS", "Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"];
+
+  const handleToggleVote = (cardId: string) => {
+    const isVoted = Boolean(votedCards[cardId]);
+    setVotedCards(prev => ({ ...prev, [cardId]: !isVoted }));
+    setVotes(prev => ({
+      ...prev,
+      [cardId]: Math.max(0, (prev[cardId] || 0) + (isVoted ? -1 : 1))
+    }));
+  };
+
+  const displayedIdeas = React.useMemo(() => {
+    const list = [...ideas];
+    if (sortBy === "votes") {
+      list.sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+    }
+    return list;
+  }, [ideas, votes, sortBy]);
+
   const handleConvert = async () => {
     if (!convertingCard) return;
 
@@ -89,8 +113,40 @@ export function IdeasInbox() {
         </Button>
       </div>
 
+      {/* Barra de Filtro de Etiquetas e Ordenação por Votos (FE-01, FE-02) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Tag className="w-3.5 h-3.5 text-zinc-400 mr-1" />
+          {TAGS.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(tag)}
+              className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full transition-all ${
+                selectedTag === tag
+                  ? "bg-zinc-900 text-white dark:bg-primary shadow-sm"
+                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortBy(sortBy === "recent" ? "votes" : "recent")}
+            className="rounded-xl text-[10px] font-bold uppercase tracking-wider gap-1.5 h-9"
+          >
+            <Filter className="w-3 h-3" />
+            {sortBy === "recent" ? "Ordenar por: Recentes" : "Ordenar por: Mais Votadas"}
+          </Button>
+        </div>
+      </div>
+
       {/* Grid de Ideias */}
-      {ideas.length === 0 ? (
+      {displayedIdeas.length === 0 ? (
         <div className="text-center py-24 bg-zinc-50/50 dark:bg-zinc-900/20 rounded-[32px] border border-dashed border-zinc-200 dark:border-zinc-800">
           <Sparkles className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
           <h3 className="text-base font-black uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
@@ -109,7 +165,7 @@ export function IdeasInbox() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ideas.map((idea) => (
+          {displayedIdeas.map((idea) => (
             <Card
               key={idea.id}
               className="p-6 rounded-[28px] bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:shadow-xl hover:border-primary/30 transition-all flex flex-col justify-between"
@@ -119,15 +175,30 @@ export function IdeasInbox() {
                   <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800">
                     Ideia Bruta
                   </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteCard(idea.id)}
-                    className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
-                    title="Excluir ideia"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleVote(idea.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                        votedCards[idea.id]
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200"
+                      }`}
+                      title="Votar nesta ideia (FE-02)"
+                    >
+                      <ThumbsUp className={`w-3 h-3 ${votedCards[idea.id] ? "fill-white" : ""}`} />
+                      <span>{votes[idea.id] || 0}</span>
+                    </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteCard(idea.id)}
+                      className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
+                      title="Excluir ideia"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <h3 className="text-base font-black text-zinc-900 dark:text-zinc-100 font-heading mb-2">

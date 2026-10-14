@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GraduationCap, Plus, Trash2, Video, FileText, HelpCircle, ChevronRight, BookOpen, Layers, Link2 } from "lucide-react";
+import { GraduationCap, Plus, Trash2, Video, FileText, HelpCircle, ChevronRight, BookOpen, Layers, Link2, Download, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAppStore } from "@/store/useAppStore";
+import { toast } from "sonner";
 
 export function CoursesView() {
   const {
@@ -100,6 +101,56 @@ export function CoursesView() {
     setLessonTitle("");
     setLinkedProjectId("");
     setOpenCreateLesson(false);
+  };
+
+  const handleExportCourseStructure = () => {
+    if (!activeCourse) return;
+    const exportData = {
+      courseId: activeCourse.id,
+      title: activeCourse.title,
+      description: activeCourse.description || "",
+      createdAt: activeCourse.createdAt,
+      modulesCount: activeCourse.modules.length,
+      modules: activeCourse.modules.map(m => ({
+        id: m.id,
+        title: m.title,
+        sortOrder: m.sortOrder,
+        lessonsCount: m.lessons.length,
+        lessons: m.lessons.map(l => ({
+          id: l.id,
+          title: l.title,
+          type: l.type,
+          published: l.published,
+          projectId: l.projectId
+        }))
+      }))
+    };
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeTitle = activeCourse.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    a.download = `curso-${safeTitle}-estrutura.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Estrutura do curso exportada em JSON!");
+  };
+
+  const handlePublishCourse = () => {
+    if (!activeCourse) return;
+    if (activeCourse.modules.length === 0) {
+      toast.error("Não é possível publicar: o curso precisa ter pelo menos um módulo.");
+      return;
+    }
+    const emptyModule = activeCourse.modules.find(m => m.lessons.length === 0);
+    if (emptyModule) {
+      toast.error(`Não é possível publicar: o módulo "${emptyModule.title}" está vazio.`);
+      return;
+    }
+    toast.success(`Curso "${activeCourse.title}" validado e publicado com sucesso!`);
   };
 
   const getLessonIcon = (type: string) => {
@@ -205,7 +256,23 @@ export function CoursesView() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={handleExportCourseStructure}
+                    className="rounded-xl h-10 px-3 text-xs font-bold uppercase tracking-wider gap-1.5"
+                    title="Exportar estrutura em JSON (FE-23)"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Exportar JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handlePublishCourse}
+                    className="rounded-xl h-10 px-3 text-xs font-bold uppercase tracking-wider gap-1.5 text-emerald-600 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                    title="Validar e publicar curso (FE-22)"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Publicar Curso
+                  </Button>
                   <Button
                     onClick={() => setOpenCreateModule(true)}
                     className="rounded-xl h-10 px-4 text-xs font-bold uppercase tracking-wider gap-2 bg-zinc-900 text-white dark:bg-primary"

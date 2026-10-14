@@ -12,7 +12,8 @@ import {
   BookOpen, 
   BookOpenCheck,
   ListChecks,
-  Plus
+  Plus,
+  Calendar
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -321,6 +322,11 @@ interface BoardCardItem extends KanbanItem {
                                     <span className="line-clamp-1">{item.pedagogicalObjective}</span>
                                   </div>
                                 )}
+
+                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-400">
+                                  <Calendar size={11} className="text-zinc-400 shrink-0" />
+                                  <span>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</span>
+                                </div>
 
                                 {/* Barra de Progresso Real Calculada */}
                                 <div className="space-y-1">

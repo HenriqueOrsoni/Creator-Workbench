@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
+import { PasswordRecoveryDialog } from "../../components/shared/PasswordRecoveryDialog";
 
 const loginSchema = z.object({
   email: z.string().min(1, "E-mail é obrigatório.").email("Endereço de e-mail inválido."),
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openRecovery, setOpenRecovery] = useState(false);
 
   const {
     register,
@@ -165,9 +167,13 @@ export default function LoginPage() {
                   <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                     Código de Acesso
                   </label>
-                  <a href="#" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-80 hover:opacity-100 transition-opacity">
+                  <button 
+                    type="button" 
+                    onClick={() => setOpenRecovery(true)} 
+                    className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-80 hover:opacity-100 transition-opacity"
+                  >
                     Recuperar?
-                  </a>
+                  </button>
                 </div>
                 <input 
                   type="password" 
@@ -208,6 +214,8 @@ export default function LoginPage() {
           </motion.div>
         </div>
       </main>
+
+      <PasswordRecoveryDialog open={openRecovery} onOpenChange={setOpenRecovery} />
     </div>
   );
 }
