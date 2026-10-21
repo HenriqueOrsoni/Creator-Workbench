@@ -273,10 +273,12 @@ interface AppState {
   fetchIdeas: () => Promise<void>;
   createBoardCard: (data: { title: string; description?: string; columnId?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<ProjectCard | null>;
   createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<ProjectCard | null>;
-  convertInboxIdea: (cardId: string, columnId?: string) => Promise<boolean>;
+  convertInboxIdea: (cardId: string, columnId?: string, data?: { targetAudience?: string; pedagogicalObjective?: string }) => Promise<boolean>;
   moveCard: (cardId: string, columnId: string, sortOrder?: number) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
   addColumn: (name: string) => Promise<void>;
+  renameColumn: (columnId: string, name: string) => Promise<boolean>;
+  deleteColumn: (columnId: string, targetColumnId?: string) => Promise<boolean>;
 
   // Fase 2: Checklist & Tarefas dos Cards
   createTask: (cardId: string, title: string) => Promise<CardTask | null>;
@@ -646,7 +648,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      convertInboxIdea: async (cardId, columnId) => {
+      convertInboxIdea: async (cardId, columnId, data) => {
         const teamId = get().activeTeamId;
         if (!teamId) return false;
 
@@ -655,7 +657,8 @@ export const useAppStore = create<AppState>()(
             ? `/api/v1/teams/${teamId}/cards/${cardId}/convert?targetColumnId=${columnId}`
             : `/api/v1/teams/${teamId}/cards/${cardId}/convert`;
 
-          await apiRequest("POST", url);
+          // RN01: público-alvo e objetivo pedagógico são enviados junto com a conversão
+          await apiRequest("POST", url, data);
           toast.success("Ideia convertida em projeto no quadro!");
           await get().fetchIdeas();
           await get().fetchBoard();
@@ -709,6 +712,41 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Erro ao criar coluna";
           toast.error(msg);
+        }
+      },
+
+      renameColumn: async (columnId, name) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/columns/${columnId}`, { name });
+          toast.success("Coluna renomeada!");
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao renomear coluna";
+          toast.error(msg);
+          return false;
+        }
+      },
+
+      deleteColumn: async (columnId, targetColumnId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          const url = targetColumnId
+            ? `/api/v1/teams/${teamId}/columns/${columnId}?targetColumnId=${targetColumnId}`
+            : `/api/v1/teams/${teamId}/columns/${columnId}`;
+          await apiRequest("DELETE", url);
+          toast.success("Coluna removida!");
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao remover coluna";
+          toast.error(msg);
+          return false;
         }
       },
 
@@ -939,6 +977,12 @@ export const useAppStore = create<AppState>()(
       },
 
       addIdea: async (title, description) => {
+        // Com o quadro da equipe carregado, a ideia vai para a Caixa de Entrada da equipe ativa
+        if (get().board && get().activeTeamId) {
+          await get().createInboxIdea({ title, description });
+          return;
+        }
+
         try {
           set({ error: null });
           const rawItem = await apiRequest("POST", "/api/v1/kanban", { title, description });

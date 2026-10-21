@@ -79,14 +79,32 @@ export function IdeasInbox() {
     return list;
   }, [ideas, votes, sortBy]);
 
+  const [convertAudience, setConvertAudience] = React.useState("");
+  const [convertObjective, setConvertObjective] = React.useState("");
+  const canConvert = Boolean(convertAudience.trim() && convertObjective.trim());
+
+  const openConvert = (idea: ProjectCard) => {
+    setConvertingCard(idea);
+    setConvertAudience(idea.targetAudience || "");
+    setConvertObjective(idea.pedagogicalObjective || "");
+    if (columns.length > 0) {
+      setSelectedColumnId(columns[0].id);
+    }
+  };
+
   const handleConvert = async () => {
-    if (!convertingCard) return;
+    if (!convertingCard || !canConvert) return;
 
     setLoading(true);
     const targetCol = selectedColumnId || (columns.length > 0 ? columns[0].id : undefined);
-    await convertInboxIdea(convertingCard.id, targetCol);
+    const converted = await convertInboxIdea(convertingCard.id, targetCol, {
+      targetAudience: convertAudience.trim(),
+      pedagogicalObjective: convertObjective.trim()
+    });
     setLoading(false);
-    setConvertingCard(null);
+    if (converted) {
+      setConvertingCard(null);
+    }
   };
 
   return (
@@ -230,12 +248,7 @@ export function IdeasInbox() {
 
               <div className="pt-3 border-t border-border mt-1">
                 <Button
-                  onClick={() => {
-                    setConvertingCard(idea);
-                    if (columns.length > 0) {
-                      setSelectedColumnId(columns[0].id);
-                    }
-                  }}
+                  onClick={() => openConvert(idea)}
                   className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground gap-1.5 h-8.5 transition-colors"
                 >
                   Converter em Projeto <ArrowRight className="w-3.5 h-3.5" />
@@ -341,6 +354,31 @@ export function IdeasInbox() {
             </DialogDescription>
           </DialogHeader>
 
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Público-Alvo *
+              </label>
+              <Input
+                placeholder="Ex: Iniciantes em CS"
+                value={convertAudience}
+                onChange={(e) => setConvertAudience(e.target.value)}
+                className="rounded-lg h-9 text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1">
+                Objetivo Pedagógico *
+              </label>
+              <Input
+                placeholder="Ex: Compreender BFS e DFS"
+                value={convertObjective}
+                onChange={(e) => setConvertObjective(e.target.value)}
+                className="rounded-lg h-9 text-xs"
+              />
+            </div>
+          </div>
+
           <div className="my-4 space-y-2.5">
             <label className="block text-xs font-semibold text-foreground">
               Coluna Inicial do Quadro
@@ -369,7 +407,7 @@ export function IdeasInbox() {
             </Button>
             <Button
               onClick={handleConvert}
-              disabled={loading}
+              disabled={loading || !canConvert}
               className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
             >
               {loading ? "Ativando..." : "Confirmar e Mover ao Quadro"}

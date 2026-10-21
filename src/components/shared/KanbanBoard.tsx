@@ -75,9 +75,18 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     moveCard,
     deleteCard,
     addColumn,
+    renameColumn,
+    deleteColumn,
+    activeTeam,
     selectedProjectId,
     setSelectedProjectId
   } = useAppStore();
+
+  // Só administradores configuram as colunas da equipe
+  const canManageColumns = activeTeam?.role === "ADMIN";
+  const [editingColumn, setEditingColumn] = React.useState<{ id: string; name: string } | null>(null);
+  const [columnNameDraft, setColumnNameDraft] = React.useState("");
+  const [columnTargetId, setColumnTargetId] = React.useState("");
 
   const [activeConvertId, setActiveConvertId] = React.useState<string | null>(null);
   const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
@@ -186,6 +195,26 @@ interface BoardCardItem extends KanbanItem {
     setOpenAddColumn(false);
   };
 
+  const openColumnSettings = (column: { id: string; name: string }) => {
+    setEditingColumn(column);
+    setColumnNameDraft(column.name);
+    const firstOther = dynamicColumns.find(c => c.id !== column.id);
+    setColumnTargetId(firstOther ? firstOther.id : "");
+  };
+
+  const handleRenameColumn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingColumn || !columnNameDraft.trim()) return;
+    const ok = await renameColumn(editingColumn.id, columnNameDraft.trim());
+    if (ok) setEditingColumn(null);
+  };
+
+  const handleDeleteColumn = async () => {
+    if (!editingColumn) return;
+    const ok = await deleteColumn(editingColumn.id, columnTargetId || undefined);
+    if (ok) setEditingColumn(null);
+  };
+
   const openTaskChecklist = (card: BoardCardItem) => {
     const projectCard: ProjectCard = card.rawCard || {
       id: card.id,
@@ -240,9 +269,22 @@ interface BoardCardItem extends KanbanItem {
                     {col.name}
                   </h3>
                 </div>
-                <Badge variant="outline" className="bg-background border-border font-semibold text-muted-foreground text-[11px] px-2 py-0.5 rounded-md">
-                  {colItems.length}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="bg-background border-border font-semibold text-muted-foreground text-[11px] px-2 py-0.5 rounded-md">
+                    {colItems.length}
+                  </Badge>
+                  {useDynamicColumns && canManageColumns && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openColumnSettings({ id: col.id, name: col.name })}
+                      className="h-6 w-6 text-muted-foreground hover:text-primary rounded-md"
+                      title="Configurar coluna"
+                    >
+                      <Settings2 size={12} />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Lista de Cards com Animação */}
@@ -490,6 +532,76 @@ interface BoardCardItem extends KanbanItem {
               Sim, Excluir
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Configurar Coluna (renomear ou excluir) */}
+      <Dialog open={Boolean(editingColumn)} onOpenChange={(open) => !open && setEditingColumn(null)}>
+        <DialogContent className="sm:max-w-[400px] rounded-xl p-6 bg-card border-border shadow-lg">
+          <form onSubmit={handleRenameColumn}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
+                <Settings2 className="w-4 h-4 text-primary" />
+                Configurar Coluna
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Renomeie a etapa ou remova-a do quadro da equipe.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="my-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Nome da Coluna *
+                </label>
+                <Input
+                  required
+                  value={columnNameDraft}
+                  onChange={(e) => setColumnNameDraft(e.target.value)}
+                  className="rounded-lg h-9 text-xs"
+                  autoFocus
+                />
+              </div>
+
+              {dynamicColumns.length > 1 && (
+                <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                  <label className="block text-xs font-semibold text-foreground">
+                    Ao excluir, mover os cards para
+                  </label>
+                  <select
+                    value={columnTargetId}
+                    onChange={(e) => setColumnTargetId(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
+                  >
+                    {dynamicColumns.filter(c => c.id !== editingColumn?.id).map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDeleteColumn}
+                    className="w-full rounded-lg text-xs font-semibold h-8 gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Excluir Coluna
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setEditingColumn(null)} className="rounded-lg text-xs font-medium">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={!columnNameDraft.trim()}
+                className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
+              >
+                Salvar Nome
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

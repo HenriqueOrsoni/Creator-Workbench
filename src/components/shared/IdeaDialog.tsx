@@ -76,6 +76,8 @@ export function IdeaDialog({
   const convertToProject = useAppStore((state) => state.convertToProject);
   const updateProject = useAppStore((state) => state.updateProject);
   const project = useAppStore((state) => state.items.find(i => i.id === effectiveId));
+  // No quadro da equipe a coluna define o status e o progresso vem das tarefas do card
+  const usesTeamBoard = useAppStore((state) => Boolean(state.board));
 
   const form = useForm<IdeaFormValues>({
     resolver: zodResolver(mode === "edit" ? projectUpdateSchema : conversionSchema),
@@ -202,7 +204,7 @@ export function IdeaDialog({
               )}
             />
 
-            {isEdit && (
+            {isEdit && !usesTeamBoard && (
               <>
                 <FormField
                   control={form.control}
@@ -256,7 +258,11 @@ export function IdeaDialog({
                     </FormItem>
                   )}
                 />
+              </>
+            )}
 
+            {isEdit && (
+              <>
                 <FormField
                   control={form.control}
                   name="dueDate"
