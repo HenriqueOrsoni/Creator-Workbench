@@ -62,5 +62,36 @@ describe('FE-30 & FE-31 - PasswordRecoveryDialog Component Tests', () => {
     await waitFor(() => {
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
+
+    expect(apiModule.apiRequest).toHaveBeenCalledWith('POST', '/api/auth/password/forgot', {
+      email: 'operador@creator.studio',
+    });
+    expect(apiModule.apiRequest).toHaveBeenCalledWith('POST', '/api/auth/password/reset', {
+      email: 'operador@creator.studio',
+      token: '123456',
+      newPassword: 'novaSenha123',
+    });
+  });
+
+  it('mantém o diálogo aberto quando o servidor recusa o código (BE-32)', async () => {
+    const mockOnOpenChange = jest.fn();
+    (apiModule.apiRequest as jest.Mock)
+      .mockResolvedValueOnce({ message: 'ok' })
+      .mockRejectedValueOnce(new Error('Codigo invalido.'));
+    render(<PasswordRecoveryDialog open={true} onOpenChange={mockOnOpenChange} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/seu\.email@exemplo\.com/i), {
+      target: { value: 'operador@creator.studio' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /enviar código/i }));
+    await waitFor(() => expect(screen.getByPlaceholderText(/482917/i)).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText(/482917/i), { target: { value: '000000' } });
+    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'novaSenha123' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar nova senha/i }));
+
+    await waitFor(() => expect(apiModule.apiRequest).toHaveBeenCalledTimes(2));
+    expect(mockOnOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByRole('button', { name: /salvar nova senha/i })).toBeInTheDocument();
   });
 });

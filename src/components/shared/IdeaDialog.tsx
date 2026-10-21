@@ -88,7 +88,7 @@ export function IdeaDialog({
       pedagogicalObjective: effectiveObjective,
       state: project?.state || "IN_PRODUCTION",
       progress: project?.progress || 0,
-      dueDate: "",
+      dueDate: project?.dueDate || "",
     },
   });
 
@@ -101,7 +101,7 @@ export function IdeaDialog({
         pedagogicalObjective: effectiveObjective,
         state: project?.state || "IN_PRODUCTION",
         progress: project?.progress || 0,
-        dueDate: "",
+        dueDate: project?.dueDate || "",
       });
     }
   }, [open, effectiveTitle, effectiveAudience, effectiveObjective, project, form]);
@@ -116,8 +116,9 @@ export function IdeaDialog({
         values.title, 
         values.targetAudience, 
         values.pedagogicalObjective, 
-        values.state, 
-        Number(values.progress)
+        values.state,
+        Number(values.progress),
+        values.dueDate || ""
       );
       setOpen(false);
     }

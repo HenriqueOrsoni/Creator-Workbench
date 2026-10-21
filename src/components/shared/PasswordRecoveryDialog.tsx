@@ -35,16 +35,12 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
 
     setLoading(true);
     try {
-      // Tenta rota do backend se disponível ou simulação de envio
-      await apiRequest("POST", "/api/auth/register/request-token", {
-        name: "Operador",
-        email: email.trim(),
-      }).catch(() => null);
-
-      toast.success(`Código de verificação enviado para ${email.trim()}!`);
+      // O servidor responde igual para qualquer e-mail, sem revelar quais estão cadastrados
+      await apiRequest("POST", "/api/auth/password/forgot", { email: email.trim() });
+      toast.success("Se o e-mail estiver cadastrado, você receberá um código de 6 dígitos.");
       setStep(2);
-    } catch {
-      toast.error("Erro ao solicitar código de recuperação.");
+    } catch (err) {
+      toast.error((err as Error).message || "Erro ao solicitar código de recuperação.");
     } finally {
       setLoading(false);
     }
@@ -63,7 +59,11 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
 
     setLoading(true);
     try {
-      // Simula confirmação ou chamada de atualização
+      await apiRequest("POST", "/api/auth/password/reset", {
+        email: email.trim(),
+        token: code.trim(),
+        newPassword,
+      });
       toast.success("Senha redefinida com sucesso! Você já pode entrar.");
       setStep(1);
       setEmail("");

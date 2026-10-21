@@ -127,6 +127,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
         tasksTotal: c.tasksTotal,
         tasksDone: c.tasksDone,
         columnId: col.id,
+        dueDate: c.dueDate,
         rawCard: c
       }))
     }));
@@ -369,6 +370,24 @@ interface BoardCardItem extends KanbanItem {
                                   <Calendar size={11} className="text-zinc-400 shrink-0" />
                                   <span>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</span>
                                 </div>
+
+                                {item.dueDate && (() => {
+                                  // dueDate vem como AAAA-MM-DD; compara só a data, sem fuso
+                                  const [y, m, d] = item.dueDate.split("-").map(Number);
+                                  const due = new Date(y, m - 1, d);
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  const overdue = due < today;
+                                  return (
+                                    <div
+                                      className={`flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider ${overdue ? "text-red-500" : "text-primary"}`}
+                                      title={overdue ? "Prazo vencido" : "Prazo de entrega"}
+                                    >
+                                      <Calendar size={11} className="shrink-0" />
+                                      <span>Prazo {due.toLocaleDateString("pt-BR")}{overdue ? " • vencido" : ""}</span>
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* Barra de Progresso Real Calculada */}
                                 <div className="space-y-1">

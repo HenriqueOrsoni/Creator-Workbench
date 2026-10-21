@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAppStore, ProjectCard } from "@/store/useAppStore";
 
 export function IdeasInbox() {
-  const { ideas, board, fetchIdeas, createInboxIdea, convertInboxIdea, deleteCard } = useAppStore();
+  const { ideas, board, fetchIdeas, createInboxIdea, convertInboxIdea, deleteCard, voteIdea } = useAppStore();
   const [openCreate, setOpenCreate] = React.useState(false);
   const [convertingCard, setConvertingCard] = React.useState<ProjectCard | null>(null);
   const [selectedColumnId, setSelectedColumnId] = React.useState<string>("");
@@ -27,6 +27,7 @@ export function IdeasInbox() {
   const [description, setDescription] = React.useState("");
   const [targetAudience, setTargetAudience] = React.useState("");
   const [pedagogicalObjective, setPedagogicalObjective] = React.useState("");
+  const [tag, setTag] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -44,7 +45,8 @@ export function IdeasInbox() {
       title: title.trim(),
       description: description.trim(),
       targetAudience: targetAudience.trim() || undefined,
-      pedagogicalObjective: pedagogicalObjective.trim() || undefined
+      pedagogicalObjective: pedagogicalObjective.trim() || undefined,
+      tag: tag || undefined
     });
     setLoading(false);
 
@@ -52,36 +54,34 @@ export function IdeasInbox() {
     setDescription("");
     setTargetAudience("");
     setPedagogicalObjective("");
+    setTag("");
     setOpenCreate(false);
   };
 
-  const [votes, setVotes] = React.useState<Record<string, number>>({});
-  const [votedCards, setVotedCards] = React.useState<Record<string, boolean>>({});
   const [selectedTag, setSelectedTag] = React.useState<string>("TODOS");
   const [sortBy, setSortBy] = React.useState<"recent" | "votes">("recent");
 
   const TAGS = ["TODOS", "Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"];
 
+  // Votos ficam salvos no servidor (um voto por membro em cada ideia)
   const handleToggleVote = (cardId: string) => {
-    const isVoted = Boolean(votedCards[cardId]);
-    setVotedCards(prev => ({ ...prev, [cardId]: !isVoted }));
-    setVotes(prev => ({
-      ...prev,
-      [cardId]: Math.max(0, (prev[cardId] || 0) + (isVoted ? -1 : 1))
-    }));
+    voteIdea(cardId);
   };
 
   const displayedIdeas = React.useMemo(() => {
-    const list = [...ideas];
+    const list = selectedTag === "TODOS" ? [...ideas] : ideas.filter(idea => idea.tag === selectedTag);
     if (sortBy === "votes") {
-      list.sort((a, b) => (votes[b.id] || 0) - (votes[a.id] || 0));
+      list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     }
     return list;
-  }, [ideas, votes, sortBy]);
+  }, [ideas, selectedTag, sortBy]);
 
   const [convertAudience, setConvertAudience] = React.useState("");
   const [convertObjective, setConvertObjective] = React.useState("");
-  const canConvert = Boolean(convertAudience.trim() && convertObjective.trim());
+  // Mesmos mínimos do formulário de edição do projeto (conversionSchema), para o projeto poder ser editado depois
+  const audienceOk = convertAudience.trim().length >= 3;
+  const objectiveOk = convertObjective.trim().length >= 10;
+  const canConvert = audienceOk && objectiveOk;
 
   const openConvert = (idea: ProjectCard) => {
     setConvertingCard(idea);
@@ -168,7 +168,9 @@ export function IdeasInbox() {
         <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed border-border">
           <Sparkles className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
           <h3 className="text-sm font-semibold text-foreground">
-            Nenhuma ideia pendente na Caixa de Entrada
+            {selectedTag === "TODOS"
+              ? "Nenhuma ideia pendente na Caixa de Entrada"
+              : `Nenhuma ideia com a etiqueta "${selectedTag}"`}
           </h3>
           <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
             Todas as ideias foram convertidas em projetos ou ainda não foram registradas.
@@ -190,22 +192,29 @@ export function IdeasInbox() {
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <Badge variant="outline" className="text-[11px] font-semibold bg-muted/50 border-border text-muted-foreground rounded-md">
-                    Ideia Bruta
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-[11px] font-semibold bg-muted/50 border-border text-muted-foreground rounded-md">
+                      Ideia Bruta
+                    </Badge>
+                    {idea.tag && (
+                      <Badge variant="outline" className="text-[11px] font-semibold bg-primary/10 border-primary/30 text-primary rounded-md">
+                        {idea.tag}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleToggleVote(idea.id)}
                       className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
-                        votedCards[idea.id]
+                        idea.votedByMe
                           ? "bg-primary text-primary-foreground shadow-xs"
                           : "bg-muted text-muted-foreground hover:text-foreground"
                       }`}
-                      title="Votar nesta ideia (FE-02)"
+                      title={idea.votedByMe ? "Remover meu voto" : "Votar nesta ideia"}
                     >
-                      <ThumbsUp className={`w-3 h-3 ${votedCards[idea.id] ? "fill-primary-foreground" : ""}`} />
-                      <span>{votes[idea.id] || 0}</span>
+                      <ThumbsUp className={`w-3 h-3 ${idea.votedByMe ? "fill-primary-foreground" : ""}`} />
+                      <span>{idea.votes || 0}</span>
                     </button>
                     <Button
                       variant="ghost"
@@ -323,6 +332,23 @@ export function IdeasInbox() {
                   />
                 </div>
               </div>
+
+              <div>
+                <label htmlFor="idea-tag" className="block text-xs font-semibold text-foreground mb-1">
+                  Etiqueta
+                </label>
+                <select
+                  id="idea-tag"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
+                >
+                  <option value="">Sem etiqueta</option>
+                  {TAGS.filter(t => t !== "TODOS").map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <DialogFooter className="flex gap-2">
@@ -378,6 +404,12 @@ export function IdeasInbox() {
               />
             </div>
           </div>
+          {(convertAudience || convertObjective) && !canConvert && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {!audienceOk ? "Público-alvo: mínimo 3 caracteres. " : ""}
+              {!objectiveOk ? "Objetivo pedagógico: mínimo 10 caracteres." : ""}
+            </p>
+          )}
 
           <div className="my-4 space-y-2.5">
             <label className="block text-xs font-semibold text-foreground">

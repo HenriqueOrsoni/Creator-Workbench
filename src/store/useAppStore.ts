@@ -42,6 +42,10 @@ export interface ProjectCard {
   targetAudience?: string;
   pedagogicalObjective?: string;
   tasks?: CardTask[];
+  tag?: string;
+  dueDate?: string;
+  votes?: number;
+  votedByMe?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -99,6 +103,7 @@ export interface KanbanItem {
   tasksTotal?: number;
   tasksDone?: number;
   columnId?: string;
+  dueDate?: string;
 }
 
 export interface BackendKanbanItem {
@@ -113,6 +118,7 @@ export interface BackendKanbanItem {
   tasksTotal?: number;
   tasksDone?: number;
   columnId?: string | number;
+  dueDate?: string;
 }
 
 export interface ApiTaskDto {
@@ -138,6 +144,10 @@ export interface ApiCardDto {
   targetAudience?: string;
   pedagogicalObjective?: string;
   tasks?: ApiTaskDto[];
+  tag?: string;
+  dueDate?: string;
+  votes?: number;
+  votedByMe?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -233,7 +243,8 @@ function mapBackendToFrontendItem(item: BackendKanbanItem): KanbanItem {
     progress: item.progress || 0,
     tasksTotal: item.tasksTotal || 0,
     tasksDone: item.tasksDone || 0,
-    columnId: item.columnId ? item.columnId.toString() : undefined
+    columnId: item.columnId ? item.columnId.toString() : undefined,
+    dueDate: item.dueDate || undefined
   };
 }
 
@@ -248,7 +259,7 @@ interface AppState {
   fetchItems: () => Promise<void>;
   addIdea: (title: string, description: string) => Promise<void>;
   convertToProject: (id: string, title: string, audience?: string, objective?: string) => Promise<boolean>;
-  updateProject: (id: string, title: string, audience: string, objective: string, state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE", progress?: number) => Promise<void>;
+  updateProject: (id: string, title: string, audience: string, objective: string, state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE", progress?: number, dueDate?: string) => Promise<void>;
   updateState: (id: string, state: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE") => Promise<void>;
   updateProgress: (id: string, progress: number) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
@@ -272,7 +283,8 @@ interface AppState {
   fetchBoard: () => Promise<void>;
   fetchIdeas: () => Promise<void>;
   createBoardCard: (data: { title: string; description?: string; columnId?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<ProjectCard | null>;
-  createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<ProjectCard | null>;
+  createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string; tag?: string }) => Promise<ProjectCard | null>;
+  voteIdea: (cardId: string) => Promise<void>;
   convertInboxIdea: (cardId: string, columnId?: string, data?: { targetAudience?: string; pedagogicalObjective?: string }) => Promise<boolean>;
   moveCard: (cardId: string, columnId: string, sortOrder?: number) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
@@ -538,6 +550,8 @@ export const useAppStore = create<AppState>()(
                   sortOrder: t.sortOrder,
                   createdAt: t.createdAt
                 })) : [],
+                tag: c.tag || undefined,
+                dueDate: c.dueDate || undefined,
                 createdAt: c.createdAt || new Date().toISOString(),
                 updatedAt: c.updatedAt
               })) : []
@@ -558,7 +572,8 @@ export const useAppStore = create<AppState>()(
                   progress: card.progress,
                   tasksTotal: card.tasksTotal,
                   tasksDone: card.tasksDone,
-                  columnId: col.id
+                  columnId: col.id,
+                  dueDate: card.dueDate
                 });
               });
             });
@@ -600,6 +615,9 @@ export const useAppStore = create<AppState>()(
               tasksDone: c.tasksDone || 0,
               targetAudience: c.targetAudience,
               pedagogicalObjective: c.pedagogicalObjective,
+              tag: c.tag || undefined,
+              votes: c.votes || 0,
+              votedByMe: Boolean(c.votedByMe),
               createdAt: c.createdAt || new Date().toISOString(),
               updatedAt: c.updatedAt
             }));
@@ -645,6 +663,25 @@ export const useAppStore = create<AppState>()(
           const msg = error instanceof Error ? error.message : "Erro ao criar ideia";
           toast.error(msg);
           return null;
+        }
+      },
+
+      voteIdea: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return;
+
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/vote`);
+          if (raw) {
+            set(state => ({
+              ideas: state.ideas.map(idea => idea.id === cardId
+                ? { ...idea, votes: raw.votes || 0, votedByMe: Boolean(raw.votedByMe) }
+                : idea)
+            }));
+          }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao registrar voto";
+          toast.error(msg);
         }
       },
 
@@ -1026,7 +1063,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      updateProject: async (id, title, audience, objective, state, progress) => {
+      updateProject: async (id, title, audience, objective, state, progress, dueDate) => {
         try {
           set({ error: null });
           const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, {
@@ -1034,7 +1071,9 @@ export const useAppStore = create<AppState>()(
             targetAudience: audience,
             pedagogicalObjective: objective,
             state,
-            progress
+            progress,
+            // Prazo: "" limpa, undefined mantém o valor salvo
+            ...(dueDate !== undefined ? { dueDate } : {})
           });
           if (rawItem) {
             const mapped = mapBackendToFrontendItem(rawItem);
@@ -1042,6 +1081,10 @@ export const useAppStore = create<AppState>()(
               items: currentState.items.map((i) => (i.id === id ? mapped : i))
             }));
             toast.success("Projeto atualizado!");
+            // No quadro da equipe os cards vêm do board; recarrega para refletir a edição
+            if (get().board) {
+              await get().fetchBoard();
+            }
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Erro ao atualizar projeto";
