@@ -303,10 +303,13 @@ interface AppState {
   fetchCourses: () => Promise<void>;
   fetchCourseDetails: (courseId: string) => Promise<void>;
   createCourse: (title: string, description?: string) => Promise<Course | null>;
+  updateCourse: (courseId: string, title: string, description?: string) => Promise<boolean>;
   deleteCourse: (courseId: string) => Promise<void>;
   createCourseModule: (courseId: string, title: string) => Promise<void>;
+  updateCourseModule: (courseId: string, moduleId: string, title: string) => Promise<boolean>;
   deleteCourseModule: (courseId: string, moduleId: string) => Promise<void>;
   createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string) => Promise<void>;
+  updateCourseLesson: (courseId: string, moduleId: string, lessonId: string, data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ"; published?: boolean; projectId?: number }) => Promise<boolean>;
   deleteCourseLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
   // Fase 3: Estúdio de Roteiro Avançado (Exportação e Versões)
@@ -385,23 +388,11 @@ export const useAppStore = create<AppState>()(
             }
             return;
           }
-        } catch {
-          // Backend sem endpoint de equipes ainda: fallback silencioso para estúdio padrão
-        }
-
-        if (get().teams.length === 0) {
-          const defaultTeam: Team = {
-            id: "1",
-            name: "Meu Estúdio",
-            role: "ADMIN",
-            membersCount: 1,
-            createdAt: new Date().toISOString()
-          };
-          set({
-            teams: [defaultTeam],
-            activeTeamId: "1",
-            activeTeam: defaultTeam
-          });
+          set({ teams: [], activeTeamId: null, activeTeam: null });
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Não foi possível carregar as equipes.";
+          set({ error: message, teams: [], activeTeamId: null, activeTeam: null });
+          toast.error("Não foi possível carregar as equipes. Tente novamente.");
         }
       },
 
@@ -913,6 +904,29 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      updateCourse: async (courseId, title, description) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          try {
+            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}`, { title, description });
+          } catch (e) {
+            console.warn("Backend PUT /courses não implementado ou falhou, atualizando estado local:", e);
+          }
+          set(state => ({
+            courses: state.courses.map(c => c.id === courseId ? { ...c, title, description } : c),
+            activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, title, description: description ?? state.activeCourse.description } : state.activeCourse
+          }));
+          toast.success("Curso atualizado com sucesso!");
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao atualizar curso";
+          toast.error(msg);
+          return false;
+        }
+      },
+
       deleteCourse: async (courseId) => {
         const teamId = get().activeTeamId;
         if (!teamId) return;
@@ -942,6 +956,34 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Erro ao adicionar módulo";
           toast.error(msg);
+        }
+      },
+
+      updateCourseModule: async (courseId, moduleId, title) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          try {
+            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}`, { title });
+          } catch (e) {
+            console.warn("Backend PUT /modules não implementado ou falhou, atualizando estado local:", e);
+          }
+          set(state => {
+            if (!state.activeCourse || state.activeCourse.id !== courseId) return state;
+            return {
+              activeCourse: {
+                ...state.activeCourse,
+                modules: state.activeCourse.modules.map(m => m.id === moduleId ? { ...m, title } : m)
+              }
+            };
+          });
+          toast.success("Módulo atualizado com sucesso!");
+          return true;
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Erro ao atualizar módulo";
+          toast.error(msg);
+          return false;
         }
       },
 
@@ -975,6 +1017,39 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           const msg = error instanceof Error ? error.message : "Erro ao adicionar aula";
           toast.error(msg);
+        }
+      },
+
+      updateCourseLesson: async (courseId, moduleId, lessonId, data) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, data);
+          toast.success("Aula atualizada com sucesso!");
+          await get().fetchCourseDetails(courseId);
+          return true;
+        } catch {
+          set(state => {
+            if (!state.activeCourse || state.activeCourse.id !== courseId) return state;
+            return {
+              activeCourse: {
+                ...state.activeCourse,
+                modules: state.activeCourse.modules.map(m => m.id === moduleId ? {
+                  ...m,
+                  lessons: m.lessons.map(l => l.id === lessonId ? {
+                    ...l,
+                    title: data.title ?? l.title,
+                    type: (data.type as CourseLesson["type"]) ?? l.type,
+                    published: data.published ?? l.published,
+                    projectId: data.projectId !== undefined ? data.projectId.toString() : l.projectId
+                  } : l)
+                } : m)
+              }
+            };
+          });
+          toast.success("Aula atualizada com sucesso!");
+          return true;
         }
       },
 

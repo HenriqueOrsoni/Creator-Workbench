@@ -16,7 +16,7 @@ describe('FE-30 & FE-31 - PasswordRecoveryDialog Component Tests', () => {
   it('renderiza o formulário de solicitação de código no passo 1', () => {
     render(<PasswordRecoveryDialog open={true} onOpenChange={jest.fn()} />);
 
-    expect(screen.getByText(/Recuperar_Acesso/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recuperar Acesso/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/seu\.email@exemplo\.com/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /enviar código/i })).toBeInTheDocument();
   });

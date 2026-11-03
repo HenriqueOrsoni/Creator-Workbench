@@ -8,15 +8,33 @@ interface StatsCardProps {
   label: string;
   icon: LucideIcon;
   iconHoverClass?: string;
+  onClick?: () => void;
 }
 
 export function StatsCard({
   value,
   label,
   icon: Icon,
+  onClick,
 }: StatsCardProps) {
+  const isClickable = Boolean(onClick);
+
   return (
-    <div className="bg-card border border-border p-3.5 sm:p-4 rounded-xl flex items-center gap-3.5 shadow-xs transition-colors hover:border-primary/40 min-w-[160px] sm:min-w-[180px]">
+    <div
+      onClick={onClick}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
+      className={`bg-card border border-border p-3.5 sm:p-4 rounded-xl flex items-center gap-3.5 shadow-xs transition-all min-w-[160px] sm:min-w-[180px] ${isClickable
+          ? "cursor-pointer hover:border-primary/50 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-primary/30"
+          : "hover:border-primary/40"
+        }`}
+    >
       <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4" />
       </div>

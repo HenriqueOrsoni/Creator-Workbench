@@ -83,7 +83,9 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   } = useAppStore();
 
   // Só administradores configuram as colunas da equipe
-  const canManageColumns = activeTeam?.role === "ADMIN";
+  const canManageColumns = activeTeam ? activeTeam.role === "ADMIN" : false;
+  const isReviewer = activeTeam?.role === "REVIEWER";
+  const canEditCards = !isReviewer;
   const [editingColumn, setEditingColumn] = React.useState<{ id: string; name: string } | null>(null);
   const [columnNameDraft, setColumnNameDraft] = React.useState("");
   const [columnTargetId, setColumnTargetId] = React.useState("");
@@ -244,23 +246,25 @@ interface BoardCardItem extends KanbanItem {
           </span>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setOpenAddColumn(true)}
-          className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-dashed"
-        >
-          <Plus className="w-3.5 h-3.5" /> Adicionar Coluna
-        </Button>
+        {canManageColumns && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setOpenAddColumn(true)}
+            className="rounded-lg text-xs font-semibold gap-1.5 h-8 border-dashed"
+          >
+            <Plus className="w-3.5 h-3.5" /> Adicionar Coluna
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start overflow-x-auto pb-4">
+      <div className="flex gap-4 items-start overflow-x-auto pb-4 snap-x scrollbar-thin">
         {dynamicColumns.map((col, colIndex) => {
           const colItems = col.cards;
           return (
             <div 
               key={col.id}
-              className="flex flex-col bg-muted/30 border border-border rounded-xl p-3.5 min-h-[500px] lg:min-h-[560px] transition-colors"
+              className="flex flex-col bg-muted/30 border border-border rounded-xl p-3.5 min-h-[500px] lg:min-h-[560px] transition-colors w-[280px] sm:w-[320px] shrink-0 snap-start"
             >
               {/* Header da Coluna */}
               <div className="flex items-center justify-between mb-3.5 px-1">
@@ -321,25 +325,27 @@ interface BoardCardItem extends KanbanItem {
                                 {item.title}
                               </h4>
                               
-                              <div className="flex items-center gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => handleOpenEdit(item)}
-                                  className="h-8 w-8 text-zinc-400 hover:text-primary rounded-lg"
-                                >
-                                  <Settings2 size={14} />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => setItemToDelete(item)}
-                                  className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
-                                  title="Excluir item"
-                                >
-                                  <Trash2 size={14} />
-                                </Button>
-                              </div>
+                              {canEditCards && (
+                                <div className="flex items-center gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleOpenEdit(item)}
+                                    className="h-8 w-8 text-zinc-400 hover:text-primary rounded-lg"
+                                  >
+                                    <Settings2 size={14} />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => setItemToDelete(item)}
+                                    className="h-8 w-8 text-zinc-400 hover:text-red-500 rounded-lg"
+                                    title="Excluir item"
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
 
                             {/* Card Description */}
@@ -420,35 +426,37 @@ interface BoardCardItem extends KanbanItem {
 
                             {/* Card Actions */}
                             <div className="flex items-center justify-between gap-2 pt-2 mt-auto">
-                              {/* Setas de Movimento de Status */}
-                              <div className="flex items-center gap-1">
-                                {(colIndex > 0 || item.state !== "IDEATION") && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleMoveLeft(item, colIndex)}
-                                    className="h-7 w-7 text-zinc-300 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700"
-                                    title="Mover para coluna anterior"
-                                  >
-                                    <ArrowLeft size={12} />
-                                  </Button>
-                                )}
-                                
-                                {(colIndex < dynamicColumns.length - 1 || item.state !== "DONE") && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleMoveRight(item, colIndex)}
-                                    className="h-7 w-7 text-zinc-300 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700"
-                                    title="Mover para próxima coluna"
-                                  >
-                                    <ArrowRight size={12} />
-                                  </Button>
-                                )}
-                              </div>
+                              {/* Setas de Movimento de Status (BF-07: desabilitado para Revisor) */}
+                              {canEditCards ? (
+                                <div className="flex items-center gap-1">
+                                  {(useDynamicColumns ? colIndex > 0 : item.state !== "IDEATION") && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleMoveLeft(item, colIndex)}
+                                      className="h-7 w-7 text-zinc-300 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700"
+                                      title="Mover para coluna anterior"
+                                    >
+                                      <ArrowLeft size={12} />
+                                    </Button>
+                                  )}
+                                  
+                                  {(useDynamicColumns ? colIndex < dynamicColumns.length - 1 : item.state !== "DONE") && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleMoveRight(item, colIndex)}
+                                      className="h-7 w-7 text-zinc-300 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700"
+                                      title="Mover para próxima coluna"
+                                    >
+                                      <ArrowRight size={12} />
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : <div />}
 
                               {/* Ação Principal Dependente do Status */}
-                              {item.state === "IDEATION" ? (
+                              {item.state === "IDEATION" && canEditCards ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -461,7 +469,7 @@ interface BoardCardItem extends KanbanItem {
                                   <span>Ativar Projeto</span>
                                   <ArrowUpRight size={12} />
                                 </Button>
-                              ) : (
+                              ) : item.state === "IDEATION" ? null : (
                                 <div className="flex items-center gap-1">
                                   <Button
                                     variant="ghost"
@@ -479,10 +487,10 @@ interface BoardCardItem extends KanbanItem {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      if (onSelectTab) onSelectTab("curriculum");
+                                      if (onSelectTab) onSelectTab("courses");
                                     }}
                                     className="h-7 px-2 text-[9px] font-bold uppercase tracking-wider text-zinc-400 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700 gap-1"
-                                    title="Abrir Matriz Curricular"
+                                    title="Ver nos Cursos da Equipe"
                                   >
                                     <BookOpenCheck size={11} />
                                   </Button>

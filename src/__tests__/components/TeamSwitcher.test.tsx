@@ -45,7 +45,8 @@ describe('Fase 2 - TeamSwitcher Component', () => {
     render(<TeamSwitcher />);
 
     expect(screen.getByText('Equipe Pessoal')).toBeInTheDocument();
-    expect(screen.getByText('ADMIN')).toBeInTheDocument();
+    // BF-19: Papel em português
+    expect(screen.getByText(/Administrador/i)).toBeInTheDocument();
   });
 
   it('abre diálogo de seleção ao clicar no botão da equipe', () => {

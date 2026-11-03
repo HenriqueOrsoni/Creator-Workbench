@@ -57,10 +57,6 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
       throw new Error(errorMessage);
     }
 
-    if (path.startsWith("/api/v1/teams")) {
-      throw new Error("Módulo de equipes ainda não disponível no servidor.");
-    }
-
     handleUnauthorized();
     throw new Error("Sessão expirada. Redirecionando...");
   }

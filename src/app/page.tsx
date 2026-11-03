@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { Plus, Layout, KanbanSquare, GraduationCap, Lightbulb } from "lucide-react";
+import { Layout, KanbanSquare, GraduationCap, Lightbulb } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAppStore } from "../store/useAppStore";
-import { CreateIdeaDialog } from "../components/shared/CreateIdeaDialog";
 import dynamic from "next/dynamic";
 
 const CurriculumBuilder = dynamic(() => import("../components/shared/CurriculumBuilder").then(mod => ({ default: mod.CurriculumBuilder })), {
@@ -29,7 +28,7 @@ import { KanbanBoard } from "../components/shared/KanbanBoard";
 import { Button } from "../components/ui/button";
 
 export default function UnifiedPage() {
-  const { items, ideas, courses, fetchItems, fetchTeams, selectedProjectId } = useAppStore();
+  const { items, ideas, courses, fetchItems, fetchTeams, selectedProjectId, activeTeam } = useAppStore();
   const [activeTab, setActiveTab] = React.useState("kanban");
 
   const legacyIdeas = items.filter(i => i.state === "IDEATION");
@@ -45,17 +44,19 @@ export default function UnifiedPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans antialiased relative transition-colors selection:bg-primary/20">
-      <Navbar onNavigate={(tab) => setActiveTab(tab)} />
+      <Navbar activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
 
       <main className="pt-20 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {/* HEADER & CONTROLS */}
+          {/* HEADER & CONTROLS (BF-03) */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-border pb-6">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Operações Digitais</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  {activeTeam?.name || "Meu Estúdio"}
+                </span>
                 <span className="text-muted-foreground/40">•</span>
-                <span className="text-xs text-muted-foreground font-medium">Workspace Criativo</span>
+                <span className="text-xs text-muted-foreground font-medium">Painel da Equipe</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-heading">
                 Painel de Controle
@@ -65,27 +66,30 @@ export default function UnifiedPage() {
               </p>
             </div>
 
-            {/* METRICS ROW */}
+            {/* METRICS ROW (BF-05: Clickable Cards) */}
             <div className="flex gap-3 sm:gap-4 flex-wrap">
               <StatsCard
                 value={totalIdeasCount}
                 label="Ideias no Inbox"
                 icon={Lightbulb}
+                onClick={() => setActiveTab("inbox")}
               />
               <StatsCard
                 value={projects.length}
                 label="Projetos em Produção"
                 icon={Layout}
+                onClick={() => setActiveTab("kanban")}
               />
               <StatsCard
                 value={courses.length}
                 label="Cursos Cadastrados"
                 icon={GraduationCap}
+                onClick={() => setActiveTab("courses")}
               />
             </div>
           </div>
 
-          {/* TAB NAVIGATION PILLS */}
+          {/* TAB NAVIGATION PILLS (BF-13: Matriz Curricular unificada em Cursos & Módulos) */}
           <div className="mb-6 overflow-x-auto pb-1">
             <TabsList className="bg-muted/60 p-1 rounded-lg border border-border h-auto inline-flex gap-1">
               <TabsTrigger 
@@ -105,12 +109,6 @@ export default function UnifiedPage() {
                 className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
               >
                 Cursos & Módulos
-              </TabsTrigger>
-              <TabsTrigger 
-                value="curriculum" 
-                className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
-              >
-                Matriz Curricular
               </TabsTrigger>
               <TabsTrigger 
                 value="editor" 
@@ -134,6 +132,7 @@ export default function UnifiedPage() {
             <CoursesView />
           </TabsContent>
 
+          {/* Mantém TabsContent value="curriculum" para retrocompatibilidade */}
           <TabsContent value="curriculum" className="mt-0 outline-none">
             <div className="bg-card p-6 sm:p-8 rounded-xl border border-border max-w-4xl mx-auto shadow-xs">
               {activeProject ? (
@@ -178,20 +177,6 @@ export default function UnifiedPage() {
           </TabsContent>
         </Tabs>
       </main>
-
-      {/* FLOATING ACTION BUTTON */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <CreateIdeaDialog
-          trigger={
-            <button
-              className="w-11 h-11 bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg flex items-center justify-center shadow-md transition-colors focus:outline-none"
-              title="Capturar Nova Ideia"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          }
-        />
-      </div>
     </div>
   );
 }

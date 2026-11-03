@@ -83,7 +83,7 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2 font-heading text-foreground">
             <KeyRound className="w-5 h-5 text-primary" />
-            Recuperar_Acesso
+            Recuperar Acesso
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {step === 1

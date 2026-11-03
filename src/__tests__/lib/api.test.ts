@@ -69,6 +69,25 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
     expect(getCookie('creator_user_id')).toBeNull();
   });
 
+  // BF-11: 401 em rotas de equipe limpa cookies e invalida sessão
+  it('BF-11: apiRequest com 401 em rotas de equipe limpa cookies e dispara redirecionamento', async () => {
+    setCookie('creator_auth_token', 'expired-team-token', 86400);
+    setCookie('creator_user_id', '1', 86400);
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: 'Token expirado' }),
+    });
+
+    await expect(apiRequest('GET', '/api/v1/teams/1/board')).rejects.toThrow(
+      'Sessão expirada. Redirecionando...'
+    );
+
+    expect(getCookie('creator_auth_token')).toBeNull();
+    expect(getCookie('creator_user_id')).toBeNull();
+  });
+
   // IT-13.1 (FE-28): Resposta 403 Forbidden não deve deslogar o usuário nem limpar cookies
   it('IT-13.1: apiRequest com resposta 403 Forbidden não limpa cookies e lança erro de acesso negado', async () => {
     setCookie('creator_auth_token', 'valid-reviewer-token', 86400);

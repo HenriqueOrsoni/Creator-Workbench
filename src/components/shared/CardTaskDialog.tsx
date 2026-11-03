@@ -20,7 +20,9 @@ interface CardTaskDialogProps {
 }
 
 export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps) {
-  const { createTask, toggleTask, deleteTask, board } = useAppStore();
+  const { createTask, toggleTask, deleteTask, board, activeTeam } = useAppStore();
+  const isReviewer = activeTeam?.role === "REVIEWER";
+  const canEditTasks = !isReviewer;
   const [newTitle, setNewTitle] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
@@ -96,8 +98,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               >
                 <button
                   type="button"
-                  onClick={() => toggleTask(currentCard.id, task.id)}
-                  className="flex items-center gap-2.5 flex-1 text-left"
+                  onClick={canEditTasks ? () => toggleTask(currentCard.id, task.id) : undefined}
+                  className={`flex items-center gap-2.5 flex-1 text-left ${canEditTasks ? "cursor-pointer" : "cursor-default"}`}
                 >
                   {task.completed ? (
                     <CheckSquare className="w-4 h-4 text-primary shrink-0" />
@@ -114,36 +116,40 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     {task.title}
                   </span>
                 </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteTask(currentCard.id, task.id)}
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive rounded-md transition-all"
-                  title="Excluir tarefa"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                {canEditTasks && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteTask(currentCard.id, task.id)}
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive rounded-md transition-all"
+                    title="Excluir tarefa"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
             ))
           )}
         </div>
 
-        {/* Form Adicionar Tarefa */}
-        <form onSubmit={handleAddTask} className="flex gap-2 pt-3 border-t border-border">
-          <Input
-            placeholder="Ex: Gravar áudio da intro, cortar silêncios..."
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            className="h-10 rounded-lg text-xs flex-1 border-border bg-background"
-          />
-          <Button
-            type="submit"
-            disabled={loading || !newTitle.trim()}
-            className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 gap-1 px-4 h-10 shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Adicionar
-          </Button>
-        </form>
+        {/* Form Adicionar Tarefa (BF-07: desabilitado para Revisor) */}
+        {canEditTasks && (
+          <form onSubmit={handleAddTask} className="flex gap-2 pt-3 border-t border-border">
+            <Input
+              placeholder="Ex: Gravar áudio da intro, cortar silêncios..."
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="h-10 rounded-lg text-xs flex-1 border-border bg-background"
+            />
+            <Button
+              type="submit"
+              disabled={loading || !newTitle.trim()}
+              className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 gap-1 px-4 h-10 shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Adicionar
+            </Button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

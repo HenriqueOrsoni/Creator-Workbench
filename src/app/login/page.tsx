@@ -119,7 +119,7 @@ export default function LoginPage() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">
-                  Credencial de Operador
+                  E-mail
                 </label>
                 <input 
                   type="email" 
@@ -136,14 +136,14 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-foreground">
-                    Código de Acesso
+                    Senha
                   </label>
                   <button 
                     type="button" 
                     onClick={() => setOpenRecovery(true)} 
                     className="text-xs text-primary font-medium hover:underline transition-colors"
                   >
-                    Recuperar?
+                    Recuperar senha?
                   </button>
                 </div>
                 <input 
@@ -176,7 +176,7 @@ export default function LoginPage() {
 
             <div className="pt-5 mt-6 border-t border-border text-center">
               <p className="text-xs text-muted-foreground">
-                Não possui credencial?{" "}
+                Não possui uma conta?{" "}
                 <a href="/registrar" className="text-primary font-semibold hover:underline">
                   Solicitar Cadastro
                 </a>

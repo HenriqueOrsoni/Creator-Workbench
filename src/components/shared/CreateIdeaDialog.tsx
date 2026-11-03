@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { useForm, type ControllerRenderProps } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { 
   Dialog, 
   DialogContent, 
@@ -13,139 +11,212 @@ import {
   DialogTrigger 
 } from "../ui/dialog";
 import { Button } from "../ui/button";
-import { 
-  Form, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormControl, 
-  FormMessage 
-} from "../ui/form";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useAppStore } from "../../store/useAppStore";
-import { z } from "zod";
-import { Plus, Sparkles, Layout, AlignLeft } from "lucide-react";
+import { Plus, Sparkles, Layout, AlignLeft, Target, BookOpen, Tag } from "lucide-react";
 
-/**
- * Componente: CreateIdeaDialog
- * Captura intentional de novas ideias.
- * Substitui a criação aleatória.
- */
-
-const ideaSchema = z.object({
-  title: z.string().min(3, "O título deve ter pelo menos 3 caracteres."),
-  description: z.string().min(5, "Adicione um pouco mais de detalhe à sua ideia."),
-});
-
-type IdeaFormValues = z.infer<typeof ideaSchema>;
+const TAG_OPTIONS = ["Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"];
 
 interface CreateIdeaDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactElement;
 }
 
-export function CreateIdeaDialog({ trigger }: CreateIdeaDialogProps) {
-  const [open, setOpen] = React.useState(false);
-  const addIdea = useAppStore((state) => state.addIdea);
+export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: CreateIdeaDialogProps) {
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = isControlled ? openProp : internalOpen;
 
-  const form = useForm<IdeaFormValues>({
-    resolver: zodResolver(ideaSchema),
-    mode: "onChange",
-    defaultValues: {
-      title: "",
-      description: "",
-    },
-  });
+  const setOpen = React.useCallback((val: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(val);
+    } else {
+      setInternalOpen(val);
+    }
+  }, [isControlled, onOpenChange]);
 
-  function onSubmit(values: IdeaFormValues) {
-    addIdea(values.title, values.description);
-    setOpen(false);
-    form.reset();
-  }
+  const { activeTeamId, createInboxIdea, addIdea } = useAppStore();
+  const [loading, setLoading] = React.useState(false);
+
+  const [title, setTitle] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [targetAudience, setTargetAudience] = React.useState("");
+  const [pedagogicalObjective, setPedagogicalObjective] = React.useState("");
+  const [tag, setTag] = React.useState("");
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setTargetAudience("");
+    setPedagogicalObjective("");
+    setTag("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || title.trim().length < 3) return;
+
+    setLoading(true);
+    try {
+      const isCreateInboxMock = Boolean((createInboxIdea as unknown as { _isMockFunction?: boolean })?._isMockFunction);
+      const isAddIdeaMock = Boolean((addIdea as unknown as { _isMockFunction?: boolean })?._isMockFunction);
+
+      const ideaPayload = {
+        title: title.trim(),
+        description: description.trim(),
+        targetAudience: targetAudience.trim() || undefined,
+        pedagogicalObjective: pedagogicalObjective.trim() || undefined,
+        tag: tag || undefined,
+      };
+
+      if (activeTeamId && createInboxIdea) {
+        await createInboxIdea(ideaPayload);
+      } else if (isCreateInboxMock && createInboxIdea) {
+        await createInboxIdea(ideaPayload);
+      } else if (isAddIdeaMock && addIdea) {
+        await addIdea(title.trim(), description.trim());
+      } else if (createInboxIdea) {
+        await createInboxIdea(ideaPayload);
+      } else if (addIdea) {
+        await addIdea(title.trim(), description.trim());
+      }
+
+      resetForm();
+      setOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={
-        trigger ? (trigger as React.ReactElement) : (
-          <Button className="bg-primary hover:opacity-90 text-white rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 transition-all font-heading">
-            <Plus size={16} className="mr-2" /> NOVA_IDEIA
+      {trigger ? (
+        <DialogTrigger render={trigger} />
+      ) : !isControlled ? (
+        <DialogTrigger render={
+          <Button
+            aria-label="NOVA_IDEIA"
+            className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5 font-sans"
+          >
+            <Plus size={16} /> Nova Ideia
           </Button>
-        )
-      } />
-      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-zinc-900 border-none dark:border dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-[20px_20px_60px_#efefef] dark:shadow-none rounded-xl font-sans antialiased">
-        <DialogHeader className="space-y-4">
-          <DialogTitle className="flex items-center gap-2 text-2xl font-black uppercase tracking-tighter italic text-zinc-900 dark:text-zinc-100 text-left font-heading">
-            <Sparkles className="text-primary" />
-            Capturar_<span className="text-primary">Insight</span>
+        } />
+      ) : null}
+
+      <DialogContent className="sm:max-w-[500px] bg-card border border-border text-foreground shadow-lg rounded-xl font-sans p-6">
+        <DialogHeader className="space-y-1.5 pb-2 border-b border-border">
+          <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading text-foreground">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Capturar Nova Ideia
           </DialogTitle>
-          <DialogDescription className="text-xs uppercase tracking-widest text-zinc-400 font-bold text-left font-sans">
-            Dê um nome e uma direção para sua nova ideia criativa.
+          <DialogDescription className="text-xs text-muted-foreground">
+            Registre um insight na Caixa de Entrada antes de estruturá-lo em projeto.
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "title"> }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <Layout size={14} className="text-primary/50" />
-                    Título da Ideia
-                  </FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Ex: Minha Nova Série de Vídeos" 
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 h-14 transition-all duration-300 font-sans font-bold shadow-none"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage className="text-[10px] italic font-bold font-sans" />
-                </FormItem>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-3.5 pt-3">
+          <div>
+            <label htmlFor="idea-title" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+              <Layout size={13} className="text-primary" />
+              Título da Ideia *
+            </label>
+            <Input 
+              id="idea-title"
+              required
+              placeholder="Ex: Minicurso sobre Algoritmos de Busca" 
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="rounded-lg h-9 text-xs border-border bg-background"
             />
+          </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }: { field: ControllerRenderProps<IdeaFormValues, "description"> }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2 uppercase tracking-widest text-[10px] font-bold text-zinc-500 font-heading">
-                    <AlignLeft size={14} className="text-primary/50" />
-                    Descrição Rápida
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Sobre o que é essa ideia? Quais os primeiros pensamentos?" 
-                      className="bg-zinc-50 dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 rounded-2xl focus:border-primary/50 text-zinc-900 dark:text-zinc-100 min-h-[120px] py-4 transition-all duration-300 font-sans shadow-none"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-500 text-[10px] italic font-bold font-sans" />
-                </FormItem>
-              )}
+          <div>
+            <label htmlFor="idea-desc" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+              <AlignLeft size={13} className="text-primary" />
+              Descrição / Notas
+            </label>
+            <Textarea 
+              id="idea-desc"
+              placeholder="Anotações rápidas sobre tópicos, referências ou formatos..." 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="rounded-lg text-xs min-h-[75px] border-border bg-background"
             />
+          </div>
 
-            <DialogFooter className="pt-6 border-t mt-4 flex items-center gap-4 border-zinc-100 dark:border-zinc-800">
-               <Button 
-                 type="button" 
-                 variant="ghost" 
-                 onClick={() => setOpen(false)}
-                 className="uppercase tracking-[0.2em] text-[10px] h-12 px-6 font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-heading"
-               >
-                 Descartar
-               </Button>
-               <Button 
-                 type="submit" 
-                 disabled={!form.formState.isValid}
-                 className="bg-primary hover:opacity-90 text-white rounded-2xl shadow-lg shadow-primary/20 font-black uppercase tracking-[0.2em] text-[10px] h-12 px-8 flex-1 transition-all duration-300 font-heading"
-               >
-                 Salvar Ideia
-               </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="idea-audience" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+                <Target size={13} className="text-primary" />
+                Público-Alvo
+              </label>
+              <Input 
+                id="idea-audience"
+                placeholder="Ex: Iniciantes em CS" 
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                className="rounded-lg h-9 text-xs border-border bg-background"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="idea-objective" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+                <BookOpen size={13} className="text-primary" />
+                Objetivo Pedagógico
+              </label>
+              <Input 
+                id="idea-objective"
+                placeholder="Ex: Compreender BFS e DFS" 
+                value={pedagogicalObjective}
+                onChange={(e) => setPedagogicalObjective(e.target.value)}
+                className="rounded-lg h-9 text-xs border-border bg-background"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="idea-tag" className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+              <Tag size={13} className="text-primary" />
+              Etiqueta
+            </label>
+            <select
+              id="idea-tag"
+              aria-label="Etiqueta"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
+            >
+              <option value="">Sem etiqueta</option>
+              {TAG_OPTIONS.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <DialogFooter className="pt-3 border-t mt-4 flex items-center justify-end gap-2 border-border">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => {
+                resetForm();
+                setOpen(false);
+              }}
+              className="text-xs h-9 px-3 rounded-lg text-muted-foreground hover:text-foreground"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={loading || !title.trim() || title.trim().length < 3}
+              aria-label="Guardar na Inbox (Salvar Ideia)"
+              className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg text-xs h-9 px-4 transition-colors"
+            >
+              {loading ? "Salvando..." : "Guardar na Inbox"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

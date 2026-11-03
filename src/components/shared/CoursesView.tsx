@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GraduationCap, Plus, Trash2, Video, FileText, HelpCircle, ChevronRight, BookOpen, Layers, Link2, Download, Send } from "lucide-react";
+import { GraduationCap, Plus, Trash2, Video, FileText, HelpCircle, ChevronRight, BookOpen, Layers, Link2, Download, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -26,12 +26,18 @@ export function CoursesView() {
     fetchCourses,
     fetchCourseDetails,
     createCourse,
+    updateCourse,
     deleteCourse,
     createCourseModule,
+    updateCourseModule,
     deleteCourseModule,
     createCourseLesson,
+    updateCourseLesson,
     deleteCourseLesson,
+    activeTeam,
   } = useAppStore();
+  const isReviewer = activeTeam?.role === "REVIEWER";
+  const canEditCourses = !isReviewer;
 
   const [openCreateCourse, setOpenCreateCourse] = React.useState(false);
   const [courseTitle, setCourseTitle] = React.useState("");
@@ -45,6 +51,16 @@ export function CoursesView() {
   const [lessonTitle, setLessonTitle] = React.useState("");
   const [lessonType, setLessonType] = React.useState<"VIDEO" | "TEXT" | "QUIZ">("VIDEO");
   const [linkedProjectId, setLinkedProjectId] = React.useState<string>("");
+
+  // Estados para Edição (FE-55)
+  const [editingCourse, setEditingCourse] = React.useState<{ id: string; title: string; description: string } | null>(null);
+  const [editingModule, setEditingModule] = React.useState<{ id: string; title: string } | null>(null);
+  const [editingLesson, setEditingLesson] = React.useState<{ moduleId: string; lessonId: string; title: string; type: "VIDEO" | "TEXT" | "QUIZ"; projectId?: string } | null>(null);
+
+  // Estados para Confirmação de Exclusão (BF-15)
+  const [courseToDelete, setCourseToDelete] = React.useState<{ id: string; title: string } | null>(null);
+  const [moduleToDelete, setModuleToDelete] = React.useState<{ moduleId: string; title: string } | null>(null);
+  const [lessonToDelete, setLessonToDelete] = React.useState<{ moduleId: string; lessonId: string; title: string } | null>(null);
 
   const [loading, setLoading] = React.useState(false);
 
@@ -74,6 +90,16 @@ export function CoursesView() {
     }
   };
 
+  const handleEditCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse || !editingCourse.title.trim()) return;
+
+    setLoading(true);
+    await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
+    setLoading(false);
+    setEditingCourse(null);
+  };
+
   const handleCreateModule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeCourse || !moduleTitle.trim()) return;
@@ -83,6 +109,16 @@ export function CoursesView() {
     setLoading(false);
     setModuleTitle("");
     setOpenCreateModule(false);
+  };
+
+  const handleEditModule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCourse || !editingModule || !editingModule.title.trim()) return;
+
+    setLoading(true);
+    await updateCourseModule(activeCourse.id, editingModule.id, editingModule.title.trim());
+    setLoading(false);
+    setEditingModule(null);
   };
 
   const handleCreateLesson = async (e: React.FormEvent) => {
@@ -101,6 +137,38 @@ export function CoursesView() {
     setLessonTitle("");
     setLinkedProjectId("");
     setOpenCreateLesson(false);
+  };
+
+  const handleEditLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCourse || !editingLesson || !editingLesson.title.trim()) return;
+
+    setLoading(true);
+    await updateCourseLesson(activeCourse.id, editingLesson.moduleId, editingLesson.lessonId, {
+      title: editingLesson.title.trim(),
+      type: editingLesson.type,
+      projectId: editingLesson.projectId ? Number(editingLesson.projectId) : undefined,
+    });
+    setLoading(false);
+    setEditingLesson(null);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+    await deleteCourse(courseToDelete.id);
+    setCourseToDelete(null);
+  };
+
+  const confirmDeleteModule = async () => {
+    if (!activeCourse || !moduleToDelete) return;
+    await deleteCourseModule(activeCourse.id, moduleToDelete.moduleId);
+    setModuleToDelete(null);
+  };
+
+  const confirmDeleteLesson = async () => {
+    if (!activeCourse || !lessonToDelete) return;
+    await deleteCourseLesson(activeCourse.id, lessonToDelete.moduleId, lessonToDelete.lessonId);
+    setLessonToDelete(null);
   };
 
   const handleExportCourseStructure = () => {
@@ -139,20 +207,6 @@ export function CoursesView() {
     toast.success("Estrutura do curso exportada em JSON!");
   };
 
-  const handlePublishCourse = () => {
-    if (!activeCourse) return;
-    if (activeCourse.modules.length === 0) {
-      toast.error("Não é possível publicar: o curso precisa ter pelo menos um módulo.");
-      return;
-    }
-    const emptyModule = activeCourse.modules.find(m => m.lessons.length === 0);
-    if (emptyModule) {
-      toast.error(`Não é possível publicar: o módulo "${emptyModule.title}" está vazio.`);
-      return;
-    }
-    toast.success(`Curso "${activeCourse.title}" validado e publicado com sucesso!`);
-  };
-
   const getLessonIcon = (type: string) => {
     switch (type) {
       case "TEXT":
@@ -180,12 +234,14 @@ export function CoursesView() {
           </p>
         </div>
 
-        <Button
-          onClick={() => setOpenCreateCourse(true)}
-          className="rounded-lg px-5 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs tracking-wide gap-2 shadow-xs"
-        >
-          <Plus className="w-4 h-4" /> Criar Novo Curso
-        </Button>
+        {canEditCourses && (
+          <Button
+            onClick={() => setOpenCreateCourse(true)}
+            className="rounded-lg px-5 h-10 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-xs tracking-wide gap-2 shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Criar Novo Curso
+          </Button>
+        )}
       </div>
 
       {/* Grid de Seleção de Curso */}
@@ -246,11 +302,29 @@ export function CoursesView() {
                       Curso Ativo
                     </Badge>
                   </div>
-                  <h3 className="text-xl font-bold text-foreground font-heading">
-                    {activeCourse.title}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-foreground font-heading">
+                      {activeCourse.title}
+                    </h3>
+                    {canEditCourses && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingCourse({
+                          id: activeCourse.id,
+                          title: activeCourse.title,
+                          description: activeCourse.description || ""
+                        })}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                        title="Editar curso"
+                        aria-label="Editar curso"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
                   {activeCourse.description && (
-                    <p className="text-xs text-zinc-500 mt-1 max-w-xl leading-relaxed">
+                    <p className="text-xs text-muted-foreground mt-1 max-w-xl leading-relaxed">
                       {activeCourse.description}
                     </p>
                   )}
@@ -265,29 +339,25 @@ export function CoursesView() {
                   >
                     <Download className="w-3.5 h-3.5" /> Exportar JSON
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handlePublishCourse}
-                    className="rounded-lg h-9 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
-                    title="Validar e publicar curso (FE-22)"
-                  >
-                    <Send className="w-3.5 h-3.5" /> Publicar Curso
-                  </Button>
-                  <Button
-                    onClick={() => setOpenCreateModule(true)}
-                    className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Adicionar Módulo
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteCourse(activeCourse.id)}
-                    className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
-                    title="Excluir curso"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {canEditCourses && (
+                    <>
+                      <Button
+                        onClick={() => setOpenCreateModule(true)}
+                        className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Adicionar Módulo
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCourseToDelete({ id: activeCourse.id, title: activeCourse.title })}
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
+                        title="Excluir curso"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -312,30 +382,44 @@ export function CoursesView() {
                           <span className="text-[10px] text-muted-foreground font-medium">
                             ({module.lessons.length} {module.lessons.length === 1 ? "aula" : "aulas"})
                           </span>
+                          {canEditCourses && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingModule({ id: module.id, title: module.title })}
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
+                              title="Renomear módulo"
+                              aria-label={`Renomear módulo ${module.title}`}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedModuleId(module.id);
-                              setOpenCreateLesson(true);
-                            }}
-                            className="h-7 rounded-md text-[10px] font-semibold uppercase tracking-wider gap-1 border-border"
-                          >
-                            <Plus className="w-3 h-3" /> Nova Aula
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteCourseModule(activeCourse.id, module.id)}
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
-                            title="Excluir módulo"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
+                        {canEditCourses && (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedModuleId(module.id);
+                                setOpenCreateLesson(true);
+                              }}
+                              className="h-7 rounded-md text-[10px] font-semibold uppercase tracking-wider gap-1 border-border"
+                            >
+                              <Plus className="w-3 h-3" /> Nova Aula
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setModuleToDelete({ moduleId: module.id, title: module.title })}
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
+                              title="Excluir módulo"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Aulas do Módulo */}
@@ -366,15 +450,39 @@ export function CoursesView() {
                                     )}
                                   </div>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteCourseLesson(activeCourse.id, module.id, lesson.id)}
-                                  className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-md shrink-0"
-                                  title="Excluir aula"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
+                                {canEditCourses && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => setEditingLesson({
+                                        moduleId: module.id,
+                                        lessonId: lesson.id,
+                                        title: lesson.title,
+                                        type: lesson.type,
+                                        projectId: lesson.projectId
+                                      })}
+                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
+                                      title="Editar aula"
+                                      aria-label={`Editar aula ${lesson.title}`}
+                                    >
+                                      <Pencil className="w-2.5 h-2.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => setLessonToDelete({
+                                        moduleId: module.id,
+                                        lessonId: lesson.id,
+                                        title: lesson.title
+                                      })}
+                                      className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-md"
+                                      title="Excluir aula"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })
@@ -417,16 +525,17 @@ export function CoursesView() {
                   className="rounded-lg h-10 text-sm border-border"
                 />
               </div>
+
               <div>
-                <label htmlFor="course-description-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Descrição
+                <label htmlFor="course-desc-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Descrição do Curso
                 </label>
                 <Textarea
-                  id="course-description-input"
-                  placeholder="Resumo pedagógico do curso..."
+                  id="course-desc-input"
+                  placeholder="Objetivos pedagógicos, pré-requisitos e resumo geral..."
                   value={courseDescription}
                   onChange={(e) => setCourseDescription(e.target.value)}
-                  className="rounded-lg text-xs min-h-[80px] border-border"
+                  className="rounded-lg text-sm min-h-[90px] border-border"
                 />
               </div>
             </div>
@@ -438,9 +547,66 @@ export function CoursesView() {
               <Button
                 type="submit"
                 disabled={loading || !courseTitle.trim()}
-                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90"
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
               >
                 {loading ? "Criando..." : "Salvar Curso"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Editar Curso (FE-55) */}
+      <Dialog open={Boolean(editingCourse)} onOpenChange={(open) => !open && setEditingCourse(null)}>
+        <DialogContent className="sm:max-w-[440px] rounded-xl p-6 bg-card border-border shadow-lg">
+          <form onSubmit={handleEditCourse}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
+                <Pencil className="w-5 h-5 text-primary" />
+                Editar Curso
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Atualize o título e a descrição deste curso.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-5">
+              <div>
+                <label htmlFor="edit-course-title" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Título do Curso *
+                </label>
+                <Input
+                  id="edit-course-title"
+                  required
+                  value={editingCourse?.title || ""}
+                  onChange={(e) => setEditingCourse(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  className="rounded-lg h-10 text-sm border-border"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-course-desc" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Descrição do Curso
+                </label>
+                <Textarea
+                  id="edit-course-desc"
+                  value={editingCourse?.description || ""}
+                  onChange={(e) => setEditingCourse(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="rounded-lg text-sm min-h-[90px] border-border"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setEditingCourse(null)} className="rounded-lg text-xs font-semibold">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || !editingCourse?.title.trim()}
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+              >
+                {loading ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </DialogFooter>
           </form>
@@ -454,25 +620,27 @@ export function CoursesView() {
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
                 <BookOpen className="w-5 h-5 text-primary" />
-                Adicionar Módulo
+                Adicionar Novo Módulo
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Curso: {activeCourse?.title}
+                Agrupe aulas afins em uma unidade temática de aprendizado.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="my-5">
-              <label htmlFor="module-title-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Nome do Módulo *
-              </label>
-              <Input
-                id="module-title-input"
-                required
-                placeholder="Ex: Módulo 1: Fundamentos da Linguagem"
-                value={moduleTitle}
-                onChange={(e) => setModuleTitle(e.target.value)}
-                className="rounded-lg h-10 text-sm border-border"
-              />
+            <div className="space-y-4 my-5">
+              <div>
+                <label htmlFor="module-title-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Nome do Módulo *
+                </label>
+                <Input
+                  id="module-title-input"
+                  required
+                  placeholder="Ex: Módulo 1: Fundamentos da Criação"
+                  value={moduleTitle}
+                  onChange={(e) => setModuleTitle(e.target.value)}
+                  className="rounded-lg h-10 text-sm border-border"
+                />
+              </div>
             </div>
 
             <DialogFooter className="flex gap-2">
@@ -482,9 +650,54 @@ export function CoursesView() {
               <Button
                 type="submit"
                 disabled={loading || !moduleTitle.trim()}
-                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90"
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
               >
-                {loading ? "Salvando..." : "Adicionar Módulo"}
+                {loading ? "Criando..." : "Salvar Módulo"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Renomear Módulo (FE-55) */}
+      <Dialog open={Boolean(editingModule)} onOpenChange={(open) => !open && setEditingModule(null)}>
+        <DialogContent className="sm:max-w-[400px] rounded-xl p-6 bg-card border-border shadow-lg">
+          <form onSubmit={handleEditModule}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
+                <Pencil className="w-5 h-5 text-primary" />
+                Renomear Módulo
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Altere o nome deste módulo temático.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-5">
+              <div>
+                <label htmlFor="edit-module-title" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Nome do Módulo *
+                </label>
+                <Input
+                  id="edit-module-title"
+                  required
+                  value={editingModule?.title || ""}
+                  onChange={(e) => setEditingModule(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  className="rounded-lg h-10 text-sm border-border"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setEditingModule(null)} className="rounded-lg text-xs font-semibold">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || !editingModule?.title.trim()}
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+              >
+                {loading ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </DialogFooter>
           </form>
@@ -583,12 +796,211 @@ export function CoursesView() {
               <Button
                 type="submit"
                 disabled={loading || !lessonTitle.trim()}
-                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90"
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
               >
                 {loading ? "Salvando..." : "Salvar Aula"}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Editar Aula (FE-55) */}
+      <Dialog open={Boolean(editingLesson)} onOpenChange={(open) => !open && setEditingLesson(null)}>
+        <DialogContent className="sm:max-w-[440px] rounded-xl p-6 bg-card border-border shadow-lg">
+          <form onSubmit={handleEditLesson}>
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
+                <Pencil className="w-5 h-5 text-primary" />
+                Editar Aula
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Altere o título, o formato ou vincule a outro projeto.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-5">
+              <div>
+                <label htmlFor="edit-lesson-title" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Título da Aula *
+                </label>
+                <Input
+                  id="edit-lesson-title"
+                  required
+                  value={editingLesson?.title || ""}
+                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  className="rounded-lg h-10 text-sm border-border"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Formato da Aula
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLesson(prev => prev ? { ...prev, type: "VIDEO" } : null)}
+                    className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                      editingLesson?.type === "VIDEO" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" /> Vídeo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingLesson(prev => prev ? { ...prev, type: "TEXT" } : null)}
+                    className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                      editingLesson?.type === "TEXT" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Texto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingLesson(prev => prev ? { ...prev, type: "QUIZ" } : null)}
+                    className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                      editingLesson?.type === "QUIZ" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/40"
+                    }`}
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" /> Quiz
+                  </button>
+                </div>
+              </div>
+
+              {allProjects.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    Vincular a Projeto do Quadro
+                  </label>
+                  <select
+                    value={editingLesson?.projectId || ""}
+                    onChange={(e) => setEditingLesson(prev => prev ? { ...prev, projectId: e.target.value } : null)}
+                    className="w-full h-10 rounded-lg px-3 text-xs bg-muted/40 border border-border text-foreground font-medium"
+                  >
+                    <option value="">Nenhum projeto vinculado</option>
+                    {allProjects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} ({p.columnName || "Projeto"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setEditingLesson(null)} className="rounded-lg text-xs font-semibold">
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || !editingLesson?.title.trim()}
+                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+              >
+                {loading ? "Salvando..." : "Salvar Alterações"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de Exclusão de Curso (BF-15) */}
+      <Dialog open={Boolean(courseToDelete)} onOpenChange={(o) => !o && setCourseToDelete(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir Curso
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Tem certeza que deseja excluir o curso <strong className="text-foreground font-semibold">&ldquo;{courseToDelete?.title}&rdquo;</strong> e todos os seus módulos e aulas? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCourseToDelete(null)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteCourse}
+              className="rounded-lg text-xs font-semibold"
+            >
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de Exclusão de Módulo (BF-15) */}
+      <Dialog open={Boolean(moduleToDelete)} onOpenChange={(o) => !o && setModuleToDelete(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir Módulo
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Tem certeza que deseja excluir o módulo <strong className="text-foreground font-semibold">&ldquo;{moduleToDelete?.title}&rdquo;</strong> e todas as suas aulas? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setModuleToDelete(null)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteModule}
+              className="rounded-lg text-xs font-semibold"
+            >
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de Exclusão de Aula (BF-15) */}
+      <Dialog open={Boolean(lessonToDelete)} onOpenChange={(o) => !o && setLessonToDelete(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir Aula
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Tem certeza que deseja excluir a aula <strong className="text-foreground font-semibold">&ldquo;{lessonToDelete?.title}&rdquo;</strong>? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setLessonToDelete(null)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDeleteLesson}
+              className="rounded-lg text-xs font-semibold"
+            >
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

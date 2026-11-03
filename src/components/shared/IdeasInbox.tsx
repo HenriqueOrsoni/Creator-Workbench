@@ -14,20 +14,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useAppStore, ProjectCard } from "@/store/useAppStore";
+import { CreateIdeaDialog } from "./CreateIdeaDialog";
 
 export function IdeasInbox() {
-  const { ideas, board, fetchIdeas, createInboxIdea, convertInboxIdea, deleteCard, voteIdea } = useAppStore();
+  const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam } = useAppStore();
+  const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
   const [openCreate, setOpenCreate] = React.useState(false);
+  const [ideaToDelete, setIdeaToDelete] = React.useState<ProjectCard | null>(null);
   const [convertingCard, setConvertingCard] = React.useState<ProjectCard | null>(null);
   const [selectedColumnId, setSelectedColumnId] = React.useState<string>("");
-
-  const [title, setTitle] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [targetAudience, setTargetAudience] = React.useState("");
-  const [pedagogicalObjective, setPedagogicalObjective] = React.useState("");
-  const [tag, setTag] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
@@ -35,28 +31,6 @@ export function IdeasInbox() {
   }, [fetchIdeas]);
 
   const columns = board?.columns || [];
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    setLoading(true);
-    await createInboxIdea({
-      title: title.trim(),
-      description: description.trim(),
-      targetAudience: targetAudience.trim() || undefined,
-      pedagogicalObjective: pedagogicalObjective.trim() || undefined,
-      tag: tag || undefined
-    });
-    setLoading(false);
-
-    setTitle("");
-    setDescription("");
-    setTargetAudience("");
-    setPedagogicalObjective("");
-    setTag("");
-    setOpenCreate(false);
-  };
 
   const [selectedTag, setSelectedTag] = React.useState<string>("TODOS");
   const [sortBy, setSortBy] = React.useState<"recent" | "votes">("recent");
@@ -123,12 +97,14 @@ export function IdeasInbox() {
           </p>
         </div>
 
-        <Button
-          onClick={() => setOpenCreate(true)}
-          className="rounded-lg px-3.5 h-9 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-xs tracking-wide gap-1.5 shadow-xs transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" /> Nova Ideia
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => setOpenCreate(true)}
+            className="rounded-lg px-3.5 h-9 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-xs tracking-wide gap-1.5 shadow-xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Nova Ideia
+          </Button>
+        )}
       </div>
 
       {/* Barra de Filtro de Etiquetas e Ordenação por Votos (FE-01, FE-02) */}
@@ -216,15 +192,17 @@ export function IdeasInbox() {
                       <ThumbsUp className={`w-3 h-3 ${idea.votedByMe ? "fill-primary-foreground" : ""}`} />
                       <span>{idea.votes || 0}</span>
                     </button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteCard(idea.id)}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
-                      title="Excluir ideia"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    {canCreate && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIdeaToDelete(idea)}
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
+                        title="Excluir ideia"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -255,115 +233,59 @@ export function IdeasInbox() {
                 )}
               </div>
 
-              <div className="pt-3 border-t border-border mt-1">
-                <Button
-                  onClick={() => openConvert(idea)}
-                  className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground gap-1.5 h-8.5 transition-colors"
-                >
-                  Converter em Projeto <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </div>
+              {canCreate && (
+                <div className="pt-3 border-t border-border mt-1">
+                  <Button
+                    onClick={() => openConvert(idea)}
+                    className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground gap-1.5 h-8.5 transition-colors"
+                  >
+                    Converter em Projeto <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
             </Card>
           ))}
         </div>
       )}
 
-      {/* Dialog Criar Nova Ideia */}
-      <Dialog open={openCreate} onOpenChange={setOpenCreate}>
-        <DialogContent className="sm:max-w-[480px] rounded-xl p-6 bg-card border-border shadow-lg">
-          <form onSubmit={handleCreate}>
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold tracking-tight flex items-center gap-2 font-heading">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Capturar Nova Ideia
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Registre um insight na Caixa de Entrada antes de estruturá-lo em projeto.
-              </DialogDescription>
-            </DialogHeader>
+      {/* Dialog Unificado de Criação de Ideia (BF-01 & BF-02) */}
+      <CreateIdeaDialog open={openCreate} onOpenChange={setOpenCreate} />
 
-            <div className="space-y-3.5 my-4">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Título da Ideia *
-                </label>
-                <Input
-                  required
-                  placeholder="Ex: Minicurso sobre Algoritmos de Busca"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="rounded-lg h-9 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Descrição / Notas
-                </label>
-                <Textarea
-                  placeholder="Anotações rápidas sobre tópicos, referências ou formatos..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="rounded-lg text-xs min-h-[80px]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Público-Alvo
-                  </label>
-                  <Input
-                    placeholder="Ex: Iniciantes em CS"
-                    value={targetAudience}
-                    onChange={(e) => setTargetAudience(e.target.value)}
-                    className="rounded-lg h-9 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Objetivo Pedagógico
-                  </label>
-                  <Input
-                    placeholder="Ex: Compreender BFS e DFS"
-                    value={pedagogicalObjective}
-                    onChange={(e) => setPedagogicalObjective(e.target.value)}
-                    className="rounded-lg h-9 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="idea-tag" className="block text-xs font-semibold text-foreground mb-1">
-                  Etiqueta
-                </label>
-                <select
-                  id="idea-tag"
-                  value={tag}
-                  onChange={(e) => setTag(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
-                >
-                  <option value="">Sem etiqueta</option>
-                  {TAGS.filter(t => t !== "TODOS").map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <DialogFooter className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setOpenCreate(false)} className="rounded-lg text-xs font-medium">
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !title.trim()}
-                className="rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground"
-              >
-                {loading ? "Salvando..." : "Guardar na Inbox"}
-              </Button>
-            </DialogFooter>
-          </form>
+      {/* Dialog de Confirmação de Exclusão de Ideia (BF-15) */}
+      <Dialog open={Boolean(ideaToDelete)} onOpenChange={(open) => !open && setIdeaToDelete(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir Ideia
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Tem certeza que deseja excluir a ideia <strong className="text-foreground font-semibold">&ldquo;{ideaToDelete?.title}&rdquo;</strong>? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIdeaToDelete(null)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (ideaToDelete) {
+                  deleteCard(ideaToDelete.id);
+                  setIdeaToDelete(null);
+                }
+              }}
+              className="rounded-lg text-xs font-semibold"
+            >
+              Confirmar Exclusão
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

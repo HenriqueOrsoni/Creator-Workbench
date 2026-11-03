@@ -174,4 +174,16 @@ describe('4.1 Store Zustand (FT-01 a FT-06)', () => {
     expect(useAppStore.getState().error).toBe('Network error 500');
     consoleSpy.mockRestore();
   });
+
+  // BF-10: fetchTeams com falha na API não cria equipe fantasma com ID 1
+  it('BF-10: fetchTeams com erro não cria equipe falsa e define estado de erro', async () => {
+    (apiModule.apiRequest as jest.Mock).mockRejectedValueOnce(new Error('Erro de conexão'));
+
+    await useAppStore.getState().fetchTeams();
+
+    expect(useAppStore.getState().teams).toEqual([]);
+    expect(useAppStore.getState().activeTeamId).toBeNull();
+    expect(useAppStore.getState().activeTeam).toBeNull();
+    expect(useAppStore.getState().error).toBe('Erro de conexão');
+  });
 });

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
+import { formatRole } from "@/lib/roles";
 
 import { TeamMembersDialog } from "./TeamMembersDialog";
 
@@ -68,7 +69,7 @@ export function TeamSwitcher() {
             <span className="max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
             {activeTeam && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
-                {activeTeam.role}
+                {formatRole(activeTeam.role)}
               </Badge>
             )}
           </Button>
@@ -108,7 +109,7 @@ export function TeamSwitcher() {
                       <div className="text-xs font-semibold">{t.name}</div>
                       <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                         {getRoleIcon(t.role)}
-                        <span>{t.role}</span>
+                        <span>{formatRole(t.role)}</span>
                         <span>•</span>
                         <span>{t.membersCount} {t.membersCount === 1 ? "membro" : "membros"}</span>
                       </div>
@@ -120,7 +121,8 @@ export function TeamSwitcher() {
             })}
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-border">
+          <DialogFooter className="pt-3 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
             <Button
               variant="outline"
               onClick={() => {
@@ -141,6 +143,7 @@ export function TeamSwitcher() {
             >
               <Plus className="w-3.5 h-3.5" /> Criar Equipe
             </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -204,6 +207,7 @@ export function TeamSwitcher() {
                 {loading ? "Criando..." : "Criar Equipe"}
               </Button>
             </DialogFooter>
+
           </form>
         </DialogContent>
       </Dialog>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Menu, Zap, Layout, Sparkles, Settings2, Trash2 } from "lucide-react";
+import { Menu, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ThemeColorPicker } from "./ThemeColorPicker";
@@ -13,11 +13,14 @@ import { useAppStore } from "@/store/useAppStore";
 import { deleteCookie } from "@/lib/api";
 
 interface NavbarProps {
+  activeTab?: string;
   onNavigate?: (tab: "kanban" | "inbox" | "courses" | "curriculum" | "editor") => void;
 }
 
-export function Navbar({ onNavigate }: NavbarProps = {}) {
+export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
+  const activeTeam = useAppStore((state) => state.activeTeam);
+  const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
 
   const handleLogout = () => {
     deleteCookie("creator_auth_token");
@@ -50,16 +53,29 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
               <Button 
                 variant="ghost" 
                 onClick={() => onNavigate?.("kanban")}
-                className="justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg"
+                className={`justify-start text-xs font-semibold tracking-wide h-10 rounded-lg ${
+                  activeTab === "kanban" ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
                 <Layout size={15} className="mr-3 text-primary" /> Dashboard Geral
               </Button>
               <Button 
                 variant="ghost" 
                 onClick={() => onNavigate?.("inbox")}
-                className="justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg"
+                className={`justify-start text-xs font-semibold tracking-wide h-10 rounded-lg ${
+                  activeTab === "inbox" ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
                 <Sparkles size={15} className="mr-3 text-primary" /> Ideação
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => onNavigate?.("courses")}
+                className={`justify-start text-xs font-semibold tracking-wide h-10 rounded-lg ${
+                  activeTab === "courses" ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <GraduationCap size={15} className="mr-3 text-primary" /> Cursos & Módulos
               </Button>
               <UserSettingsDialog
                 trigger={
@@ -105,25 +121,45 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
         <div className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
           <button 
             onClick={() => onNavigate?.("inbox")}
-            className="px-3 py-1.5 text-xs font-semibold rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-all"
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              activeTab === "inbox"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
           >
             Ideação
           </button>
           <button 
             onClick={() => onNavigate?.("kanban")}
-            className="px-3 py-1.5 text-xs font-semibold rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-all"
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              activeTab === "kanban"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
           >
             Produção
           </button>
+          <button 
+            onClick={() => onNavigate?.("courses")}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              activeTab === "courses"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+            }`}
+          >
+            Cursos
+          </button>
         </div>
 
-        <CreateIdeaDialog
-          trigger={
-            <Button className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5">
-              Capturar Ideia
-            </Button>
-          }
-        />
+        {canCreate && (
+          <CreateIdeaDialog
+            trigger={
+              <Button className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5">
+                Capturar Ideia
+              </Button>
+            }
+          />
+        )}
 
         <div className="hidden sm:flex items-center gap-1">
           <ThemeToggle />
@@ -139,6 +175,16 @@ export function Navbar({ onNavigate }: NavbarProps = {}) {
               </Button>
             }
           />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            aria-label="Encerrar Sessão"
+            title="Encerrar Sessão"
+            className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Hidden color picker for test compatibility */}

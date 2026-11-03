@@ -42,12 +42,22 @@ describe('TF-08 - Navbar Component Tests', () => {
 
     const ideacaoBtn = screen.getByRole('button', { name: /^ideação$/i });
     const producaoBtn = screen.getByRole('button', { name: /^produção$/i });
+    const cursosBtn = screen.getByRole('button', { name: /^cursos$/i });
 
     fireEvent.click(ideacaoBtn);
     expect(mockNavigate).toHaveBeenCalledWith('inbox');
 
     fireEvent.click(producaoBtn);
     expect(mockNavigate).toHaveBeenCalledWith('kanban');
+
+    fireEvent.click(cursosBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('courses');
+  });
+
+  it('destaca a aba ativa de acordo com a propriedade activeTab', () => {
+    render(<Navbar activeTab="inbox" />);
+    const ideacaoBtn = screen.getByRole('button', { name: /^ideação$/i });
+    expect(ideacaoBtn.className).toContain('text-foreground');
   });
 
   it('permite acionar o encerramento de sessão', () => {

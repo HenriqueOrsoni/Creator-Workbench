@@ -52,8 +52,30 @@ interface ScriptEditorProps {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
-  const { exportScript } = useAppStore();
+  const { exportScript, activeTeam, items, board, setSelectedProjectId } = useAppStore();
+  const isReviewer = activeTeam?.role === "REVIEWER";
+  const canEditScript = !isReviewer;
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
+
+  const projects = React.useMemo(() => {
+    if (board?.columns && board.columns.length > 0) {
+      const list: Array<{ id: string; title: string }> = [];
+      board.columns.forEach((col) => {
+        col.cards.forEach((card) => {
+          list.push({ id: card.id, title: card.title });
+        });
+      });
+      if (list.length > 0) return list;
+    }
+    return items.filter((i) => i.state !== "IDEATION").map((i) => ({ id: i.id, title: i.title }));
+  }, [board, items]);
+
+  const currentProject = projects.find((p) => p.id === kanbanItemId) || {
+    id: kanbanItemId,
+    title: "Projeto de Produção",
+  };
+
+
   const [versionToRestore, setVersionToRestore] = React.useState<string | null>(null);
 
   const editor = useEditor({
@@ -64,6 +86,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       }),
     ],
     immediatelyRender: false,
+    editable: canEditScript,
     content: "",
     editorProps: {
       attributes: {
@@ -71,6 +94,12 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       },
     },
   });
+
+  React.useEffect(() => {
+    if (editor && typeof editor.setEditable === "function") {
+      editor.setEditable(canEditScript);
+    }
+  }, [editor, canEditScript]);
 
   const text = editor && typeof editor.getText === "function"
     ? editor.getText()
@@ -136,7 +165,9 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
 
   const handleExportMarkdown = async () => {
     if (!kanbanItemId) return;
-    await handleSave();
+    if (canEditScript) {
+      await handleSave();
+    }
     const data = await exportScript(kanbanItemId);
     let markdown = data?.markdownFormatted;
     let cardTitle = data?.cardTitle;
@@ -211,8 +242,40 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
 
   return (
     <div className="flex flex-col bg-card shadow-xs rounded-xl overflow-hidden h-full border border-border">
+      {/* Header de Identificação do Projeto no Roteiro (BF-14) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 py-2.5 bg-muted/40 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <FileText className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Projeto:</span>
+          <span className="text-sm font-bold text-foreground font-heading truncate" title={currentProject.title}>
+            {currentProject.title}
+          </span>
+        </div>
+        {projects.length > 1 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="script-project-select" className="text-xs text-muted-foreground font-medium">
+              Trocar Projeto:
+            </label>
+            <select
+              id="script-project-select"
+              aria-label="Selecionar Projeto do Roteiro"
+              value={kanbanItemId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="bg-background border border-border rounded-lg px-2.5 py-1 text-xs font-medium text-foreground focus:border-primary outline-none"
+            >
+              {projects.map((proj) => (
+                <option key={proj.id} value={proj.id}>
+                  {proj.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border overflow-x-auto shrink-0">
+        {canEditScript ? (
         <div className="flex items-center gap-1 shrink-0">
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -247,6 +310,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             icon={<ListOrdered size={16} />}
           />
         </div>
+        ) : <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Modo Leitura (Revisor)</div>}
 
         <div className="flex items-center gap-2 shrink-0 ml-4">
           <Sheet>
@@ -271,7 +335,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       <div
                         key={s.id}
                         className="p-3.5 bg-muted/30 hover:bg-muted/60 rounded-lg transition-all group cursor-pointer text-left border border-border"
-                        onClick={() => setVersionToRestore(s.id)}
+                        onClick={canEditScript ? () => setVersionToRestore(s.id) : undefined}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[9px] uppercase tracking-wider px-2 py-0.5 font-semibold">
@@ -292,14 +356,16 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             </SheetContent>
           </Sheet>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={takeSnapshot}
-            className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg"
-          >
-            Snapshot
-          </Button>
+          {canEditScript && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={takeSnapshot}
+              className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg"
+            >
+              Snapshot
+            </Button>
+          )}
 
           <Button
             size="sm"
@@ -321,13 +387,15 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             <Printer size={13} /> Imprimir
           </Button>
 
-          <Button
-            size="sm"
-            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-4 rounded-lg shadow-xs transition-all active:scale-95"
-            onClick={handleSave}
-          >
-            Salvar
-          </Button>
+          {canEditScript && (
+            <Button
+              size="sm"
+              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-4 rounded-lg shadow-xs transition-all active:scale-95"
+              onClick={handleSave}
+            >
+              Salvar
+            </Button>
+          )}
         </div>
       </div>
 
