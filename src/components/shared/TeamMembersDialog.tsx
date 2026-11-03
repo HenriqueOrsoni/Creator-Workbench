@@ -177,7 +177,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                           </span>
                           <Badge
                             variant="outline"
-                            className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${getRoleBadgeVariant(member.role)}`}
+                            className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${getRoleBadgeVariant(member.role)}`}
                           >
                             {getRoleLabel(member.role)}
                           </Badge>

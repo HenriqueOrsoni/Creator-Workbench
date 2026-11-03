@@ -350,30 +350,30 @@ interface BoardCardItem extends KanbanItem {
 
                             {/* Card Description */}
                             {item.description && (
-                              <p className="text-xs text-zinc-400 dark:text-zinc-400 font-medium break-all line-clamp-2">
+                              <p className="text-xs text-muted-foreground font-medium break-all line-clamp-2">
                                 {item.description}
                               </p>
                             )}
 
                             {/* Detalhes de Projetos (State != IDEATION) */}
                             {item.state !== "IDEATION" && (
-                              <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-700/50">
+                              <div className="space-y-3 pt-2 border-t border-border">
                                 {item.targetAudience && (
-                                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                                    <Target size={12} className="text-primary/50 shrink-0" />
+                                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    <Target size={12} className="text-primary shrink-0" />
                                     <span className="truncate">{item.targetAudience}</span>
                                   </div>
                                 )}
                                 
                                 {item.pedagogicalObjective && (
-                                  <div className="flex items-start gap-2 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                                    <BookOpen size={12} className="text-primary/50 shrink-0 mt-0.5" />
+                                  <div className="flex items-start gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    <BookOpen size={12} className="text-primary shrink-0 mt-0.5" />
                                     <span className="line-clamp-1">{item.pedagogicalObjective}</span>
                                   </div>
                                 )}
 
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-zinc-400">
-                                  <Calendar size={11} className="text-zinc-400 shrink-0" />
+                                <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                                  <Calendar size={12} className="text-muted-foreground shrink-0" />
                                   <span>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</span>
                                 </div>
 
@@ -386,10 +386,10 @@ interface BoardCardItem extends KanbanItem {
                                   const overdue = due < today;
                                   return (
                                     <div
-                                      className={`flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider ${overdue ? "text-red-500" : "text-primary"}`}
+                                      className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${overdue ? "text-destructive" : "text-primary"}`}
                                       title={overdue ? "Prazo vencido" : "Prazo de entrega"}
                                     >
-                                      <Calendar size={11} className="shrink-0" />
+                                      <Calendar size={12} className="shrink-0" />
                                       <span>Prazo {due.toLocaleDateString("pt-BR")}{overdue ? " • vencido" : ""}</span>
                                     </div>
                                   );
@@ -397,7 +397,7 @@ interface BoardCardItem extends KanbanItem {
 
                                 {/* Barra de Progresso Real Calculada */}
                                 <div className="space-y-1">
-                                  <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -478,8 +478,9 @@ interface BoardCardItem extends KanbanItem {
                                       e.stopPropagation();
                                       openTaskChecklist(item);
                                     }}
-                                    className="h-7 w-7 text-zinc-400 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700"
+                                    className="h-7 w-7 text-muted-foreground hover:text-primary rounded-md border border-border"
                                     title="Tarefas do card"
+                                    aria-label="Tarefas do card"
                                   >
                                     <ListChecks size={12} />
                                   </Button>
@@ -489,8 +490,9 @@ interface BoardCardItem extends KanbanItem {
                                     onClick={() => {
                                       if (onSelectTab) onSelectTab("courses");
                                     }}
-                                    className="h-7 px-2 text-[9px] font-bold uppercase tracking-wider text-zinc-400 hover:text-primary rounded-md border border-zinc-100 dark:border-zinc-700 gap-1"
+                                    className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary rounded-md border border-border gap-1"
                                     title="Ver nos Cursos da Equipe"
+                                    aria-label="Ver nos Cursos da Equipe"
                                   >
                                     <BookOpenCheck size={11} />
                                   </Button>

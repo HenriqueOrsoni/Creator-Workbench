@@ -190,7 +190,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           .replace(/<em>(.*?)<\/em>/gi, "*$1*")
           .replace(/<li>(.*?)<\/li>/gi, "- $1\n")
           .replace(/<[^>]*>/g, "");
-      cardTitle = "roteiro";
+      cardTitle = currentProject.title || "roteiro";
     }
 
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
@@ -338,7 +338,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                         onClick={canEditScript ? () => setVersionToRestore(s.id) : undefined}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[9px] uppercase tracking-wider px-2 py-0.5 font-semibold">
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[10px] uppercase tracking-wider px-2 py-0.5 font-semibold">
                             SNAPSHOT
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-medium">

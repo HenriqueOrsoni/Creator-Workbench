@@ -120,4 +120,21 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
       'Dados inválidos ou incompletos.'
     );
   });
+
+  // BF-12: Mitigação de armazenamento de token em storage
+  it('BF-12: handleUnauthorized limpa cookies e qualquer token residual de storage', async () => {
+    setCookie('creator_auth_token', 'token-to-delete', 86400);
+    window.localStorage.setItem('creator_auth_token', 'legacy-token');
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ message: 'Unauthorized' }),
+    });
+
+    await expect(apiRequest('GET', '/api/v1/kanban')).rejects.toThrow();
+
+    expect(getCookie('creator_auth_token')).toBeNull();
+    expect(window.localStorage.getItem('creator_auth_token')).toBeNull();
+  });
 });

@@ -37,7 +37,7 @@ export default function RootLayout({
           <AuthGuard>
             {children}
           </AuthGuard>
-          <Toaster richColors position="top-right" closeButton />
+          <Toaster richColors position="top-right" closeButton style={{ zIndex: 99999 }} />
         </ThemeProvider>
       </body>
     </html>

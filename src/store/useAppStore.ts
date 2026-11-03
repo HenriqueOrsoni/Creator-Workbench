@@ -1240,8 +1240,7 @@ export const useAppStore = create<AppState>()(
           }
           return null;
         } catch (error) {
-          console.error("Erro ao exportar roteiro:", error);
-          toast.error("Erro ao exportar roteiro");
+          console.warn("Endpoint /script/export indisponível, permitindo fallback no cliente:", error);
           return null;
         }
       },

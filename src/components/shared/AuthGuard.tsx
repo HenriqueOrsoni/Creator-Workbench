@@ -32,15 +32,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [pathname, router, isPublicRoute, hasToken]);
 
   if (!isClient) {
-    return isPublicRoute ? <>{children}</> : <div className="min-h-screen bg-background text-zinc-400 flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Autenticando...</div>;
+    return isPublicRoute ? <>{children}</> : <div className="min-h-screen bg-background text-muted-foreground flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Autenticando...</div>;
   }
 
   if (!hasToken && !isPublicRoute) {
-    return <div className="min-h-screen bg-background text-zinc-400 flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Autenticando...</div>;
+    return <div className="min-h-screen bg-background text-muted-foreground flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Autenticando...</div>;
   }
 
   if (hasToken && isPublicRoute) {
-    return <div className="min-h-screen bg-background text-zinc-400 flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Carregando painel...</div>;
+    return <div className="min-h-screen bg-background text-muted-foreground flex items-center justify-center text-sm font-bold uppercase tracking-widest font-sans">Carregando painel...</div>;
   }
 
   return <>{children}</>;

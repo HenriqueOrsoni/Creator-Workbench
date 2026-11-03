@@ -260,7 +260,7 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
             <AlertCircle className="text-red-500 shrink-0" size={20} />
             <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">{globalError}</span>
           </div>
-          <button onClick={() => setGlobalError(null)} className="text-xs font-black uppercase text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+          <button onClick={() => setGlobalError(null)} className="text-xs font-black uppercase text-muted-foreground hover:text-zinc-600 dark:hover:text-zinc-200">
             [x]
           </button>
         </div>
@@ -342,7 +342,7 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
                       className="px-4 py-3 flex items-center justify-between rounded-lg hover:bg-muted/40 transition-colors group/lesson border border-transparent hover:border-border"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover/lesson:bg-primary-accent dark:group-hover/lesson:bg-primary-dark/30 group-hover/lesson:text-primary transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-muted-foreground group-hover/lesson:bg-primary-accent dark:group-hover/lesson:bg-primary-dark/30 group-hover/lesson:text-primary transition-colors">
                           {lesson.type === "video" ? (
                             <Video size={16} />
                           ) : lesson.type === "text" ? (
@@ -351,18 +351,18 @@ export function CurriculumBuilder({ kanbanItemId, courseTitle }: CurriculumBuild
                             <HelpCircle size={16} />
                           )}
                         </div>
-                        <span className="text-base font-bold text-zinc-600 dark:text-zinc-400 group-hover/lesson:text-zinc-900 dark:group-hover/lesson:text-zinc-100 transition-colors font-sans">
+                        <span className="text-base font-bold text-zinc-600 dark:text-muted-foreground group-hover/lesson:text-zinc-900 dark:group-hover/lesson:text-zinc-100 transition-colors font-sans">
                           {lesson.title}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-4">
                         {lesson.published ? (
-                          <Badge variant="outline" className="bg-primary-light border-primary-hover text-primary text-[9px] uppercase tracking-widest rounded-full h-6 px-3 font-bold font-sans">
+                          <Badge variant="outline" className="bg-primary-light border-primary-hover text-primary text-[10px] uppercase tracking-wider rounded-md h-6 px-2.5 font-bold font-sans">
                             <CheckCircle2 size={10} className="mr-1" /> PUBLICADA
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-400 text-[9px] uppercase tracking-widest rounded-full h-6 px-3 font-bold font-sans">
+                          <Badge variant="outline" className="bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-muted-foreground text-[10px] uppercase tracking-wider rounded-md h-6 px-2.5 font-bold font-sans">
                             <AlertCircle size={10} className="mr-1" /> RASCUNHO
                           </Badge>
                         )}

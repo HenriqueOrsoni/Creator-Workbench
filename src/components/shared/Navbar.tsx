@@ -32,7 +32,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">
+    <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-40 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">
       <div className="flex items-center gap-3">
         <Sheet>
           <SheetTrigger render={

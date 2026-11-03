@@ -443,7 +443,7 @@ export function CoursesView() {
                                       {lesson.title}
                                     </div>
                                     {linkedProject && (
-                                      <div className="text-[9px] text-primary flex items-center gap-1 font-semibold truncate mt-0.5">
+                                      <div className="text-[10px] text-primary flex items-center gap-1 font-semibold truncate mt-0.5">
                                         <Link2 className="w-2.5 h-2.5 shrink-0" />
                                         <span>Projeto: {linkedProject.title}</span>
                                       </div>

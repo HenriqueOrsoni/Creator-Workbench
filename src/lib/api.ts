@@ -17,7 +17,8 @@ export function setCookie(name: string, value: string, maxAgeSeconds: number = 8
 
 export function deleteCookie(name: string) {
   if (typeof document === "undefined") return;
-  document.cookie = `${name}=; path=/; max-age=0`;
+  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -25,6 +26,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8
 export function handleUnauthorized() {
   deleteCookie("creator_auth_token");
   deleteCookie("creator_user_id");
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage?.removeItem("creator_auth_token");
+      window.sessionStorage?.removeItem("creator_auth_token");
+    } catch {
+      // Ignora restrições de sandbox/ambiente
+    }
+  }
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
     if (window.location.pathname !== "/login") {
       window.location.href = "/login";

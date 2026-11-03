@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ScriptEditor } from '@/components/shared/ScriptEditor';
 import * as apiModule from '@/lib/api';
+import { useAppStore } from '@/store/useAppStore';
 
 const mockToggleBold = jest.fn().mockReturnThis();
 const mockToggleItalic = jest.fn().mockReturnThis();
@@ -42,6 +43,7 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
     jest.clearAllMocks();
     window.alert = jest.fn();
     window.confirm = jest.fn().mockReturnValue(true);
+    jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     (apiModule.apiRequest as jest.Mock).mockResolvedValue([]);
   });
 
@@ -124,6 +126,25 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
 
     await waitFor(() => {
       expect(apiModule.apiRequest).toHaveBeenCalled();
+    });
+  });
+
+  // BF-18: Exportação de roteiro realiza fallback no cliente quando o backend falha
+  it('BF-18: Realiza exportação via fallback cliente quando o backend falha', async () => {
+    const mockExportScript = jest.fn().mockResolvedValue(null);
+    useAppStore.setState({ exportScript: mockExportScript });
+
+    window.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+    window.URL.revokeObjectURL = jest.fn();
+
+    render(<ScriptEditor kanbanItemId="1" />);
+
+    const exportBtn = screen.getByRole('button', { name: /exportar \.md/i });
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(mockExportScript).toHaveBeenCalledWith('1');
+      expect(window.URL.createObjectURL).toHaveBeenCalled();
     });
   });
 });
