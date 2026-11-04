@@ -46,7 +46,7 @@ export default function UnifiedPage() {
     <div className="min-h-screen bg-background text-foreground font-sans antialiased relative transition-colors selection:bg-primary/20">
       <Navbar activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
 
-      <main className="pt-20 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto">
+      <main id="main-content" className="pt-20 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* HEADER & CONTROLS (BF-03) */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-border pb-6">

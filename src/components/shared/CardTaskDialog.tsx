@@ -362,6 +362,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
             {canEditTasks && (
               <form onSubmit={handleAddTask} className="flex gap-2 pt-2 border-t border-border">
                 <Input
+                  id="new-task-title"
+                  aria-label="Título da nova tarefa"
                   placeholder="Ex: Gravar áudio da intro, cortar silêncios..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
@@ -549,10 +551,12 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    <label htmlFor="review-comment" className="block text-xs font-semibold text-muted-foreground mb-1">
                       Comentários / Observações Pedagógicas {reviewDecision === "CHANGES_REQUESTED" && "*"}
                     </label>
                     <Input
+                      id="review-comment"
+                      aria-label="Comentários de revisão"
                       placeholder={reviewDecision === "CHANGES_REQUESTED" ? "Descreva o que precisa ser ajustado..." : "Observações opcionais"}
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}

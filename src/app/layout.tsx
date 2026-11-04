@@ -39,6 +39,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:p-2 bg-primary text-primary-foreground rounded-md text-xs font-semibold">
+          Pular para o conteúdo principal
+        </a>
         <ThemeProvider>
           <AuthGuard>
             {children}
