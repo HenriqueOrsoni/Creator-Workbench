@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Menu, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, GraduationCap } from "lucide-react";
+import { Menu, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, GraduationCap, Bell, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ThemeColorPicker } from "./ThemeColorPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
@@ -20,7 +21,19 @@ interface NavbarProps {
 export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
   const activeTeam = useAppStore((state) => state.activeTeam);
+  const activeTeamId = useAppStore((state) => state.activeTeamId);
+  const alerts = useAppStore((state) => state.alerts);
+  const fetchAlerts = useAppStore((state) => state.fetchAlerts);
   const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
+
+  React.useEffect(() => {
+    if (activeTeamId) {
+      fetchAlerts();
+    }
+  }, [activeTeamId, fetchAlerts]);
+
+  const overdueCount = alerts.filter(a => a.type === "CARD_OVERDUE" || a.type === "TASK_OVERDUE").length;
+  const totalAlerts = alerts.length;
 
   const handleLogout = () => {
     deleteCookie("creator_auth_token");
@@ -162,6 +175,79 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
         )}
 
         <div className="hidden sm:flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger render={
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Alertas de Prazos"
+                title="Alertas de Prazos"
+                className="relative h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <Bell className="w-4 h-4" />
+                {totalAlerts > 0 && (
+                  <span
+                    data-testid="alerts-badge"
+                    className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
+                      overdueCount > 0 ? "bg-destructive animate-pulse" : "bg-amber-500"
+                    }`}
+                  />
+                )}
+              </Button>
+            } />
+            <PopoverContent align="end" className="w-80 p-0 rounded-xl shadow-lg border border-border bg-card">
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5 font-heading">
+                  <Bell className="w-3.5 h-3.5 text-primary" />
+                  Alertas de Prazos ({totalAlerts})
+                </span>
+                {overdueCount > 0 && (
+                  <span className="text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                    {overdueCount} atrasado{overdueCount > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+              <div className="max-h-72 overflow-y-auto p-2 space-y-1.5">
+                {totalAlerts === 0 ? (
+                  <div className="py-6 text-center text-xs text-muted-foreground">
+                    Nenhum prazo pendente ou em atraso.
+                  </div>
+                ) : (
+                  alerts.map((alert, idx) => {
+                    const isOverdue = alert.type === "CARD_OVERDUE" || alert.type === "TASK_OVERDUE";
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-2 rounded-lg text-xs border transition-colors ${
+                          isOverdue
+                            ? "bg-destructive/5 border-destructive/20 text-foreground"
+                            : "bg-amber-500/5 border-amber-500/20 text-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${
+                            isOverdue ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+                          }`}>
+                            {isOverdue ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                            {isOverdue ? "Atrasado" : `Vence em ${alert.daysLeft <= 0 ? "hoje" : `${alert.daysLeft}d`}`}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {alert.dueDate}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-xs truncate text-foreground">{alert.cardTitle}</p>
+                        {alert.taskTitle && (
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            Tarefa: {alert.taskTitle}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <ThemeToggle />
           <UserSettingsDialog
             trigger={

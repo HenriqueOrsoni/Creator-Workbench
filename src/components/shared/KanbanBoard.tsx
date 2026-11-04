@@ -35,6 +35,11 @@ interface KanbanBoardProps {
   onSelectTab?: (tab: string) => void;
 }
 
+interface BoardCardItem extends KanbanItem {
+  columnId?: string;
+  rawCard?: ProjectCard;
+}
+
 const LEGACY_COLUMNS = [
   { 
     id: "IDEATION", 
@@ -77,6 +82,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     addColumn,
     renameColumn,
     deleteColumn,
+    reorderColumns,
     activeTeam,
     selectedProjectId,
     setSelectedProjectId
@@ -90,6 +96,18 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   const [columnNameDraft, setColumnNameDraft] = React.useState("");
   const [columnTargetId, setColumnTargetId] = React.useState("");
 
+  const handleMoveColumn = async (colIndex: number, direction: "left" | "right") => {
+    if (!dynamicColumns || dynamicColumns.length < 2) return;
+    const targetIndex = direction === "left" ? colIndex - 1 : colIndex + 1;
+    if (targetIndex < 0 || targetIndex >= dynamicColumns.length) return;
+
+    const newCols = [...dynamicColumns];
+    const [moved] = newCols.splice(colIndex, 1);
+    newCols.splice(targetIndex, 0, moved);
+
+    await reorderColumns(newCols.map(c => c.id));
+  };
+
   const [activeConvertId, setActiveConvertId] = React.useState<string | null>(null);
   const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
   const [selectedItemForDialog, setSelectedItemForDialog] = React.useState<KanbanItem | null>(null);
@@ -102,43 +120,36 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   // Determina se usamos o quadro dinâmico do backend ou o fallback legado
   const useDynamicColumns = Boolean(board && board.columns && board.columns.length > 0);
 
-  const dynamicColumns = React.useMemo(() => {
-    if (!useDynamicColumns || !board) {
-      return LEGACY_COLUMNS.map(col => ({
+  const dynamicColumns = (!useDynamicColumns || !board)
+    ? LEGACY_COLUMNS.map(col => ({
         id: col.id,
         name: col.title,
         color: col.color,
         cards: items.filter(i => i.state === col.id)
-      }));
-    }
-
-    const colors = ["bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500", "bg-indigo-500"];
-    return board.columns.map((col, idx) => ({
-      id: col.id,
-      name: col.name,
-      color: colors[idx % colors.length],
-      cards: col.cards.map(c => ({
-        id: c.id,
-        title: c.title,
-        description: c.description,
-        state: (col.name === "Concluído" ? "DONE" : "IN_PRODUCTION") as KanbanItem["state"],
-        createdAt: new Date(c.createdAt).getTime(),
-        targetAudience: c.targetAudience,
-        pedagogicalObjective: c.pedagogicalObjective,
-        progress: c.progress,
-        tasksTotal: c.tasksTotal,
-        tasksDone: c.tasksDone,
-        columnId: col.id,
-        dueDate: c.dueDate,
-        rawCard: c
       }))
-    }));
-  }, [useDynamicColumns, board, items]);
-
-interface BoardCardItem extends KanbanItem {
-  columnId?: string;
-  rawCard?: ProjectCard;
-}
+    : board.columns.map((col, idx) => {
+        const colors = ["bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500", "bg-indigo-500"];
+        return {
+          id: col.id,
+          name: col.name,
+          color: colors[idx % colors.length],
+          cards: col.cards.map(c => ({
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            state: (col.name === "Concluído" ? "DONE" : "IN_PRODUCTION") as KanbanItem["state"],
+            createdAt: new Date(c.createdAt).getTime(),
+            targetAudience: c.targetAudience,
+            pedagogicalObjective: c.pedagogicalObjective,
+            progress: c.progress,
+            tasksTotal: c.tasksTotal,
+            tasksDone: c.tasksDone,
+            columnId: col.id,
+            dueDate: c.dueDate,
+            rawCard: c
+          }))
+        };
+      });
 
   const handleMoveLeft = async (item: BoardCardItem, colIndex: number) => {
     if (useDynamicColumns && colIndex > 0) {
@@ -279,15 +290,40 @@ interface BoardCardItem extends KanbanItem {
                     {colItems.length}
                   </Badge>
                   {useDynamicColumns && canManageColumns && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openColumnSettings({ id: col.id, name: col.name })}
-                      className="h-6 w-6 text-muted-foreground hover:text-primary rounded-md"
-                      title="Configurar coluna"
-                    >
-                      <Settings2 size={12} />
-                    </Button>
+                    <div className="flex items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={colIndex === 0}
+                        onClick={() => handleMoveColumn(colIndex, "left")}
+                        className="h-6 w-6 text-muted-foreground hover:text-primary rounded-md disabled:opacity-20"
+                        title="Mover coluna para a esquerda"
+                        aria-label={`Mover coluna ${col.name} para a esquerda`}
+                      >
+                        <ArrowLeft size={11} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={colIndex === dynamicColumns.length - 1}
+                        onClick={() => handleMoveColumn(colIndex, "right")}
+                        className="h-6 w-6 text-muted-foreground hover:text-primary rounded-md disabled:opacity-20"
+                        title="Mover coluna para a direita"
+                        aria-label={`Mover coluna ${col.name} para a direita`}
+                      >
+                        <ArrowRight size={11} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openColumnSettings({ id: col.id, name: col.name })}
+                        className="h-6 w-6 text-muted-foreground hover:text-primary rounded-md"
+                        title="Configurar coluna"
+                        aria-label={`Configurar coluna ${col.name}`}
+                      >
+                        <Settings2 size={12} />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -383,14 +419,21 @@ interface BoardCardItem extends KanbanItem {
                                   const due = new Date(y, m - 1, d);
                                   const today = new Date();
                                   today.setHours(0, 0, 0, 0);
-                                  const overdue = due < today;
+                                  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                  const overdue = diffDays < 0;
+                                  const dueSoon = diffDays >= 0 && diffDays <= 3;
                                   return (
                                     <div
-                                      className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${overdue ? "text-destructive" : "text-primary"}`}
-                                      title={overdue ? "Prazo vencido" : "Prazo de entrega"}
+                                      className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${
+                                        overdue ? "text-destructive" : dueSoon ? "text-amber-600 dark:text-amber-400" : "text-primary"
+                                      }`}
+                                      title={overdue ? "Prazo vencido" : dueSoon ? "Prazo próximo" : "Prazo de entrega"}
                                     >
                                       <Calendar size={12} className="shrink-0" />
-                                      <span>Prazo {due.toLocaleDateString("pt-BR")}{overdue ? " • vencido" : ""}</span>
+                                      <span>
+                                        Prazo {due.toLocaleDateString("pt-BR")}
+                                        {overdue ? " • vencido" : dueSoon ? ` • vence em ${diffDays === 0 ? "hoje" : `${diffDays}d`}` : ""}
+                                      </span>
                                     </div>
                                   );
                                 })()}

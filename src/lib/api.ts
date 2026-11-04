@@ -44,14 +44,20 @@ export function handleUnauthorized() {
 // Função para chamadas genéricas à API
 export async function apiRequest(method: string, path: string, body?: unknown) {
   const token = getCookie("creator_auth_token");
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  const headers: Record<string, string> = {
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    headers,
+    body: isFormData ? (body as FormData) : (body !== undefined ? JSON.stringify(body) : undefined),
   });
 
   if (response.status === 401) {

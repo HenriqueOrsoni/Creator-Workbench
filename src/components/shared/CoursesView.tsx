@@ -1,7 +1,11 @@
 "use client";
 
 import React from "react";
-import { GraduationCap, Plus, Trash2, Video, FileText, HelpCircle, ChevronRight, BookOpen, Layers, Link2, Download, Pencil } from "lucide-react";
+import {
+  GraduationCap, Plus, Trash2, Video, FileText, HelpCircle,
+  BookOpen, Link2, Download, Pencil, CheckCircle2, AlertCircle,
+  FileSpreadsheet, Globe, ChevronRight, Layers
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -34,6 +38,10 @@ export function CoursesView() {
     createCourseLesson,
     updateCourseLesson,
     deleteCourseLesson,
+    checkCoursePublication,
+    publishCourse,
+    unpublishCourse,
+    exportCourseCsv,
     activeTeam,
   } = useAppStore();
   const isReviewer = activeTeam?.role === "REVIEWER";
@@ -52,10 +60,23 @@ export function CoursesView() {
   const [lessonType, setLessonType] = React.useState<"VIDEO" | "TEXT" | "QUIZ">("VIDEO");
   const [linkedProjectId, setLinkedProjectId] = React.useState<string>("");
 
-  // Estados para Edição (FE-55)
+  // Estados para Edição (FE-55 / FE-21)
   const [editingCourse, setEditingCourse] = React.useState<{ id: string; title: string; description: string } | null>(null);
   const [editingModule, setEditingModule] = React.useState<{ id: string; title: string } | null>(null);
-  const [editingLesson, setEditingLesson] = React.useState<{ moduleId: string; lessonId: string; title: string; type: "VIDEO" | "TEXT" | "QUIZ"; projectId?: string } | null>(null);
+  const [editingLesson, setEditingLesson] = React.useState<{
+    moduleId: string;
+    lessonId: string;
+    title: string;
+    type: "VIDEO" | "TEXT" | "QUIZ";
+    projectId?: string;
+    description?: string;
+    contentUrl?: string;
+  } | null>(null);
+
+  // Estados para Publicação e Validação (FE-22)
+  const [validationProblems, setValidationProblems] = React.useState<Array<{ type: string; message: string; moduleTitle?: string; lessonTitle?: string }>>([]);
+  const [openValidationDialog, setOpenValidationDialog] = React.useState(false);
+  const [openPublishConfirm, setOpenPublishConfirm] = React.useState(false);
 
   // Estados para Confirmação de Exclusão (BF-15)
   const [courseToDelete, setCourseToDelete] = React.useState<{ id: string; title: string } | null>(null);
@@ -151,6 +172,34 @@ export function CoursesView() {
     });
     setLoading(false);
     setEditingLesson(null);
+  };
+
+  const handleStartPublish = async () => {
+    if (!activeCourse) return;
+    setLoading(true);
+    const result = await checkCoursePublication(activeCourse.id);
+    setLoading(false);
+    if (!result.publishable) {
+      setValidationProblems(result.problems);
+      setOpenValidationDialog(true);
+    } else {
+      setOpenPublishConfirm(true);
+    }
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!activeCourse) return;
+    setLoading(true);
+    await publishCourse(activeCourse.id);
+    setLoading(false);
+    setOpenPublishConfirm(false);
+  };
+
+  const handleUnpublishCourse = async () => {
+    if (!activeCourse) return;
+    setLoading(true);
+    await unpublishCourse(activeCourse.id);
+    setLoading(false);
   };
 
   const confirmDeleteCourse = async () => {
@@ -301,6 +350,15 @@ export function CoursesView() {
                     <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
                       Curso Ativo
                     </Badge>
+                    {activeCourse.status === "PUBLISHED" ? (
+                      <Badge className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        <Globe className="w-3 h-3 mr-1" /> Publicado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-border">
+                        Rascunho
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold text-foreground font-heading">
@@ -337,10 +395,37 @@ export function CoursesView() {
                     className="rounded-lg h-9 px-3 text-xs font-medium gap-1.5 border-border"
                     title="Exportar estrutura em JSON (FE-23)"
                   >
-                    <Download className="w-3.5 h-3.5" /> Exportar JSON
+                    <Download className="w-3.5 h-3.5" /> JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => exportCourseCsv(activeCourse.id)}
+                    className="rounded-lg h-9 px-3 text-xs font-medium gap-1.5 border-border"
+                    title="Exportar estrutura em CSV para Excel (FE-23)"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> CSV
                   </Button>
                   {canEditCourses && (
                     <>
+                      {activeCourse.status === "PUBLISHED" ? (
+                        <Button
+                          variant="outline"
+                          onClick={handleUnpublishCourse}
+                          disabled={loading}
+                          className="rounded-lg h-9 px-3 text-xs font-medium text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                        >
+                          Despublicar
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleStartPublish}
+                          disabled={loading}
+                          className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                          title="Verificar e Publicar Curso (FE-22)"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Publicar Curso
+                        </Button>
+                      )}
                       <Button
                         onClick={() => setOpenCreateModule(true)}
                         className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
@@ -999,6 +1084,82 @@ export function CoursesView() {
               className="rounded-lg text-xs font-semibold"
             >
               Confirmar Exclusão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Diálogo de Validação de Publicação (FE-22) */}
+      <Dialog open={openValidationDialog} onOpenChange={setOpenValidationDialog}>
+        <DialogContent className="sm:max-w-[460px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <AlertCircle className="w-5 h-5 text-destructive" />
+              Não é possível publicar: {validationProblems.length} problema{validationProblems.length > 1 ? "s" : ""}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Para publicar o curso, corrija as seguintes pendências pedagógicas:
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2.5 my-3 max-h-60 overflow-y-auto">
+            {validationProblems.map((prob, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-foreground flex items-start gap-2.5"
+              >
+                <div className="w-2 h-2 rounded-full bg-destructive mt-1.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">{prob.message}</p>
+                  {prob.lessonTitle && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Adicione um link de vídeo/conteúdo ou vincule um material de apoio a esta aula.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setOpenValidationDialog(false)}
+              className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover"
+            >
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de Publicação de Curso (FE-22) */}
+      <Dialog open={openPublishConfirm} onOpenChange={setOpenPublishConfirm}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-emerald-600">
+              <CheckCircle2 className="w-5 h-5" />
+              Publicar Curso
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1">
+              Todos os módulos e aulas atendem aos requisitos pedagógicos. Deseja tornar o curso <strong className="text-foreground font-semibold">&ldquo;{activeCourse?.title}&rdquo;</strong> público para a equipe?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpenPublishConfirm(false)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={handleConfirmPublish}
+              className="rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {loading ? "Publicando..." : "Confirmar Publicação"}
             </Button>
           </DialogFooter>
         </DialogContent>

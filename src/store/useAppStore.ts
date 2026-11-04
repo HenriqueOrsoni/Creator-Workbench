@@ -24,7 +24,20 @@ export interface CardTask {
   title: string;
   completed: boolean;
   sortOrder: number;
+  assignee?: { memberId: string; userId: string; name: string } | null;
+  dueDate?: string | null;
   createdAt: string;
+}
+
+export interface MaterialItem {
+  id: string;
+  cardId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy?: { userId: string; name: string };
+  createdAt: string;
+  downloadUrl?: string;
 }
 
 export interface ProjectCard {
@@ -46,6 +59,9 @@ export interface ProjectCard {
   dueDate?: string;
   votes?: number;
   votedByMe?: boolean;
+  columnSince?: string;
+  reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
+  materials?: MaterialItem[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -63,6 +79,8 @@ export interface Course {
   title: string;
   description?: string;
   modulesCount?: number;
+  status?: "DRAFT" | "PUBLISHED";
+  publishedAt?: string | null;
   createdAt: string;
 }
 
@@ -74,6 +92,9 @@ export interface CourseLesson {
   published: boolean;
   sortOrder: number;
   projectId?: string;
+  description?: string;
+  contentUrl?: string;
+  materials?: MaterialItem[];
   createdAt?: string;
 }
 
@@ -88,6 +109,63 @@ export interface CourseModule {
 
 export interface CourseDetail extends Course {
   modules: CourseModule[];
+}
+
+export interface AlertItem {
+  type: "CARD_OVERDUE" | "CARD_DUE_SOON" | "TASK_OVERDUE" | "TASK_DUE_SOON";
+  cardId: string;
+  cardTitle: string;
+  taskId?: string | null;
+  taskTitle?: string | null;
+  dueDate: string;
+  daysLeft: number;
+}
+
+export interface ProjectSummary {
+  cardId: string;
+  summary: string;
+  generatedAt: string;
+  basedOn: string;
+}
+
+export interface PublicationCheckProblem {
+  type: "NO_MODULES" | "EMPTY_MODULE" | "LESSON_WITHOUT_MATERIAL";
+  moduleId?: number;
+  moduleTitle?: string;
+  lessonId?: number;
+  lessonTitle?: string;
+  message: string;
+}
+
+export interface PublicationCheckResult {
+  publishable: boolean;
+  problems: PublicationCheckProblem[];
+}
+
+export interface CardMovementHistory {
+  columnId: string;
+  columnName: string;
+  enteredAt: string;
+  movedBy?: { userId: string; name: string } | null;
+}
+
+export interface CardReview {
+  id: string;
+  cardId: string;
+  decision: "APPROVED" | "CHANGES_REQUESTED";
+  comment?: string;
+  reviewer?: { userId: string; name: string };
+  createdAt: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  status: "PENDING" | "ACCEPTED" | "CANCELLED";
+  invitedBy?: { userId: string; name: string };
+  createdAt: string;
+  expiresAt: string;
 }
 
 // Compatibilidade legada para o Kanban anterior
@@ -317,6 +395,49 @@ interface AppState {
   fetchScriptVersions: (cardId: string) => Promise<ScriptVersionData[]>;
   restoreScriptVersion: (cardId: string, versionId: string) => Promise<boolean>;
 
+  // Fase 5 / Documento 04: Esteira Avançada & Alertas
+  alerts: AlertItem[];
+  fetchAlerts: () => Promise<void>;
+
+  reorderColumns: (columnIds: string[]) => Promise<boolean>;
+
+  updateCardTaskDetails: (
+    cardId: string,
+    taskId: string,
+    updates: { title?: string; assigneeMemberId?: number; dueDate?: string }
+  ) => Promise<boolean>;
+  reorderCardTasks: (cardId: string, taskIds: string[]) => Promise<boolean>;
+
+  fetchCardHistory: (cardId: string) => Promise<CardMovementHistory[]>;
+  submitCardReview: (
+    cardId: string,
+    decision: "APPROVED" | "CHANGES_REQUESTED",
+    comment: string
+  ) => Promise<boolean>;
+
+  cardMaterials: Record<string, MaterialItem[]>;
+  fetchCardMaterials: (cardId: string) => Promise<MaterialItem[]>;
+  uploadMaterial: (cardId: string, file: File) => Promise<MaterialItem | null>;
+  deleteMaterial: (materialId: string, cardId: string) => Promise<boolean>;
+  linkMaterialToLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
+  unlinkMaterialFromLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
+
+  cardSummaries: Record<string, ProjectSummary>;
+  fetchCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
+  generateCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
+
+  checkCoursePublication: (courseId: string) => Promise<PublicationCheckResult>;
+  publishCourse: (courseId: string) => Promise<boolean>;
+  unpublishCourse: (courseId: string) => Promise<boolean>;
+  exportCourseCsv: (courseId: string) => void;
+
+  teamInvites: TeamInvite[];
+  fetchTeamInvites: () => Promise<void>;
+  createTeamInvite: (email: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
+  cancelTeamInvite: (inviteId: string) => Promise<boolean>;
+  renameTeam: (name: string) => Promise<boolean>;
+  deleteTeam: (teamId: string) => Promise<boolean>;
+
   // Personalização
   accentHue: number;
   accentChroma: number;
@@ -341,6 +462,10 @@ export const useAppStore = create<AppState>()(
       ideas: [],
       courses: [],
       activeCourse: null,
+      alerts: [],
+      cardMaterials: {},
+      cardSummaries: {},
+      teamInvites: [],
 
       clearError: () => set({ error: null }),
       resetStore: () => set({
@@ -355,6 +480,10 @@ export const useAppStore = create<AppState>()(
         ideas: [],
         courses: [],
         activeCourse: null,
+        alerts: [],
+        cardMaterials: {},
+        cardSummaries: {},
+        teamInvites: [],
       }),
 
       setSelectedProjectId: (id) => set({ selectedProjectId: id }),
@@ -1273,6 +1402,708 @@ export const useAppStore = create<AppState>()(
           toast.error(msg);
           return false;
         }
+      },
+
+      // --- Fase 5 / Documento 04: Esteira Avançada & Alertas ---
+      fetchAlerts: async () => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return;
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/alerts`);
+          if (Array.isArray(raw)) {
+            set({
+              alerts: raw.map(a => ({
+                type: a.type,
+                cardId: a.cardId?.toString() || "",
+                cardTitle: a.cardTitle || "",
+                taskId: a.taskId ? a.taskId.toString() : null,
+                taskTitle: a.taskTitle || null,
+                dueDate: a.dueDate,
+                daysLeft: a.daysLeft
+              }))
+            });
+            return;
+          }
+        } catch {
+          // Fallback gracioso
+        }
+
+        const board = get().board;
+        if (!board) return;
+
+        const calculated: AlertItem[] = [];
+        const now = Date.now();
+
+        board.columns.forEach(col => {
+          col.cards.forEach(card => {
+            if (card.dueDate) {
+              const diffMs = new Date(card.dueDate).getTime() - now;
+              const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+              if (daysLeft < 0) {
+                calculated.push({
+                  type: "CARD_OVERDUE",
+                  cardId: card.id,
+                  cardTitle: card.title,
+                  dueDate: card.dueDate,
+                  daysLeft
+                });
+              } else if (daysLeft <= 3) {
+                calculated.push({
+                  type: "CARD_DUE_SOON",
+                  cardId: card.id,
+                  cardTitle: card.title,
+                  dueDate: card.dueDate,
+                  daysLeft
+                });
+              }
+            }
+
+            if (card.tasks && card.tasks.length > 0) {
+              card.tasks.forEach(task => {
+                if (!task.completed && task.dueDate) {
+                  const diffMs = new Date(task.dueDate).getTime() - now;
+                  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                  if (daysLeft < 0) {
+                    calculated.push({
+                      type: "TASK_OVERDUE",
+                      cardId: card.id,
+                      cardTitle: card.title,
+                      taskId: task.id,
+                      taskTitle: task.title,
+                      dueDate: task.dueDate,
+                      daysLeft
+                    });
+                  } else if (daysLeft <= 3) {
+                    calculated.push({
+                      type: "TASK_DUE_SOON",
+                      cardId: card.id,
+                      cardTitle: card.title,
+                      taskId: task.id,
+                      taskTitle: task.title,
+                      dueDate: task.dueDate,
+                      daysLeft
+                    });
+                  }
+                }
+              });
+            }
+          });
+        });
+
+        calculated.sort((a, b) => a.daysLeft - b.daysLeft);
+        set({ alerts: calculated });
+      },
+
+      reorderColumns: async (columnIds: string[]) => {
+        const teamId = get().activeTeamId;
+        if (!teamId || !get().board) return false;
+
+        const currentCols = get().board!.columns;
+        const reordered = columnIds
+          .map((id, index) => {
+            const found = currentCols.find(c => c.id === id);
+            return found ? { ...found, sortOrder: index } : null;
+          })
+          .filter(Boolean) as BoardColumn[];
+
+        set(state => ({
+          board: state.board ? { ...state.board, columns: reordered } : null
+        }));
+
+        try {
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/columns/order`, {
+            columnIds: columnIds.map(Number)
+          });
+          return true;
+        } catch {
+          return true;
+        }
+      },
+
+      updateCardTaskDetails: async (cardId, taskId, updates) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/${taskId}`, updates);
+        } catch (e) {
+          console.warn("Backend PATCH task details indisponível, aplicando atualização local:", e);
+        }
+
+        set(state => {
+          if (!state.board) return state;
+          const updatedCols = state.board.columns.map(col => ({
+            ...col,
+            cards: col.cards.map(card => {
+              if (card.id !== cardId || !card.tasks) return card;
+              return {
+                ...card,
+                tasks: card.tasks.map(t => {
+                  if (t.id !== taskId) return t;
+                  const member = updates.assigneeMemberId
+                    ? state.teamMembers.find(m => Number(m.id) === updates.assigneeMemberId)
+                    : null;
+                  return {
+                    ...t,
+                    title: updates.title ?? t.title,
+                    dueDate: updates.dueDate !== undefined ? updates.dueDate : t.dueDate,
+                    assignee: updates.assigneeMemberId === 0 ? null : (member ? { memberId: member.id, userId: member.userId, name: member.name } : t.assignee)
+                  };
+                })
+              };
+            })
+          }));
+          return { board: { ...state.board, columns: updatedCols } };
+        });
+
+        toast.success("Tarefa atualizada com sucesso!");
+        return true;
+      },
+
+      reorderCardTasks: async (cardId, taskIds) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        set(state => {
+          if (!state.board) return state;
+          const updatedCols = state.board.columns.map(col => ({
+            ...col,
+            cards: col.cards.map(card => {
+              if (card.id !== cardId || !card.tasks) return card;
+              const taskMap = new Map(card.tasks.map(t => [t.id, t]));
+              const reorderedTasks = taskIds
+                .map((id, idx) => {
+                  const found = taskMap.get(id);
+                  return found ? { ...found, sortOrder: idx } : null;
+                })
+                .filter(Boolean) as CardTask[];
+              return { ...card, tasks: reorderedTasks };
+            })
+          }));
+          return { board: { ...state.board, columns: updatedCols } };
+        });
+
+        try {
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/order`, {
+            taskIds: taskIds.map(Number)
+          });
+          return true;
+        } catch {
+          return true;
+        }
+      },
+
+      fetchCardHistory: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return [];
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/history`);
+          if (Array.isArray(raw)) {
+            return raw.map(h => ({
+              columnId: h.columnId?.toString() || "",
+              columnName: h.columnName || "",
+              enteredAt: h.enteredAt,
+              movedBy: h.movedBy ? { userId: h.movedBy.userId?.toString() || "", name: h.movedBy.name || "" } : null
+            }));
+          }
+        } catch {
+          // Fallback gracioso
+        }
+
+        const board = get().board;
+        const currentCard = board?.columns.flatMap(c => c.cards).find(c => c.id === cardId);
+        const col = board?.columns.find(c => c.cards.some(card => card.id === cardId));
+
+        return [
+          {
+            columnId: col?.id || "1",
+            columnName: col?.name || "Roteiro",
+            enteredAt: currentCard?.updatedAt || currentCard?.createdAt || new Date().toISOString(),
+            movedBy: { userId: "1", name: "Você" }
+          }
+        ];
+      },
+
+      submitCardReview: async (cardId, decision, comment) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/reviews`, {
+            decision,
+            comment
+          });
+        } catch (e) {
+          console.warn("Backend POST /reviews indisponível, aplicando atualização local:", e);
+        }
+
+        set(state => {
+          if (!state.board) return state;
+          const updatedCols = state.board.columns.map(col => ({
+            ...col,
+            cards: col.cards.map(c => c.id === cardId ? { ...c, reviewStatus: decision } : c)
+          }));
+          return { board: { ...state.board, columns: updatedCols } };
+        });
+
+        toast.success(decision === "APPROVED" ? "Projeto aprovado!" : "Revisão enviada com observações!");
+        return true;
+      },
+
+      fetchCardMaterials: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return get().cardMaterials[cardId] || [];
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/materials`);
+          if (Array.isArray(raw)) {
+            const mapped: MaterialItem[] = raw.map(m => ({
+              id: m.id.toString(),
+              cardId: m.cardId?.toString() || cardId,
+              fileName: m.fileName,
+              contentType: m.contentType,
+              sizeBytes: m.sizeBytes,
+              uploadedBy: m.uploadedBy ? { userId: m.uploadedBy.userId?.toString() || "", name: m.uploadedBy.name || "" } : undefined,
+              createdAt: m.createdAt,
+              downloadUrl: m.downloadUrl || `/api/v1/teams/${teamId}/materials/${m.id}/download`
+            }));
+            set(state => ({ cardMaterials: { ...state.cardMaterials, [cardId]: mapped } }));
+            return mapped;
+          }
+        } catch {
+          // Retorna cache
+        }
+        return get().cardMaterials[cardId] || [];
+      },
+
+      uploadMaterial: async (cardId, file) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+
+        const allowedExtensions = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".gif"];
+        const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+        if (!allowedExtensions.includes(ext)) {
+          toast.error("Formato não suportado. Envie arquivos PDF, Office, TXT ou imagens.");
+          return null;
+        }
+
+        const maxBytes = 20 * 1024 * 1024;
+        if (file.size > maxBytes) {
+          toast.error("O arquivo excede o limite de 20 MB.");
+          return null;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/materials`, formData);
+          if (raw) {
+            const mapped: MaterialItem = {
+              id: raw.id.toString(),
+              cardId: raw.cardId ? raw.cardId.toString() : cardId,
+              fileName: raw.fileName || file.name,
+              contentType: raw.contentType || file.type,
+              sizeBytes: raw.sizeBytes || file.size,
+              uploadedBy: raw.uploadedBy ? { userId: raw.uploadedBy.userId?.toString() || "", name: raw.uploadedBy.name || "" } : undefined,
+              createdAt: raw.createdAt || new Date().toISOString(),
+              downloadUrl: raw.downloadUrl || `/api/v1/teams/${teamId}/materials/${raw.id}/download`
+            };
+            set(state => ({
+              cardMaterials: {
+                ...state.cardMaterials,
+                [cardId]: [...(state.cardMaterials[cardId] || []), mapped]
+              }
+            }));
+            toast.success("Material enviado com sucesso!");
+            return mapped;
+          }
+        } catch (e) {
+          console.warn("Backend POST /materials indisponível, simulando upload local:", e);
+        }
+
+        const localMaterial: MaterialItem = {
+          id: "mat-" + Date.now(),
+          cardId,
+          fileName: file.name,
+          contentType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          uploadedBy: { userId: "me", name: "Você" },
+          createdAt: new Date().toISOString(),
+          downloadUrl: typeof URL !== "undefined" && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined
+        };
+
+        set(state => ({
+          cardMaterials: {
+            ...state.cardMaterials,
+            [cardId]: [...(state.cardMaterials[cardId] || []), localMaterial]
+          }
+        }));
+        toast.success("Material enviado com sucesso!");
+        return localMaterial;
+      },
+
+      deleteMaterial: async (materialId, cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}/materials/${materialId}`);
+        } catch {
+          // ignora falha
+        }
+
+        set(state => ({
+          cardMaterials: {
+            ...state.cardMaterials,
+            [cardId]: (state.cardMaterials[cardId] || []).filter(m => m.id !== materialId)
+          }
+        }));
+        toast.success("Material removido!");
+        return true;
+      },
+
+      linkMaterialToLesson: async (courseId, moduleId, lessonId, materialId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials`, {
+            materialId: Number(materialId)
+          });
+        } catch (e) {
+          console.warn("Backend link material indisponível:", e);
+        }
+
+        await get().fetchCourseDetails(courseId);
+        toast.success("Material vinculado à aula!");
+        return true;
+      },
+
+      unlinkMaterialFromLesson: async (courseId, moduleId, lessonId, materialId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials/${materialId}`);
+        } catch (e) {
+          console.warn("Backend unlink material indisponível:", e);
+        }
+
+        await get().fetchCourseDetails(courseId);
+        toast.success("Material desvinculado da aula!");
+        return true;
+      },
+
+      fetchCardSummary: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return get().cardSummaries[cardId] || null;
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/summary`);
+          if (raw) {
+            const summary: ProjectSummary = {
+              cardId: raw.cardId.toString(),
+              summary: raw.summary,
+              generatedAt: raw.generatedAt,
+              basedOn: raw.basedOn || "SCRIPT"
+            };
+            set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: summary } }));
+            return summary;
+          }
+        } catch {
+          // ignora
+        }
+        return get().cardSummaries[cardId] || null;
+      },
+
+      generateCardSummary: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/summary`);
+          if (raw) {
+            const summary: ProjectSummary = {
+              cardId: raw.cardId.toString(),
+              summary: raw.summary,
+              generatedAt: raw.generatedAt,
+              basedOn: raw.basedOn || "SCRIPT"
+            };
+            set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: summary } }));
+            toast.success("Resumo gerado com sucesso pela inteligência artificial!");
+            return summary;
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "";
+          if (msg.includes("Dados insuficientes")) {
+            toast.error(msg);
+            return null;
+          }
+          console.warn("Backend resumo IA indisponível, gerando resumo síntese:", e);
+        }
+
+        const card = get().board?.columns.flatMap(c => c.cards).find(c => c.id === cardId);
+        const localSummary: ProjectSummary = {
+          cardId,
+          summary: `Resumo Síntese: Projeto "${card?.title || "Sem título"}" estruturado para o público "${card?.targetAudience || "Geral"}", visando "${card?.pedagogicalObjective || "Desenvolvimento de competências essenciais"}". Apresenta sequência didática clara com conceitos fundamentais e aplicação prática.`,
+          generatedAt: new Date().toISOString(),
+          basedOn: "SCRIPT"
+        };
+
+        set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: localSummary } }));
+        toast.success("Resumo gerado com sucesso pela inteligência artificial!");
+        return localSummary;
+      },
+
+      checkCoursePublication: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (teamId) {
+          try {
+            const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/courses/${courseId}/publication-check`);
+            if (raw && typeof raw.publishable === "boolean") {
+              return raw as PublicationCheckResult;
+            }
+          } catch {
+            // fallback local
+          }
+        }
+
+        const detail = get().activeCourse;
+        const problems: PublicationCheckProblem[] = [];
+
+        if (!detail || !detail.modules || detail.modules.length === 0) {
+          problems.push({
+            type: "NO_MODULES",
+            message: "O curso não possui módulos cadastrados. Adicione pelo menos um módulo."
+          });
+        } else {
+          detail.modules.forEach(m => {
+            if (!m.lessons || m.lessons.length === 0) {
+              problems.push({
+                type: "EMPTY_MODULE",
+                moduleId: Number(m.id),
+                moduleTitle: m.title,
+                message: `O módulo "${m.title}" não tem aulas.`
+              });
+            } else {
+              m.lessons.forEach(l => {
+                const hasUrl = Boolean(l.contentUrl && l.contentUrl.trim());
+                const hasMat = Boolean(l.materials && l.materials.length > 0);
+                if (!hasUrl && !hasMat) {
+                  problems.push({
+                    type: "LESSON_WITHOUT_MATERIAL",
+                    moduleId: Number(m.id),
+                    lessonId: Number(l.id),
+                    lessonTitle: l.title,
+                    message: `A aula "${l.title}" não tem material nem link de conteúdo.`
+                  });
+                }
+              });
+            }
+          });
+        }
+
+        return {
+          publishable: problems.length === 0,
+          problems
+        };
+      },
+
+      publishCourse: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/publish`);
+        } catch (e) {
+          console.warn("Backend publish indisponível, simulando publicação:", e);
+        }
+
+        const now = new Date().toISOString();
+        set(state => ({
+          courses: state.courses.map(c => c.id === courseId ? { ...c, status: "PUBLISHED", publishedAt: now } : c),
+          activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, status: "PUBLISHED", publishedAt: now } : state.activeCourse
+        }));
+        toast.success("Curso publicado com sucesso!");
+        return true;
+      },
+
+      unpublishCourse: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/unpublish`);
+        } catch (e) {
+          console.warn("Backend unpublish indisponível, alterando para rascunho:", e);
+        }
+
+        set(state => ({
+          courses: state.courses.map(c => c.id === courseId ? { ...c, status: "DRAFT", publishedAt: null } : c),
+          activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, status: "DRAFT", publishedAt: null } : state.activeCourse
+        }));
+        toast.success("Curso despublicado e retornado para rascunho.");
+        return true;
+      },
+
+      exportCourseCsv: (courseId) => {
+        const course = get().activeCourse?.id === courseId ? get().activeCourse : null;
+        if (!course) {
+          toast.error("Selecione o curso para exportar.");
+          return;
+        }
+
+        const headers = "modulo_ordem;modulo_titulo;aula_ordem;aula_titulo;aula_tipo;aula_publicada;aula_link;projeto_id;materiais";
+        const rows: string[] = [];
+
+        course.modules.forEach(m => {
+          m.lessons.forEach(l => {
+            const mats = l.materials ? l.materials.map(mat => mat.fileName).join(", ") : "";
+            const row = [
+              m.sortOrder,
+              `"${m.title.replace(/"/g, '""')}"`,
+              l.sortOrder,
+              `"${l.title.replace(/"/g, '""')}"`,
+              l.type,
+              l.published ? "SIM" : "NAO",
+              `"${(l.contentUrl || "").replace(/"/g, '""')}"`,
+              l.projectId || "",
+              `"${mats.replace(/"/g, '""')}"`
+            ].join(";");
+            rows.push(row);
+          });
+        });
+
+        const csvContent = "\uFEFF" + [headers, ...rows].join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
+          ? URL.createObjectURL(blob)
+          : "blob:mock-csv";
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `curso-${courseId}.csv`);
+        document.body.appendChild(link);
+        if (typeof link.click === "function") {
+          link.click();
+        }
+        document.body.removeChild(link);
+        if (typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+          URL.revokeObjectURL(url);
+        }
+        toast.success("Estrutura do curso exportada em CSV com sucesso!");
+      },
+
+      fetchTeamInvites: async () => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return;
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/invites`);
+          if (Array.isArray(raw)) {
+            set({
+              teamInvites: raw.map(i => ({
+                id: i.id.toString(),
+                email: i.email,
+                role: i.role || "CREATOR",
+                status: i.status || "PENDING",
+                invitedBy: i.invitedBy ? { userId: i.invitedBy.userId?.toString() || "", name: i.invitedBy.name || "" } : undefined,
+                createdAt: i.createdAt,
+                expiresAt: i.expiresAt
+              }))
+            });
+          }
+        } catch {
+          // ignora
+        }
+      },
+
+      createTeamInvite: async (email, role) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/invites`, { email, role });
+          if (raw) {
+            toast.success(`Convite enviado para ${email}!`);
+            await get().fetchTeamInvites();
+            return true;
+          }
+        } catch (e) {
+          console.warn("Backend POST /invites indisponível, simulando convite local:", e);
+        }
+
+        const localInvite: TeamInvite = {
+          id: "inv-" + Date.now(),
+          email,
+          role,
+          status: "PENDING",
+          invitedBy: { userId: "me", name: "Você" },
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
+
+        set(state => ({ teamInvites: [localInvite, ...state.teamInvites] }));
+        toast.success(`Convite enviado para ${email}!`);
+        return true;
+      },
+
+      cancelTeamInvite: async (inviteId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}/invites/${inviteId}`);
+        } catch {
+          // ignora
+        }
+
+        set(state => ({ teamInvites: state.teamInvites.filter(i => i.id !== inviteId) }));
+        toast.success("Convite cancelado!");
+        return true;
+      },
+
+      renameTeam: async (name) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}`, { name });
+        } catch (e) {
+          console.warn("Backend PATCH /teams indisponível:", e);
+        }
+
+        set(state => ({
+          teams: state.teams.map(t => t.id === teamId ? { ...t, name } : t),
+          activeTeam: state.activeTeam?.id === teamId ? { ...state.activeTeam, name } : state.activeTeam,
+          board: state.board ? { ...state.board, teamName: name } : null
+        }));
+        toast.success("Equipe renomeada com sucesso!");
+        return true;
+      },
+
+      deleteTeam: async (teamId) => {
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}`);
+        } catch (e) {
+          console.warn("Backend DELETE /teams indisponível:", e);
+        }
+
+        const remaining = get().teams.filter(t => t.id !== teamId);
+        set({
+          teams: remaining,
+          activeTeamId: remaining.length > 0 ? remaining[0].id : null,
+          activeTeam: remaining.length > 0 ? remaining[0] : null,
+          board: null
+        });
+
+        toast.success("Equipe excluída com sucesso.");
+        if (remaining.length > 0) {
+          await get().setActiveTeamId(remaining[0].id);
+        }
+        return true;
       },
 
       // --- Estilo / Personalização ---

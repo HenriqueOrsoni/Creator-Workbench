@@ -52,10 +52,14 @@ interface ScriptEditorProps {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
-  const { exportScript, activeTeam, items, board, setSelectedProjectId } = useAppStore();
+  const { exportScript, activeTeam, items, board, setSelectedProjectId, generateCardSummary } = useAppStore();
   const isReviewer = activeTeam?.role === "REVIEWER";
   const canEditScript = !isReviewer;
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
+
+  const [openSummaryDialog, setOpenSummaryDialog] = React.useState(false);
+  const [summaryData, setSummaryData] = React.useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
 
   const projects = React.useMemo(() => {
     if (board?.columns && board.columns.length > 0) {
@@ -238,6 +242,21 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     }
   };
 
+  const handleGenerateSummary = async () => {
+    if (wordCount < 100) {
+      toast.error("Dados insuficientes para gerar o resumo: escreva pelo menos 100 palavras no roteiro.");
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    setOpenSummaryDialog(true);
+    const result = await generateCardSummary(kanbanItemId);
+    setIsGeneratingSummary(false);
+    if (result) {
+      setSummaryData(result.summary);
+    }
+  };
+
   if (!editor) return null;
 
   return (
@@ -380,6 +399,16 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           <Button
             size="sm"
             variant="ghost"
+            onClick={handleGenerateSummary}
+            className="h-8 text-xs text-muted-foreground hover:text-primary font-medium rounded-lg gap-1.5"
+            title="Gerar resumo pedagógico com Inteligência Artificial (FE-17)"
+          >
+            <Sparkles size={13} className="text-primary" /> Resumo IA
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={handlePrint}
             className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg gap-1.5"
             title="Imprimir ou Salvar em PDF"
@@ -450,6 +479,49 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
               className="rounded-lg font-semibold text-xs h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Restaurar Versão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Resumo Pedagógico com IA (FE-17) */}
+      <Dialog open={openSummaryDialog} onOpenChange={setOpenSummaryDialog}>
+        <DialogContent className="sm:max-w-[480px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-foreground">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Resumo Pedagógico com IA
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Síntese automatizada a partir do roteiro de {currentProject.title} ({wordCount} palavras).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-3">
+            {isGeneratingSummary ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span>Analisando o roteiro e gerando síntese didática...</span>
+              </div>
+            ) : (
+              <p className="text-xs text-foreground leading-relaxed bg-muted/30 p-3.5 rounded-lg border border-border">
+                {summaryData || "Nenhum resumo gerado ainda."}
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              onClick={() => {
+                if (summaryData) {
+                  navigator.clipboard?.writeText(summaryData);
+                  toast.success("Resumo copiado para a área de transferência!");
+                }
+                setOpenSummaryDialog(false);
+              }}
+              className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover"
+            >
+              Copiar e Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
