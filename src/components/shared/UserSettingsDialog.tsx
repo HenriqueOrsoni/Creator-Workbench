@@ -486,9 +486,12 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
             </DialogTitle>
             <DialogDescription className="space-y-2 text-xs text-muted-foreground">
               <span className="block text-foreground font-medium">
-                Esta ação é <strong>irreversível</strong>. Todos os seus dados, roteiros e projetos serão permanentemente removidos.
+                Esta ação é <strong>irreversível</strong>. Todos os seus dados pessoais e de acesso serão excluídos.
               </span>
-              <span className="block pt-1">
+              <span className="block text-muted-foreground text-[11px] leading-relaxed">
+                Atenção: se você for o único Administrador de uma equipe, é obrigatório transferir a administração para outro membro antes de excluir sua conta. O trabalho realizado na equipe permanecerá preservado para os demais membros.
+              </span>
+              <span className="block pt-1 text-foreground">
                 Para confirmar a exclusão, digite seu e-mail cadastrado: <strong>{form.getValues("email")}</strong>
               </span>
             </DialogDescription>

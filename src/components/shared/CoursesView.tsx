@@ -4,7 +4,7 @@ import React from "react";
 import {
   GraduationCap, Plus, Trash2, Video, FileText, HelpCircle,
   BookOpen, Link2, Download, Pencil, CheckCircle2, AlertCircle,
-  FileSpreadsheet, Globe, ChevronRight, Layers
+  FileSpreadsheet, Globe, ChevronRight, Layers, ChevronUp, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,8 @@ export function CoursesView() {
     publishCourse,
     unpublishCourse,
     exportCourseCsv,
+    reorderCourseModules,
+    reorderCourseLessons,
     activeTeam,
   } = useAppStore();
   const isReviewer = activeTeam?.role === "REVIEWER";
@@ -200,6 +202,28 @@ export function CoursesView() {
     setLoading(true);
     await unpublishCourse(activeCourse.id);
     setLoading(false);
+  };
+
+  const handleMoveModule = async (index: number, direction: "up" | "down") => {
+    if (!activeCourse) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= activeCourse.modules.length) return;
+    const newModules = [...activeCourse.modules];
+    const [moved] = newModules.splice(index, 1);
+    newModules.splice(targetIndex, 0, moved);
+    await reorderCourseModules(activeCourse.id, newModules.map(m => m.id));
+  };
+
+  const handleMoveLesson = async (moduleId: string, lessonIndex: number, direction: "up" | "down") => {
+    if (!activeCourse) return;
+    const mod = activeCourse.modules.find(m => m.id === moduleId);
+    if (!mod) return;
+    const targetIndex = direction === "up" ? lessonIndex - 1 : lessonIndex + 1;
+    if (targetIndex < 0 || targetIndex >= mod.lessons.length) return;
+    const newLessons = [...mod.lessons];
+    const [moved] = newLessons.splice(lessonIndex, 1);
+    newLessons.splice(targetIndex, 0, moved);
+    await reorderCourseLessons(activeCourse.id, moduleId, newLessons.map(l => l.id));
   };
 
   const confirmDeleteCourse = async () => {
@@ -453,7 +477,7 @@ export function CoursesView() {
                     Este curso ainda não possui módulos. Clique em &quot;Adicionar Módulo&quot; para iniciar o roteiro!
                   </div>
                 ) : (
-                  activeCourse.modules.map((module) => (
+                  activeCourse.modules.map((module, moduleIndex) => (
                     <div
                       key={module.id}
                       className="p-4 rounded-lg bg-muted/30 border border-border space-y-3"
@@ -483,6 +507,28 @@ export function CoursesView() {
 
                         {canEditCourses && (
                           <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={moduleIndex === 0}
+                              onClick={() => handleMoveModule(moduleIndex, "up")}
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                              title="Mover módulo para cima"
+                              aria-label="Mover módulo para cima"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={moduleIndex === activeCourse.modules.length - 1}
+                              onClick={() => handleMoveModule(moduleIndex, "down")}
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                              title="Mover módulo para baixo"
+                              aria-label="Mover módulo para baixo"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -514,7 +560,7 @@ export function CoursesView() {
                             Nenhuma aula neste módulo ainda.
                           </div>
                         ) : (
-                          module.lessons.map((lesson) => {
+                          module.lessons.map((lesson, lessonIndex) => {
                             const linkedProject = allProjects.find(p => p.id === lesson.projectId);
                             return (
                               <div
@@ -537,6 +583,28 @@ export function CoursesView() {
                                 </div>
                                 {canEditCourses && (
                                   <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      disabled={lessonIndex === 0}
+                                      onClick={() => handleMoveLesson(module.id, lessonIndex, "up")}
+                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                                      title="Mover aula para cima"
+                                      aria-label="Mover aula para cima"
+                                    >
+                                      <ChevronUp className="w-2.5 h-2.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      disabled={lessonIndex === module.lessons.length - 1}
+                                      onClick={() => handleMoveLesson(module.id, lessonIndex, "down")}
+                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                                      title="Mover aula para baixo"
+                                      aria-label="Mover aula para baixo"
+                                    >
+                                      <ChevronDown className="w-2.5 h-2.5" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"

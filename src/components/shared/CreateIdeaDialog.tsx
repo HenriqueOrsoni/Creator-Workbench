@@ -37,8 +37,12 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
     }
   }, [isControlled, onOpenChange]);
 
-  const { activeTeamId, createInboxIdea, addIdea } = useAppStore();
+  const { activeTeamId, createInboxIdea, addIdea, teamTags } = useAppStore();
   const [loading, setLoading] = React.useState(false);
+
+  const availableTags = React.useMemo(() => {
+    return Array.from(new Set([...(teamTags || []).map(t => t.name), ...TAG_OPTIONS]));
+  }, [teamTags]);
 
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -189,7 +193,7 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
               className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
             >
               <option value="">Sem etiqueta</option>
-              {TAG_OPTIONS.map((t) => (
+              {availableTags.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>

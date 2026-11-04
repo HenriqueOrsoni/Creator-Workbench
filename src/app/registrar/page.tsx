@@ -235,6 +235,14 @@ export default function RegisterPage() {
                     )}
                   </div>
 
+                  <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                    Ao continuar, você concorda com os{" "}
+                    <span className="text-foreground font-medium underline underline-offset-2">Termos de Uso</span>{" "}
+                    e a{" "}
+                    <span className="text-foreground font-medium underline underline-offset-2">Política de Privacidade</span>{" "}
+                    do Creator Workbench.
+                  </p>
+
                   <Button 
                     type="submit"
                     disabled={isLoading}
@@ -326,6 +334,14 @@ export default function RegisterPage() {
                       <p className="text-[11px] text-destructive font-medium mt-1">{formStep2.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
+
+                  <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                    Ao continuar, você concorda com os{" "}
+                    <span className="text-foreground font-medium underline underline-offset-2">Termos de Uso</span>{" "}
+                    e a{" "}
+                    <span className="text-foreground font-medium underline underline-offset-2">Política de Privacidade</span>{" "}
+                    do Creator Workbench.
+                  </p>
 
                   <Button 
                     type="submit"

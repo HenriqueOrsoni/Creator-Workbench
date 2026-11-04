@@ -237,6 +237,20 @@ export interface ApiColumnDto {
   cards?: ApiCardDto[];
 }
 
+export interface TeamTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export const DEFAULT_TEAM_TAGS: TeamTag[] = [
+  { id: "1", name: "Tutorial", color: "#2E7D32" },
+  { id: "2", name: "Podcast", color: "#1565C0" },
+  { id: "3", name: "Curso", color: "#F57C00" },
+  { id: "4", name: "Roteiro", color: "#7B1FA2" },
+  { id: "5", name: "Artigo", color: "#C2185B" }
+];
+
 export interface ApiCourseDto {
   id: string | number;
   teamId: string | number;
@@ -430,6 +444,13 @@ interface AppState {
   publishCourse: (courseId: string) => Promise<boolean>;
   unpublishCourse: (courseId: string) => Promise<boolean>;
   exportCourseCsv: (courseId: string) => void;
+  reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
+  reorderCourseLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<boolean>;
+
+  teamTags: TeamTag[];
+  fetchTeamTags: () => Promise<void>;
+  createTeamTag: (name: string, color: string) => Promise<TeamTag | null>;
+  deleteTeamTag: (tagId: string) => Promise<boolean>;
 
   teamInvites: TeamInvite[];
   fetchTeamInvites: () => Promise<void>;
@@ -466,6 +487,7 @@ export const useAppStore = create<AppState>()(
       cardMaterials: {},
       cardSummaries: {},
       teamInvites: [],
+      teamTags: DEFAULT_TEAM_TAGS,
 
       clearError: () => set({ error: null }),
       resetStore: () => set({
@@ -2103,6 +2125,128 @@ export const useAppStore = create<AppState>()(
         if (remaining.length > 0) {
           await get().setActiveTeamId(remaining[0].id);
         }
+        return true;
+      },
+
+      reorderCourseModules: async (courseId: string, moduleIds: string[]) => {
+        const teamId = get().activeTeam?.id;
+        const currentCourse = get().activeCourse;
+        if (!currentCourse || currentCourse.id !== courseId) return false;
+
+        const modulesMap = new Map(currentCourse.modules.map(m => [m.id, m]));
+        const reordered = moduleIds
+          .map((id, index) => {
+            const mod = modulesMap.get(id);
+            return mod ? { ...mod, sortOrder: index } : null;
+          })
+          .filter((m): m is NonNullable<typeof m> => m !== null);
+
+        const updatedCourse = { ...currentCourse, modules: reordered };
+        set({
+          activeCourse: updatedCourse,
+          courses: get().courses.map(c => c.id === courseId ? updatedCourse : c)
+        });
+
+        if (teamId) {
+          try {
+            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/order`, { moduleIds });
+          } catch (e) {
+            console.warn("Backend reorder modules indisponível:", e);
+          }
+        }
+        return true;
+      },
+
+      reorderCourseLessons: async (courseId: string, moduleId: string, lessonIds: string[]) => {
+        const teamId = get().activeTeam?.id;
+        const currentCourse = get().activeCourse;
+        if (!currentCourse || currentCourse.id !== courseId) return false;
+
+        const updatedModules = currentCourse.modules.map(mod => {
+          if (mod.id !== moduleId) return mod;
+          const lessonsMap = new Map(mod.lessons.map(l => [l.id, l]));
+          const reorderedLessons = lessonIds
+            .map((id) => lessonsMap.get(id))
+            .filter((l): l is NonNullable<typeof l> => l !== null);
+          return { ...mod, lessons: reorderedLessons };
+        });
+
+        const updatedCourse = { ...currentCourse, modules: updatedModules };
+        set({
+          activeCourse: updatedCourse,
+          courses: get().courses.map(c => c.id === courseId ? updatedCourse : c)
+        });
+
+        if (teamId) {
+          try {
+            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/order`, { lessonIds });
+          } catch (e) {
+            console.warn("Backend reorder lessons indisponível:", e);
+          }
+        }
+        return true;
+      },
+
+      fetchTeamTags: async () => {
+        const teamId = get().activeTeam?.id;
+        if (!teamId) return;
+        try {
+          const data = await apiRequest("GET", `/api/v1/teams/${teamId}/tags`);
+          if (Array.isArray(data) && data.length > 0) {
+            set({
+              teamTags: data.map((t: { id: string | number; name: string; color?: string }) => ({
+                id: String(t.id),
+                name: t.name,
+                color: t.color || "#2E7D32"
+              }))
+            });
+            return;
+          }
+        } catch {
+          // Fallback gracioso com DEFAULT_TEAM_TAGS
+        }
+        set({ teamTags: DEFAULT_TEAM_TAGS });
+      },
+
+      createTeamTag: async (name: string, color: string) => {
+        const teamId = get().activeTeam?.id;
+        const current = get().teamTags;
+        const normalized = name.trim();
+        if (current.some(t => t.name.toLowerCase() === normalized.toLowerCase())) {
+          toast.error("Já existe uma etiqueta com esse nome.");
+          return null;
+        }
+
+        try {
+          if (teamId) {
+            const data = await apiRequest("POST", `/api/v1/teams/${teamId}/tags`, { name: normalized, color });
+            if (data && data.id) {
+              const newTag: TeamTag = { id: String(data.id), name: data.name, color: data.color || color };
+              set({ teamTags: [...current, newTag] });
+              toast.success("Etiqueta criada com sucesso!");
+              return newTag;
+            }
+          }
+        } catch {
+          // Fallback local
+        }
+        const fallbackTag: TeamTag = { id: `tag-${Date.now()}`, name: normalized, color };
+        set({ teamTags: [...current, fallbackTag] });
+        toast.success("Etiqueta adicionada!");
+        return fallbackTag;
+      },
+
+      deleteTeamTag: async (tagId: string) => {
+        const teamId = get().activeTeam?.id;
+        try {
+          if (teamId) {
+            await apiRequest("DELETE", `/api/v1/teams/${teamId}/tags/${tagId}`);
+          }
+        } catch {
+          // Fallback local
+        }
+        set({ teamTags: get().teamTags.filter(t => t.id !== tagId) });
+        toast.success("Etiqueta removida.");
         return true;
       },
 

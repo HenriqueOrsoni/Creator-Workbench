@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen, ThumbsUp, Tag, Filter } from "lucide-react";
+import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen, ThumbsUp, Tag, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { useAppStore, ProjectCard } from "@/store/useAppStore";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
 
 export function IdeasInbox() {
-  const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam } = useAppStore();
+  const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam, teamTags, fetchTeamTags } = useAppStore();
   const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
   const [openCreate, setOpenCreate] = React.useState(false);
   const [ideaToDelete, setIdeaToDelete] = React.useState<ProjectCard | null>(null);
@@ -28,14 +28,19 @@ export function IdeasInbox() {
 
   React.useEffect(() => {
     fetchIdeas();
-  }, [fetchIdeas]);
+    fetchTeamTags();
+  }, [fetchIdeas, fetchTeamTags]);
 
   const columns = board?.columns || [];
 
   const [selectedTag, setSelectedTag] = React.useState<string>("TODOS");
   const [sortBy, setSortBy] = React.useState<"recent" | "votes">("recent");
+  const [searchQuery, setSearchQuery] = React.useState<string>("");
 
-  const TAGS = ["TODOS", "Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"];
+  const TAGS = React.useMemo(() => {
+    const list = ["TODOS", ...Array.from(new Set([...(teamTags || []).map(t => t.name), "Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"]))];
+    return list;
+  }, [teamTags]);
 
   // Votos ficam salvos no servidor (um voto por membro em cada ideia)
   const handleToggleVote = (cardId: string) => {
@@ -43,12 +48,20 @@ export function IdeasInbox() {
   };
 
   const displayedIdeas = React.useMemo(() => {
-    const list = selectedTag === "TODOS" ? [...ideas] : ideas.filter(idea => idea.tag === selectedTag);
+    let list = selectedTag === "TODOS" ? [...ideas] : ideas.filter(idea => idea.tag === selectedTag);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(idea =>
+        idea.title.toLowerCase().includes(q) ||
+        (idea.description && idea.description.toLowerCase().includes(q)) ||
+        (idea.targetAudience && idea.targetAudience.toLowerCase().includes(q))
+      );
+    }
     if (sortBy === "votes") {
       list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
     }
     return list;
-  }, [ideas, selectedTag, sortBy]);
+  }, [ideas, selectedTag, sortBy, searchQuery]);
 
   const [convertAudience, setConvertAudience] = React.useState("");
   const [convertObjective, setConvertObjective] = React.useState("");
@@ -107,8 +120,8 @@ export function IdeasInbox() {
         )}
       </div>
 
-      {/* Barra de Filtro de Etiquetas e Ordenação por Votos (FE-01, FE-02) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1">
+      {/* Barra de Filtro de Etiquetas, Busca por Texto e Ordenação (FE-01, FE-02, FE-03) */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Tag className="w-3.5 h-3.5 text-muted-foreground mr-1" />
           {TAGS.map(tag => (
@@ -126,15 +139,26 @@ export function IdeasInbox() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full lg:w-auto">
+          <div className="relative flex-1 lg:w-56">
+            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Buscar ideias..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs rounded-lg bg-background border-border"
+            />
+          </div>
+
           <Button
             variant="outline"
             size="sm"
             onClick={() => setSortBy(sortBy === "recent" ? "votes" : "recent")}
-            className="rounded-lg text-xs font-medium gap-1.5 h-8 border-border bg-background"
+            className="rounded-lg text-xs font-medium gap-1.5 h-8 border-border bg-background shrink-0"
           >
             <Filter className="w-3 h-3" />
-            {sortBy === "recent" ? "Ordenar por: Recentes" : "Ordenar por: Mais Votadas"}
+            {sortBy === "recent" ? "Recentes" : "Mais Votadas"}
           </Button>
         </div>
       </div>

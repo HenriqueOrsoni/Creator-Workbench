@@ -51,6 +51,12 @@ interface ScriptEditorProps {
   kanbanItemId: string;
 }
 
+interface BackendScriptVersion {
+  id: string | number;
+  createdAt: string;
+  content: string;
+}
+
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   const { exportScript, activeTeam, items, board, setSelectedProjectId, generateCardSummary } = useAppStore();
   const isReviewer = activeTeam?.role === "REVIEWER";
@@ -81,6 +87,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
 
 
   const [versionToRestore, setVersionToRestore] = React.useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -92,12 +99,26 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     immediatelyRender: false,
     editable: canEditScript,
     content: "",
+    onUpdate: () => {
+      setHasUnsavedChanges(true);
+    },
     editorProps: {
       attributes: {
         class: "prose max-w-none focus:outline-none min-h-[500px] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/20",
       },
     },
   });
+
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   React.useEffect(() => {
     if (editor && typeof editor.setEditable === "function") {
@@ -123,12 +144,6 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       editor.commands.setContent("");
     }
   }, [kanbanItemId, editor]);
-
-  interface BackendScriptVersion {
-    id: string | number;
-    createdAt: string;
-    content: string;
-  }
 
   const fetchVersions = React.useCallback(async () => {
     if (!kanbanItemId) return;
@@ -161,6 +176,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     const content = editor.getHTML();
     try {
       await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
+      setHasUnsavedChanges(false);
       toast.success("Roteiro salvo com sucesso!");
     } catch (error) {
       toast.error("Erro ao salvar roteiro: " + (error as Error).message);
@@ -233,6 +249,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       const data = await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions/${versionToRestore}/restore`);
       if (data) {
         editor.commands.setContent(data.content || "");
+        setHasUnsavedChanges(false);
         toast.success("Versão do roteiro restaurada com sucesso!");
       }
     } catch (error) {
@@ -437,8 +454,10 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       <div className="px-4 py-2.5 bg-card border-t border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Status: Live</span>
+            <div className={`w-2 h-2 rounded-full ${hasUnsavedChanges ? "bg-amber-500 animate-pulse" : "bg-primary"}`} />
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {hasUnsavedChanges ? "Alterações não salvas" : "Status: Salvo"}
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground pl-4 border-l border-border">
@@ -452,20 +471,35 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
         </div>
       </div>
 
-      {/* Diálogo de Confirmação de Restauração de Snapshot (FE-16) */}
+      {/* Diálogo de Confirmação e Pré-visualização de Restauração de Snapshot (FE-14, FE-16) */}
       <Dialog 
         open={versionToRestore !== null} 
         onOpenChange={(open) => { 
           if (!open) setVersionToRestore(null); 
         }}
       >
-        <DialogContent className="sm:max-w-md rounded-xl p-6 bg-card border border-border shadow-lg">
+        <DialogContent className="sm:max-w-lg rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground">Confirmar Restauração</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Pré-visualizar e Restaurar Versão</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Tem certeza que deseja restaurar esta versão do roteiro? As alterações atuais não salvas serão substituídas pelo conteúdo deste snapshot.
+              Confira a pré-visualização do conteúdo deste snapshot antes de confirmar a restauração. As alterações atuais não salvas serão substituídas.
             </DialogDescription>
           </DialogHeader>
+
+          {versionToRestore && (
+            <div className="my-2 border border-border rounded-lg bg-muted/40 p-3 max-h-56 overflow-y-auto">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                Conteúdo do Snapshot ({snapshots.find(s => s.id === versionToRestore) ? new Date(snapshots.find(s => s.id === versionToRestore)!.timestamp).toLocaleString("pt-BR") : ""}):
+              </span>
+              <div 
+                className="text-xs text-foreground/90 prose prose-sm dark:prose-invert max-w-none leading-relaxed"
+                dangerouslySetInnerHTML={{ 
+                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Snapshot vazio.</p>" 
+                }}
+              />
+            </div>
+          )}
+
           <DialogFooter className="gap-2 sm:gap-2 mt-4">
             <Button
               variant="outline"
