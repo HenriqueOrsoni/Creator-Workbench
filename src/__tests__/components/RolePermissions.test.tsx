@@ -78,6 +78,7 @@ describe('TF-09 / BF-07 - Matriz de Permissões por Papel (ADMIN, CREATOR, REVIE
     id: '1',
     title: 'Projeto Piloto',
     description: 'Descrição do projeto piloto',
+    type: 'PROJECT',
     columnId: 'col-1',
     columnSince: new Date().toISOString(),
     sortOrder: 0,
@@ -91,7 +92,7 @@ describe('TF-09 / BF-07 - Matriz de Permissões por Papel (ADMIN, CREATOR, REVIE
     votes: 3,
     votedByMe: false,
     tasks: [
-      { id: 1, cardId: 1, title: 'Gravar intro', completed: true, sortOrder: 0, createdAt: new Date().toISOString() },
+      { id: '1', cardId: '1', title: 'Gravar intro', completed: true, sortOrder: 0, createdAt: new Date().toISOString() },
     ],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -119,7 +120,7 @@ describe('TF-09 / BF-07 - Matriz de Permissões por Papel (ADMIN, CREATOR, REVIE
       useAppStore.setState({
         activeTeam: reviewerTeam,
         activeTeamId: '10',
-        board: { teamId: 10, columns: mockColumns },
+        board: { teamId: '10', teamName: 'Estúdio de Ana', columns: mockColumns },
         ideas: [mockCard],
         courses: [],
         activeCourse: null,
@@ -198,7 +199,7 @@ describe('TF-09 / BF-07 - Matriz de Permissões por Papel (ADMIN, CREATOR, REVIE
       useAppStore.setState({
         activeTeam: creatorTeam,
         activeTeamId: '10',
-        board: { teamId: 10, columns: mockColumns },
+        board: { teamId: '10', teamName: 'Estúdio de Ana', columns: mockColumns },
         ideas: [mockCard],
         courses: [],
         activeCourse: null,
@@ -247,7 +248,7 @@ describe('TF-09 / BF-07 - Matriz de Permissões por Papel (ADMIN, CREATOR, REVIE
       useAppStore.setState({
         activeTeam: adminTeam,
         activeTeamId: '10',
-        board: { teamId: 10, columns: mockColumns },
+        board: { teamId: '10', teamName: 'Estúdio de Ana', columns: mockColumns },
         ideas: [mockCard],
         courses: [],
         activeCourse: null,

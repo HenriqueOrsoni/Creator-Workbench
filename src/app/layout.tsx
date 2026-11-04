@@ -15,6 +15,12 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Creator Workbench | Gestão de Conteúdo Digital",
   description: "Sistema de gestão de operações para conteúdo educacional digital.",
+  openGraph: {
+    title: "Creator Workbench",
+    description: "Sistema de gestão de operações para conteúdo educacional digital.",
+    type: "website",
+    locale: "pt_BR",
+  },
 };
 
 import { ThemeProvider } from "../components/shared/ThemeProvider";
