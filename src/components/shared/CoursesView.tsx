@@ -19,7 +19,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAppStore } from "@/store/useAppStore";
+import { useAppStore, type PublicationCheckProblem } from "@/store/useAppStore";
+import { canEditProduction } from "@/lib/roles";
 import { toast } from "sonner";
 
 export function CoursesView() {
@@ -46,8 +47,8 @@ export function CoursesView() {
     reorderCourseLessons,
     activeTeam,
   } = useAppStore();
-  const isReviewer = activeTeam?.role === "REVIEWER";
-  const canEditCourses = !isReviewer;
+  // Revisor é somente leitura nos cursos
+  const canEditCourses = canEditProduction(activeTeam?.role);
 
   const [openCreateCourse, setOpenCreateCourse] = React.useState(false);
   const [courseTitle, setCourseTitle] = React.useState("");
@@ -76,7 +77,7 @@ export function CoursesView() {
   } | null>(null);
 
   // Estados para Publicação e Validação (FE-22)
-  const [validationProblems, setValidationProblems] = React.useState<Array<{ type: string; message: string; moduleTitle?: string; lessonTitle?: string }>>([]);
+  const [validationProblems, setValidationProblems] = React.useState<PublicationCheckProblem[]>([]);
   const [openValidationDialog, setOpenValidationDialog] = React.useState(false);
   const [openPublishConfirm, setOpenPublishConfirm] = React.useState(false);
 
@@ -167,13 +168,16 @@ export function CoursesView() {
     if (!activeCourse || !editingLesson || !editingLesson.title.trim()) return;
 
     setLoading(true);
-    await updateCourseLesson(activeCourse.id, editingLesson.moduleId, editingLesson.lessonId, {
+    const saved = await updateCourseLesson(activeCourse.id, editingLesson.moduleId, editingLesson.lessonId, {
       title: editingLesson.title.trim(),
       type: editingLesson.type,
       projectId: editingLesson.projectId ? Number(editingLesson.projectId) : undefined,
+      description: editingLesson.description?.trim() ?? "",
+      contentUrl: editingLesson.contentUrl?.trim() ?? "",
     });
     setLoading(false);
-    setEditingLesson(null);
+    // Só fecha se o servidor aceitou; em caso de erro a mensagem já foi exibida
+    if (saved) setEditingLesson(null);
   };
 
   const handleStartPublish = async () => {
@@ -181,6 +185,8 @@ export function CoursesView() {
     setLoading(true);
     const result = await checkCoursePublication(activeCourse.id);
     setLoading(false);
+    // Se a verificação falhou, a mensagem do servidor já foi exibida e nada é publicado
+    if (!result) return;
     if (!result.publishable) {
       setValidationProblems(result.problems);
       setOpenValidationDialog(true);
@@ -613,7 +619,9 @@ export function CoursesView() {
                                         lessonId: lesson.id,
                                         title: lesson.title,
                                         type: lesson.type,
-                                        projectId: lesson.projectId
+                                        projectId: lesson.projectId,
+                                        description: lesson.description,
+                                        contentUrl: lesson.contentUrl
                                       })}
                                       className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
                                       title="Editar aula"
@@ -921,6 +929,32 @@ export function CoursesView() {
                 </div>
               </div>
 
+              <div>
+                <label htmlFor="edit-lesson-content-url" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Link do conteúdo (http ou https)
+                </label>
+                <Input
+                  id="edit-lesson-content-url"
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={editingLesson?.contentUrl || ""}
+                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, contentUrl: e.target.value } : null)}
+                  className="h-10 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-lesson-description" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Descrição da aula
+                </label>
+                <Textarea
+                  id="edit-lesson-description"
+                  value={editingLesson?.description || ""}
+                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="rounded-lg text-xs min-h-[70px]"
+                />
+              </div>
+
               {allProjects.length > 0 && (
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -1178,9 +1212,9 @@ export function CoursesView() {
                 <div className="w-2 h-2 rounded-full bg-destructive mt-1.5 shrink-0" />
                 <div>
                   <p className="font-semibold">{prob.message}</p>
-                  {prob.lessonTitle && (
+                  {prob.titles.length > 0 && (
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Adicione um link de vídeo/conteúdo ou vincule um material de apoio a esta aula.
+                      {prob.titles.join(", ")}
                     </p>
                   )}
                 </div>

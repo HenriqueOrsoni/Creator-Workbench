@@ -31,7 +31,6 @@ import { toast } from "sonner";
 const userSettingsSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
   email: z.string().email("Endereço de e-mail inválido."),
-  password: z.string().optional().or(z.literal("")),
 });
 
 type UserSettingsFormValues = z.infer<typeof userSettingsSchema>;
@@ -68,7 +67,6 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
     defaultValues: {
       name: "",
       email: "",
-      password: "",
     },
   });
 
@@ -84,7 +82,6 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
         form.reset({
           name: data.name || "",
           email: data.email || "",
-          password: "",
         });
       }
     } catch (err) {
@@ -107,16 +104,9 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
     setIsLoading(true);
     setError(null);
 
-    const payload: Record<string, string> = {
-      name: values.name,
-      email: values.email,
-    };
-    if (values.password && values.password.trim() !== "") {
-      payload.password = values.password;
-    }
-
+    // O PUT do perfil só altera o nome; senha e e-mail têm rotas próprias (aba Segurança e aba E-mail)
     try {
-      await apiRequest("PUT", `/api/v1/users/${userId}`, payload);
+      await apiRequest("PUT", `/api/v1/users/${userId}`, { name: values.name });
       toast.success("Configurações atualizadas com sucesso!");
       setOpen(false);
     } catch (err) {
@@ -310,30 +300,9 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                       <FormControl>
                         <Input
                           placeholder="usuario@creator.studio"
-                          disabled={isLoading}
-                          className="bg-background border-border rounded-lg h-10 text-sm"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-[11px]" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }: { field: ControllerRenderProps<UserSettingsFormValues, "password"> }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                        <Key size={13} className="text-primary" />
-                        Nova Senha (Deixe em branco para manter)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          disabled={isLoading}
+                          disabled
+                          readOnly
+                          title="Para trocar o e-mail, use a aba E-mail"
                           className="bg-background border-border rounded-lg h-10 text-sm"
                           {...field}
                         />

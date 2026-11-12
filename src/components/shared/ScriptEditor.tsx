@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { canEditProduction } from "@/lib/roles";
+import { formatDateTime } from "@/lib/dates";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 
@@ -58,31 +60,23 @@ interface BackendScriptVersion {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
-  const { exportScript, activeTeam, items, board, setSelectedProjectId, generateCardSummary } = useAppStore();
-  const isReviewer = activeTeam?.role === "REVIEWER";
-  const canEditScript = !isReviewer;
+  const { exportScript, activeTeam, items, setSelectedProjectId, generateCardSummary } = useAppStore();
+  const canEditRole = canEditProduction(activeTeam?.role);
+  // Se o roteiro não carregou, não deixa editar (um salvamento apagaria o roteiro real)
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  const canEditScript = canEditRole && !loadFailed;
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
 
   const [openSummaryDialog, setOpenSummaryDialog] = React.useState(false);
   const [summaryData, setSummaryData] = React.useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
 
-  const projects = React.useMemo(() => {
-    if (board?.columns && board.columns.length > 0) {
-      const list: Array<{ id: string; title: string }> = [];
-      board.columns.forEach((col) => {
-        col.cards.forEach((card) => {
-          list.push({ id: card.id, title: card.title });
-        });
-      });
-      if (list.length > 0) return list;
-    }
-    return items.filter((i) => i.state !== "IDEATION").map((i) => ({ id: i.id, title: i.title }));
-  }, [board, items]);
+  const projects = React.useMemo(() => items.map((i) => ({ id: i.id, title: i.title })), [items]);
 
+  // BF-14: sempre mostra o nome do projeto selecionado
   const currentProject = projects.find((p) => p.id === kanbanItemId) || {
     id: kanbanItemId,
-    title: "Projeto de Produção",
+    title: `Projeto #${kanbanItemId}`,
   };
 
 
@@ -135,30 +129,30 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   const fetchScript = React.useCallback(async () => {
     if (!kanbanItemId || !editor) return;
     try {
+      // BF-18: sem roteiro salvo o servidor responde 200 com content vazio
       const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script`);
-      if (data) {
-        editor.commands.setContent(data.content || "");
-      }
-    } catch {
-      console.warn("Nenhum roteiro salvo anteriormente. Iniciando em branco.");
-      editor.commands.setContent("");
+      editor.commands.setContent(data?.content || "");
+      setHasUnsavedChanges(false);
+      setLoadFailed(false);
+    } catch (error) {
+      setLoadFailed(true);
+      toast.error((error as Error).message || "Erro ao carregar o roteiro.");
     }
   }, [kanbanItemId, editor]);
 
   const fetchVersions = React.useCallback(async () => {
     if (!kanbanItemId) return;
     try {
+      // BF-18: sem roteiro o servidor responde [] (lista vazia)
       const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script/versions`);
-      if (Array.isArray(data)) {
-        const mapped = data.map((v: BackendScriptVersion) => ({
-          id: v.id.toString(),
-          timestamp: new Date(v.createdAt).getTime(),
-          content: v.content
-        }));
-        setSnapshots(mapped);
-      }
+      const list: BackendScriptVersion[] = Array.isArray(data) ? data : [];
+      setSnapshots(list.map((v) => ({
+        id: v.id.toString(),
+        timestamp: new Date(v.createdAt).getTime(),
+        content: v.content
+      })));
     } catch (error) {
-      console.error("Erro ao buscar histórico de versões:", error);
+      toast.error((error as Error).message || "Erro ao buscar o histórico de versões.");
     }
   }, [kanbanItemId]);
 
@@ -188,30 +182,11 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     if (canEditScript) {
       await handleSave();
     }
+    // A exportação vem do servidor (GET .../script/export); se falhar, a store já mostrou a mensagem
     const data = await exportScript(kanbanItemId);
-    let markdown = data?.markdownFormatted;
-    let cardTitle = data?.cardTitle;
-
-    if (!markdown) {
-      // Fallback para geração no cliente caso o backend ainda não possua o endpoint de exportação
-      const html = editor?.getHTML() || "";
-      const cleanText = editor?.getText() || "";
-      const words = cleanText.trim() ? cleanText.trim().split(/\s+/).length : 0;
-      const minutes = Math.max(1, Math.ceil(words / 140));
-
-      markdown = `# Roteiro de Produção\n\n` +
-        `**Métricas de Locução:** ${words} palavras • ~${minutes} min (base: 140 ppm)\n\n---\n\n` +
-        html
-          .replace(/<h1>(.*?)<\/h1>/gi, "# $1\n\n")
-          .replace(/<h2>(.*?)<\/h2>/gi, "## $1\n\n")
-          .replace(/<h3>(.*?)<\/h3>/gi, "### $1\n\n")
-          .replace(/<p>(.*?)<\/p>/gi, "$1\n\n")
-          .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
-          .replace(/<em>(.*?)<\/em>/gi, "*$1*")
-          .replace(/<li>(.*?)<\/li>/gi, "- $1\n")
-          .replace(/<[^>]*>/g, "");
-      cardTitle = currentProject.title || "roteiro";
-    }
+    if (!data) return;
+    const markdown = data.markdownFormatted;
+    const cardTitle = data.cardTitle;
 
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -237,9 +212,9 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
       await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions`);
       fetchVersions();
-      toast.success("Snapshot de revisão criado com sucesso!");
+      toast.success("Versão do roteiro criada com sucesso!");
     } catch (error) {
-      toast.error("Erro ao criar snapshot: " + (error as Error).message);
+      toast.error("Erro ao criar versão: " + (error as Error).message);
     }
   };
 
@@ -364,7 +339,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       <div className="w-12 h-12 bg-muted/40 rounded-lg flex items-center justify-center">
                         <FileText size={24} className="text-muted-foreground" />
                       </div>
-                      <p className="text-xs font-medium max-w-[200px]">Nenhum snapshot restaurável detectado.</p>
+                      <p className="text-xs font-medium max-w-[200px]">Nenhuma versão restaurável encontrada.</p>
                     </div>
                   ) : (
                     snapshots.map((s) => (
@@ -375,10 +350,10 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[10px] uppercase tracking-wider px-2 py-0.5 font-semibold">
-                            SNAPSHOT
+                            VERSÃO
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-medium">
-                            {new Date(s.timestamp).toLocaleDateString()} {new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatDateTime(new Date(s.timestamp).toISOString())}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate leading-relaxed">
@@ -399,7 +374,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
               onClick={takeSnapshot}
               className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg"
             >
-              Snapshot
+              Versão
             </Button>
           )}
 
@@ -471,7 +446,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
         </div>
       </div>
 
-      {/* Diálogo de Confirmação e Pré-visualização de Restauração de Snapshot (FE-14, FE-16) */}
+      {/* Diálogo de Confirmação e Pré-visualização de Restauração de versão (FE-14, FE-16) */}
       <Dialog 
         open={versionToRestore !== null} 
         onOpenChange={(open) => { 
@@ -482,19 +457,19 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground">Pré-visualizar e Restaurar Versão</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Confira a pré-visualização do conteúdo deste snapshot antes de confirmar a restauração. As alterações atuais não salvas serão substituídas.
+              Confira a pré-visualização do conteúdo desta versão antes de confirmar a restauração. As alterações atuais não salvas serão substituídas.
             </DialogDescription>
           </DialogHeader>
 
           {versionToRestore && (
             <div className="my-2 border border-border rounded-lg bg-muted/40 p-3 max-h-56 overflow-y-auto">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Conteúdo do Snapshot ({snapshots.find(s => s.id === versionToRestore) ? new Date(snapshots.find(s => s.id === versionToRestore)!.timestamp).toLocaleString("pt-BR") : ""}):
+                Conteúdo da versão ({snapshots.find(s => s.id === versionToRestore) ? new Date(snapshots.find(s => s.id === versionToRestore)!.timestamp).toLocaleString("pt-BR") : ""}):
               </span>
               <div 
                 className="text-xs text-foreground/90 prose prose-sm dark:prose-invert max-w-none leading-relaxed"
                 dangerouslySetInnerHTML={{ 
-                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Snapshot vazio.</p>" 
+                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Versão vazia.</p>" 
                 }}
               />
             </div>

@@ -13,14 +13,28 @@ export function formatRole(role?: string | null): string {
   }
 }
 
+/** Equipe: membros, convites, renomear e excluir a equipe. */
 export function canManageTeam(role?: string | null): boolean {
   return role === "ADMIN";
 }
 
-export function canEditProduction(role?: string | null): boolean {
-  // Se não houver equipe ativa (modo legado/individual), permite edição.
-  // Dentro de equipe, apenas ADMIN e CREATOR podem editar; REVIEWER é somente leitura.
-  if (!role) return true;
-  return role === "ADMIN" || role === "CREATOR";
+/** Colunas do quadro: somente o Administrador cria, renomeia, remove e reordena. */
+export function canManageColumns(role?: string | null): boolean {
+  return role === "ADMIN";
 }
 
+/** Etiquetas: somente o Administrador cria, renomeia, muda a cor e remove (usar é de quem edita). */
+export function canManageTags(role?: string | null): boolean {
+  return role === "ADMIN";
+}
+
+/** Decisão de revisão do card: Administrador e Revisor. */
+export function canReviewCards(role?: string | null): boolean {
+  return role === "ADMIN" || role === "REVIEWER";
+}
+
+export function canEditProduction(role?: string | null): boolean {
+  // Sem papel (sem equipe ativa) é somente leitura; REVIEWER também.
+  if (!role) return false;
+  return role === "ADMIN" || role === "CREATOR";
+}

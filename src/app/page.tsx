@@ -6,10 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useAppStore } from "../store/useAppStore";
 import dynamic from "next/dynamic";
 
-const CurriculumBuilder = dynamic(() => import("../components/shared/CurriculumBuilder").then(mod => ({ default: mod.CurriculumBuilder })), {
-  loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Matriz Curricular...</div>,
-});
-
 const ScriptEditor = dynamic(() => import("../components/shared/ScriptEditor").then(mod => ({ default: mod.ScriptEditor })), {
   loading: () => <div className="flex items-center justify-center py-20 text-muted-foreground text-xs font-medium">Carregando Estúdio de Escrita...</div>,
 });
@@ -28,19 +24,16 @@ import { KanbanBoard } from "../components/shared/KanbanBoard";
 import { Button } from "../components/ui/button";
 
 export default function UnifiedPage() {
-  const { items, ideas, courses, fetchItems, fetchTeams, selectedProjectId, activeTeam } = useAppStore();
+  const { items: projects, ideas, courses, fetchTeams, selectedProjectId, activeTeam } = useAppStore();
   const [activeTab, setActiveTab] = React.useState("kanban");
 
-  const legacyIdeas = items.filter(i => i.state === "IDEATION");
-  const projects = items.filter(i => i.state !== "IDEATION");
-  const totalIdeasCount = ideas.length > 0 ? ideas.length : legacyIdeas.length;
+  const totalIdeasCount = ideas.length;
 
   React.useEffect(() => {
-    fetchItems();
     fetchTeams();
-  }, [fetchItems, fetchTeams]);
+  }, [fetchTeams]);
 
-  const activeProject = projects.find(p => p.id === selectedProjectId) || projects[0];
+  const activeProject = projects.find(p => p.id === selectedProjectId) ?? projects[0];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans antialiased relative transition-colors selection:bg-primary/20">
@@ -89,7 +82,7 @@ export default function UnifiedPage() {
             </div>
           </div>
 
-          {/* TAB NAVIGATION PILLS (BF-13: Matriz Curricular unificada em Cursos & Módulos) */}
+          {/* TAB NAVIGATION PILLS */}
           <div className="mb-6 overflow-x-auto pb-1">
             <TabsList className="bg-muted/60 p-1 rounded-lg border border-border h-auto inline-flex gap-1">
               <TabsTrigger 
@@ -130,31 +123,6 @@ export default function UnifiedPage() {
 
           <TabsContent value="courses" className="mt-0 outline-none">
             <CoursesView />
-          </TabsContent>
-
-          {/* Mantém TabsContent value="curriculum" para retrocompatibilidade */}
-          <TabsContent value="curriculum" className="mt-0 outline-none">
-            <div className="bg-card p-6 sm:p-8 rounded-xl border border-border max-w-4xl mx-auto shadow-xs">
-              {activeProject ? (
-                <CurriculumBuilder
-                  kanbanItemId={activeProject.id}
-                  courseTitle={activeProject.title}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-xs font-medium gap-4 text-center">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
-                    <KanbanSquare size={22} />
-                  </div>
-                  <span>Nenhum projeto ativo selecionado</span>
-                  <Button 
-                    onClick={() => setActiveTab("kanban")}
-                    className="bg-primary hover:bg-primary-hover text-primary-foreground rounded-lg font-semibold text-xs px-4 h-9 shadow-xs"
-                  >
-                    Selecionar Projeto no Kanban
-                  </Button>
-                </div>
-              )}
-            </div>
           </TabsContent>
 
           <TabsContent value="editor" className="mt-0 outline-none">

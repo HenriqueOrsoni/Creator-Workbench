@@ -16,10 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAppStore, ProjectCard } from "@/store/useAppStore";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
+import { canEditProduction } from "@/lib/roles";
 
 export function IdeasInbox() {
-  const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam, teamTags, fetchTeamTags } = useAppStore();
-  const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
+  const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam, teamTags, fetchTeamTags, ideaFilters, setIdeaFilters } = useAppStore();
+  const canCreate = canEditProduction(activeTeam?.role);
   const [openCreate, setOpenCreate] = React.useState(false);
   const [ideaToDelete, setIdeaToDelete] = React.useState<ProjectCard | null>(null);
   const [convertingCard, setConvertingCard] = React.useState<ProjectCard | null>(null);
@@ -33,35 +34,27 @@ export function IdeasInbox() {
 
   const columns = board?.columns || [];
 
-  const [selectedTag, setSelectedTag] = React.useState<string>("TODOS");
-  const [sortBy, setSortBy] = React.useState<"recent" | "votes">("recent");
-  const [searchQuery, setSearchQuery] = React.useState<string>("");
+  // Busca, etiqueta e ordenação são aplicadas pelo servidor (?q=&tagId=&sort=)
+  const selectedTagId = ideaFilters.tagId;
+  const sortBy = ideaFilters.sort;
+  const [searchText, setSearchText] = React.useState(ideaFilters.q);
 
-  const TAGS = React.useMemo(() => {
-    const list = ["TODOS", ...Array.from(new Set([...(teamTags || []).map(t => t.name), "Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"]))];
-    return list;
-  }, [teamTags]);
+  React.useEffect(() => {
+    if (searchText.trim() === ideaFilters.q.trim()) return;
+    const timer = setTimeout(() => {
+      setIdeaFilters({ q: searchText });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText, ideaFilters.q, setIdeaFilters]);
+
+  const selectedTagName = teamTags.find(t => t.id === selectedTagId)?.name;
 
   // Votos ficam salvos no servidor (um voto por membro em cada ideia)
   const handleToggleVote = (cardId: string) => {
     voteIdea(cardId);
   };
 
-  const displayedIdeas = React.useMemo(() => {
-    let list = selectedTag === "TODOS" ? [...ideas] : ideas.filter(idea => idea.tag === selectedTag);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(idea =>
-        idea.title.toLowerCase().includes(q) ||
-        (idea.description && idea.description.toLowerCase().includes(q)) ||
-        (idea.targetAudience && idea.targetAudience.toLowerCase().includes(q))
-      );
-    }
-    if (sortBy === "votes") {
-      list.sort((a, b) => (b.votes || 0) - (a.votes || 0));
-    }
-    return list;
-  }, [ideas, selectedTag, sortBy, searchQuery]);
+  const displayedIdeas = ideas;
 
   const [convertAudience, setConvertAudience] = React.useState("");
   const [convertObjective, setConvertObjective] = React.useState("");
@@ -124,17 +117,29 @@ export function IdeasInbox() {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Tag className="w-3.5 h-3.5 text-muted-foreground mr-1" />
-          {TAGS.map(tag => (
+          <button
+            type="button"
+            onClick={() => setIdeaFilters({ tagId: "" })}
+            className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${
+              selectedTagId === ""
+                ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            Todas
+          </button>
+          {teamTags.map(tag => (
             <button
-              key={tag}
-              onClick={() => setSelectedTag(tag)}
+              type="button"
+              key={tag.id}
+              onClick={() => setIdeaFilters({ tagId: tag.id })}
               className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors ${
-                selectedTag === tag
+                selectedTagId === tag.id
                   ? "bg-primary text-primary-foreground shadow-xs font-semibold"
                   : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              {tag}
+              {tag.name}
             </button>
           ))}
         </div>
@@ -145,8 +150,8 @@ export function IdeasInbox() {
             <Input
               type="text"
               placeholder="Buscar ideias..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
               className="pl-8 h-8 text-xs rounded-lg bg-background border-border"
             />
           </div>
@@ -154,7 +159,7 @@ export function IdeasInbox() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSortBy(sortBy === "recent" ? "votes" : "recent")}
+            onClick={() => setIdeaFilters({ sort: sortBy === "recent" ? "votes" : "recent" })}
             className="rounded-lg text-xs font-medium gap-1.5 h-8 border-border bg-background shrink-0"
           >
             <Filter className="w-3 h-3" />
@@ -168,9 +173,11 @@ export function IdeasInbox() {
         <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed border-border">
           <Sparkles className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
           <h3 className="text-sm font-semibold text-foreground">
-            {selectedTag === "TODOS"
+            {selectedTagId === "" && !ideaFilters.q.trim()
               ? "Nenhuma ideia pendente na Caixa de Entrada"
-              : `Nenhuma ideia com a etiqueta "${selectedTag}"`}
+              : selectedTagName
+                ? `Nenhuma ideia encontrada com a etiqueta "${selectedTagName}"`
+                : "Nenhuma ideia encontrada para a busca"}
           </h3>
           <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
             Todas as ideias foram convertidas em projetos ou ainda não foram registradas.
@@ -197,9 +204,12 @@ export function IdeasInbox() {
                       Ideia Bruta
                     </Badge>
                     {idea.tag && (
-                      <Badge variant="outline" className="text-[11px] font-semibold bg-primary/10 border-primary/30 text-primary rounded-md">
+                      <span
+                        className="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold text-white"
+                        style={{ backgroundColor: idea.tagColor || "#64748B" }}
+                      >
                         {idea.tag}
-                      </Badge>
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">

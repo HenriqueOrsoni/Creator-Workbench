@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
+import { getSafeRedirect } from "@/lib/redirect";
 import { PasswordRecoveryDialog } from "../../components/shared/PasswordRecoveryDialog";
 
 const loginSchema = z.object({
@@ -51,7 +52,8 @@ export default function LoginPage() {
         if (response.userId) {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
-        router.push("/");
+        // Volta para a página que o usuário queria (?redirect= codificado), só dentro do app
+        router.push(getSafeRedirect(window.location.search));
       } else {
         throw new Error("Token não retornado pelo servidor.");
       }

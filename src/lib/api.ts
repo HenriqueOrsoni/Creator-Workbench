@@ -41,63 +41,103 @@ export function handleUnauthorized() {
   }
 }
 
-// Função para chamadas genéricas à API
-export async function apiRequest(method: string, path: string, body?: unknown) {
-  const token = getCookie("creator_auth_token");
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+/** Erro de API: a mensagem é o {message} do servidor e `status` é o código HTTP. */
+export class ApiError extends Error {
+  status: number;
 
-  const headers: Record<string, string> = {
-    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-  };
-
-  if (!isFormData) {
-    headers["Content-Type"] = "application/json";
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
   }
+}
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: isFormData ? (body as FormData) : (body !== undefined ? JSON.stringify(body) : undefined),
-  });
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const errorData = await response.json();
+    return errorData?.message || fallback;
+  } catch {
+    // Ignora falha de parsing se a resposta não for JSON
+    return fallback;
+  }
+}
+
+// Converte respostas de erro em exceções com a mensagem do servidor
+async function throwIfError(response: Response, path: string) {
+  if (response.ok) return;
 
   if (response.status === 401) {
     if (path.startsWith("/api/auth/")) {
-      let errorMessage = "Credenciais inválidas. Verifique seu e-mail e senha.";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        // Ignora falha de parsing
-      }
-      throw new Error(errorMessage);
+      throw new ApiError(await readErrorMessage(response, "Credenciais inválidas. Verifique seu e-mail e senha."), 401);
     }
-
     handleUnauthorized();
-    throw new Error("Sessão expirada. Redirecionando...");
+    throw new ApiError("Sessão expirada. Redirecionando...", 401);
   }
 
   if (response.status === 403) {
-    let errorMessage = "Acesso negado para esta operação.";
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorMessage;
-    } catch {
-      // Ignora falha de parsing se a resposta não for JSON
-    }
-    throw new Error(errorMessage);
+    throw new ApiError(await readErrorMessage(response, "Acesso negado para esta operação."), 403);
   }
 
-  if (!response.ok) {
-    let errorMessage = "Ocorreu um erro na requisição.";
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorMessage;
-    } catch {
-      // Ignora falha de parsing se a resposta não for JSON
-    }
-    throw new Error(errorMessage);
+  throw new ApiError(await readErrorMessage(response, "Ocorreu um erro na requisição."), response.status);
+}
+
+function buildHeaders(withJsonContentType: boolean): Record<string, string> {
+  const token = getCookie("creator_auth_token");
+  const headers: Record<string, string> = {
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  };
+  if (withJsonContentType) {
+    headers["Content-Type"] = "application/json";
   }
+  return headers;
+}
+
+// Função para chamadas genéricas à API
+export async function apiRequest(method: string, path: string, body?: unknown) {
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: buildHeaders(!isFormData),
+    body: isFormData ? (body as FormData) : (body !== undefined ? JSON.stringify(body) : undefined),
+  });
+
+  await throwIfError(response, path);
 
   if (response.status === 204) return null;
   return response.json();
+}
+
+/**
+ * Baixa um arquivo com o token no cabeçalho (fetch + blob) e dispara o download no navegador.
+ * Um link simples (<a href>) não envia o token, por isso não serve para rotas protegidas.
+ */
+export async function apiDownload(path: string, fallbackFileName: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: buildHeaders(false),
+  });
+
+  await throwIfError(response, path);
+
+  const blob = await response.blob();
+  let fileName = fallbackFileName;
+  const disposition = response.headers?.get?.("Content-Disposition");
+  const match = disposition ? /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition) : null;
+  if (match) {
+    try {
+      fileName = decodeURIComponent(match[1]);
+    } catch {
+      fileName = match[1];
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

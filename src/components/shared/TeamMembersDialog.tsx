@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAppStore, TeamMember, TeamInvite } from "@/store/useAppStore";
 import { toast } from "sonner";
+import { canManageTeam, formatRole } from "@/lib/roles";
+import { TagManager } from "./TagManager";
 
 interface TeamMembersDialogProps {
   open: boolean;
@@ -64,7 +66,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
     }
   }, [open, activeTeam, fetchTeamMembers, fetchTeamInvites]);
 
-  const isAdmin = activeTeam?.role === "ADMIN";
+  const isAdmin = canManageTeam(activeTeam?.role);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,10 +114,13 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
     }
 
     setIsDeletingTeam(true);
-    await deleteTeam(activeTeam.id);
+    const deleted = await deleteTeam(activeTeam.id);
     setIsDeletingTeam(false);
-    setOpenDeleteTeamModal(false);
-    onOpenChange(false);
+    // Só fecha se o servidor excluiu; em caso de erro a mensagem já foi exibida
+    if (deleted) {
+      setOpenDeleteTeamModal(false);
+      onOpenChange(false);
+    }
   };
 
   const handleRoleChange = async (member: TeamMember, newRole: "ADMIN" | "CREATOR" | "REVIEWER") => {
@@ -130,18 +135,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
     }
   };
 
-  const getRoleLabel = (r: string) => {
-    switch (r) {
-      case "ADMIN":
-        return "Administrador";
-      case "CREATOR":
-        return "Criador";
-      case "REVIEWER":
-        return "Revisor";
-      default:
-        return r;
-    }
-  };
+  const getRoleLabel = (r: string) => formatRole(r);
 
   const getRoleBadgeVariant = (r: string) => {
     switch (r) {
@@ -171,13 +165,18 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
-            <TabsList className="grid grid-cols-3 w-full bg-muted/60 p-1 rounded-lg text-xs">
+            <TabsList className={`grid ${isAdmin ? "grid-cols-4" : "grid-cols-2"} w-full bg-muted/60 p-1 rounded-lg text-xs`}>
               <TabsTrigger value="membros" className="text-xs font-semibold rounded-md">
                 Membros ({teamMembers.length})
               </TabsTrigger>
               <TabsTrigger value="convites" className="text-xs font-semibold rounded-md">
                 Convites ({teamInvites.length})
               </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="etiquetas" className="text-xs font-semibold rounded-md">
+                  Etiquetas
+                </TabsTrigger>
+              )}
               {isAdmin && (
                 <TabsTrigger value="configuracoes" className="text-xs font-semibold rounded-md">
                   Configurações
@@ -277,7 +276,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                             >
                               <option value="CREATOR">Criador</option>
                               <option value="REVIEWER">Revisor</option>
-                              <option value="ADMIN">Admin</option>
+                              <option value="ADMIN">Administrador</option>
                             </select>
 
                             <Button
@@ -322,7 +321,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                     >
                       <option value="CREATOR">Criador</option>
                       <option value="REVIEWER">Revisor</option>
-                      <option value="ADMIN">Admin</option>
+                      <option value="ADMIN">Administrador</option>
                     </select>
                   </div>
                   <Button
@@ -354,7 +353,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                           </Badge>
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Expira em {new Date(inv.expiresAt).toLocaleDateString()}
+                          Expira em {new Date(inv.expiresAt).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
 
@@ -374,7 +373,14 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
               </div>
             </TabsContent>
 
-            {/* Aba 3: Configurações da Equipe (FE-26) */}
+            {/* Aba 3: Etiquetas (somente Administrador) */}
+            {isAdmin && (
+              <TabsContent value="etiquetas" className="pt-3">
+                <TagManager />
+              </TabsContent>
+            )}
+
+            {/* Aba 4: Configurações da Equipe (FE-26) */}
             {isAdmin && (
               <TabsContent value="configuracoes" className="space-y-4 pt-3">
                 <form onSubmit={handleRenameTeam} className="p-3.5 rounded-lg border border-border bg-card space-y-2.5">

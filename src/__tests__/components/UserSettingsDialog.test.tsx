@@ -53,10 +53,9 @@ describe('TF-08 & FE-35 - UserSettingsDialog Component Tests', () => {
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
-      expect(apiModule.apiRequest).toHaveBeenCalledWith('PUT', '/api/v1/users/123', expect.objectContaining({
+      expect(apiModule.apiRequest).toHaveBeenCalledWith('PUT', '/api/v1/users/123', {
         name: 'Henrique Atualizado',
-        email: 'henrique@example.com',
-      }));
+      });
     });
   });
 

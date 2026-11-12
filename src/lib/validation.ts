@@ -17,18 +17,15 @@ export const itemSchema = z.object({
 export const conversionSchema = z.object({
   title: z.string().min(3, "O título do projeto deve ter pelo menos 3 caracteres."),
   targetAudience: z.string().min(3, "Público-alvo insuficiente."),
-  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
-  state: z.enum(["IDEATION", "IN_PRODUCTION", "REVIEW", "DONE"]).optional(),
-  progress: z.number().min(0).max(100).optional(),
+  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo de 10 caracteres)."),
   dueDate: z.string().optional(),
 });
 
+// Estado e progresso não são mais editados: a coluna define o estado e o progresso vem das tarefas
 export const projectUpdateSchema = z.object({
   title: z.string().min(3, "O título do projeto deve ter pelo menos 3 caracteres."),
   targetAudience: z.string().min(3, "Público-alvo insuficiente."),
-  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
-  state: z.enum(["IDEATION", "IN_PRODUCTION", "REVIEW", "DONE"]),
-  progress: z.number().min(0).max(100),
+  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo de 10 caracteres)."),
   dueDate: z.string().optional(),
 });
 
