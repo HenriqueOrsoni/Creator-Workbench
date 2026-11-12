@@ -63,3 +63,6 @@ GUIA_INTEGRACAO_FRONTEND (1).md
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# E2E (capturas de tela geradas pelos specs)
+/e2e/screenshots/
