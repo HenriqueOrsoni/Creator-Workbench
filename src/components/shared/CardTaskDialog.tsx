@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   CheckSquare, Square, Plus, Trash2, ListChecks, Paperclip,
   Sparkles, History, CheckCircle2, ArrowUp, ArrowDown,
@@ -63,6 +63,20 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
   const [newTitle, setNewTitle] = useState("");
   // Edição do título da tarefa (Enter ou sair do campo salva; Esc cancela)
   const [editingTask, setEditingTask] = useState<{ id: string; title: string } | null>(null);
+  // Espelho síncrono da edição: garante um único salvamento (Enter + blur) e nenhum após Esc
+  const editingTaskRef = useRef<{ id: string; title: string } | null>(null);
+  const startEditingTask = (task: { id: string; title: string }) => {
+    editingTaskRef.current = { id: task.id, title: task.title };
+    setEditingTask({ id: task.id, title: task.title });
+  };
+  const changeEditingTitle = (id: string, title: string) => {
+    editingTaskRef.current = { id, title };
+    setEditingTask({ id, title });
+  };
+  const cancelEditingTask = () => {
+    editingTaskRef.current = null;
+    setEditingTask(null);
+  };
   const [loading, setLoading] = useState(false);
 
   // Estados para Materiais (FE-10, FE-11)
@@ -141,7 +155,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
   };
 
   const commitTaskTitle = async (task: CardTask) => {
-    const draft = editingTask;
+    const draft = editingTaskRef.current;
+    editingTaskRef.current = null;
     setEditingTask(null);
     if (!draft || draft.id !== task.id) return;
     const title = draft.title.trim();
@@ -307,14 +322,14 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                         autoFocus
                         aria-label={`Título da tarefa ${task.title}`}
                         value={editingTask.title}
-                        onChange={(e) => setEditingTask({ id: task.id, title: e.target.value })}
+                        onChange={(e) => changeEditingTitle(task.id, e.target.value)}
                         onBlur={() => commitTaskTitle(task)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             commitTaskTitle(task);
                           } else if (e.key === "Escape") {
-                            setEditingTask(null);
+                            cancelEditingTask();
                           }
                         }}
                         className="h-7 text-xs flex-1 min-w-0"
@@ -396,7 +411,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setEditingTask({ id: task.id, title: task.title })}
+                          onClick={() => startEditingTask(task)}
                           className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
                           title="Editar título"
                           aria-label={`Editar título da tarefa ${task.title}`}

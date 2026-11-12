@@ -214,7 +214,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       fetchVersions();
       toast.success("Versão do roteiro criada com sucesso!");
     } catch (error) {
-      toast.error("Erro ao criar snapshot: " + (error as Error).message);
+      toast.error("Erro ao criar versão: " + (error as Error).message);
     }
   };
 
@@ -339,7 +339,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       <div className="w-12 h-12 bg-muted/40 rounded-lg flex items-center justify-center">
                         <FileText size={24} className="text-muted-foreground" />
                       </div>
-                      <p className="text-xs font-medium max-w-[200px]">Nenhum snapshot restaurável detectado.</p>
+                      <p className="text-xs font-medium max-w-[200px]">Nenhuma versão restaurável encontrada.</p>
                     </div>
                   ) : (
                     snapshots.map((s) => (
@@ -457,7 +457,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-foreground">Pré-visualizar e Restaurar Versão</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Confira a pré-visualização do conteúdo deste snapshot antes de confirmar a restauração. As alterações atuais não salvas serão substituídas.
+              Confira a pré-visualização do conteúdo desta versão antes de confirmar a restauração. As alterações atuais não salvas serão substituídas.
             </DialogDescription>
           </DialogHeader>
 

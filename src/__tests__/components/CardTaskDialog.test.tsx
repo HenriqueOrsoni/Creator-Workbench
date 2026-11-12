@@ -185,6 +185,30 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
       expect(mockUpdateDetails).not.toHaveBeenCalled();
     });
 
+    it('Enter seguido de blur salva uma única vez; Esc seguido de blur não salva', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
+      let input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.change(input, { target: { value: 'Título novo' } });
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Enter' });
+        fireEvent.blur(input);
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledTimes(1);
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { title: 'Título novo' });
+
+      mockUpdateDetails.mockClear();
+      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
+      input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.change(input, { target: { value: 'Cancelado' } });
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Escape' });
+        fireEvent.blur(input);
+      });
+      expect(mockUpdateDetails).not.toHaveBeenCalled();
+    });
+
     it('Revisor não vê a edição de título', () => {
       seed('REVIEWER');
       render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
