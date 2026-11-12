@@ -57,3 +57,9 @@ GUIA_INTEGRACAO_FRONTEND (1).md
 .vscode/settings.json
 *.code-workspace
 
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
