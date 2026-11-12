@@ -67,8 +67,7 @@ test.describe("Diversos", () => {
     await scan("membros");
     await page.getByRole("tab", { name: "Etiquetas" }).click();
     await scan("etiquetas");
-    await page.getByRole("tab", { name: "Configurações" }).click();
-    await scan("config equipe");
+    // aba "Configurações" (renomear/excluir equipe) fica escondida ate o backend existir
     expect(seen, "palavras sem acento em texto de interface").toEqual([]);
   });
 

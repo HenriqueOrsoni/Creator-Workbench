@@ -285,6 +285,8 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={() => handleOpenEdit(item)}
+                                    title="Configurar projeto"
+                                    aria-label="Configurar projeto"
                                     className="h-8 w-8 text-zinc-400 hover:text-primary rounded-lg"
                                   >
                                     <Settings2 size={14} />

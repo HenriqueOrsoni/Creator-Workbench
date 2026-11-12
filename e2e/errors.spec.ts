@@ -99,14 +99,19 @@ test.describe("Falhas de rede e erros 5xx (sem sucesso falso)", () => {
     await expect(page.locator('[data-sonner-toast][data-type="error"]').first()).toBeVisible();
   });
 
-  test("alertas ainda nao implementados (404) e convites: abrir o sino e o dialogo de membros nao gera toast de erro", async ({ page }) => {
+  test("alertas e convites escondidos (sem backend): nao ha sino, aba Convites nem chamadas a essas rotas, e nenhum toast de erro", async ({ page }) => {
+    const calls: string[] = [];
+    page.on("request", (r) => {
+      if (/\/(alerts|invites)/.test(r.url())) calls.push(r.url());
+    });
     await loginAs(page, "ana", team);
-    await page.getByRole("button", { name: "Alertas de Prazos" }).click();
-    await expect(page.getByText("Nenhum prazo pendente ou em atraso.")).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toHaveCount(0);
     await page.getByTitle("Gerenciar membros da equipe").click();
-    await page.getByRole("tab", { name: /Convites/ }).click();
+    await expect(page.getByRole("tab", { name: /Membros/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /Convites/ })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Configurações" })).toHaveCount(0);
     await page.waitForTimeout(800);
+    expect(calls).toEqual([]);
     await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
   });
 
