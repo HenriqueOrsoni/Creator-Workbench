@@ -1,21 +1,31 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { OklchColor } from "@/lib/color-utils";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, apiDownload } from "@/lib/api";
 import { toast } from "sonner";
 
 /**
  * Creator Workbench - Global Store
  * Gerencia o estado de Ideação, Produção, Equipes e Cursos.
- * Fase 2: Modelo de Domínio Expandido.
+ *
+ * Regra de ouro: nenhuma ação finge sucesso. Se a requisição falha, o estado não muda
+ * e o usuário vê a mensagem {message} devolvida pelo servidor.
  */
+
+export type TeamRoleName = "ADMIN" | "CREATOR" | "REVIEWER";
 
 export interface Team {
   id: string;
   name: string;
-  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  role: TeamRoleName;
   membersCount: number;
   createdAt: string;
+}
+
+export interface TaskAssignee {
+  memberId: string;
+  userId: string;
+  name: string;
 }
 
 export interface CardTask {
@@ -24,7 +34,7 @@ export interface CardTask {
   title: string;
   completed: boolean;
   sortOrder: number;
-  assignee?: { memberId: string; userId: string; name: string } | null;
+  assignee?: TaskAssignee | null;
   dueDate?: string | null;
   createdAt: string;
 }
@@ -42,6 +52,7 @@ export interface MaterialItem {
 
 export interface ProjectCard {
   id: string;
+  uuid?: string;
   teamId?: string;
   title: string;
   description: string;
@@ -49,6 +60,7 @@ export interface ProjectCard {
   columnId?: string;
   columnName?: string;
   sortOrder: number;
+  /** Calculado pelo servidor a partir das tarefas. */
   progress: number;
   tasksTotal: number;
   tasksDone: number;
@@ -56,9 +68,12 @@ export interface ProjectCard {
   pedagogicalObjective?: string;
   tasks?: CardTask[];
   tag?: string;
+  tagId?: string;
+  tagColor?: string;
   dueDate?: string;
   votes?: number;
   votedByMe?: boolean;
+  /** Momento em que o card entrou na coluna atual. */
   columnSince?: string;
   reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
   materials?: MaterialItem[];
@@ -129,11 +144,9 @@ export interface ProjectSummary {
 }
 
 export interface PublicationCheckProblem {
-  type: "NO_MODULES" | "EMPTY_MODULE" | "LESSON_WITHOUT_MATERIAL";
-  moduleId?: number;
-  moduleTitle?: string;
-  lessonId?: number;
-  lessonTitle?: string;
+  type: string;
+  ids: number[];
+  titles: string[];
   message: string;
 }
 
@@ -161,19 +174,18 @@ export interface CardReview {
 export interface TeamInvite {
   id: string;
   email: string;
-  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  role: TeamRoleName;
   status: "PENDING" | "ACCEPTED" | "CANCELLED";
   invitedBy?: { userId: string; name: string };
   createdAt: string;
   expiresAt: string;
 }
 
-// Compatibilidade legada para o Kanban anterior
+/** Visão achatada de um card do quadro (usada pelo estúdio de roteiro e pelo formulário de edição). */
 export interface KanbanItem {
   id: string;
   title: string;
   description: string;
-  state: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE";
   createdAt: number;
   targetAudience?: string;
   pedagogicalObjective?: string;
@@ -184,21 +196,6 @@ export interface KanbanItem {
   dueDate?: string;
 }
 
-export interface BackendKanbanItem {
-  id: string | number;
-  title: string;
-  description?: string;
-  state: string;
-  createdAt: string;
-  targetAudience?: string;
-  pedagogicalObjective?: string;
-  progress?: number;
-  tasksTotal?: number;
-  tasksDone?: number;
-  columnId?: string | number;
-  dueDate?: string;
-}
-
 export interface ApiTaskDto {
   id: string | number;
   cardId: string | number;
@@ -206,10 +203,13 @@ export interface ApiTaskDto {
   completed?: boolean;
   sortOrder: number;
   createdAt?: string;
+  assignee?: { memberId: string | number; userId: string | number; name: string } | null;
+  dueDate?: string | null;
 }
 
 export interface ApiCardDto {
   id: string | number;
+  uuid?: string;
   teamId?: string | number;
   title: string;
   description?: string;
@@ -223,9 +223,13 @@ export interface ApiCardDto {
   pedagogicalObjective?: string;
   tasks?: ApiTaskDto[];
   tag?: string;
+  tagId?: string | number | null;
+  tagColor?: string | null;
   dueDate?: string;
   votes?: number;
   votedByMe?: boolean;
+  columnSince?: string | null;
+  reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -243,13 +247,16 @@ export interface TeamTag {
   color: string;
 }
 
-export const DEFAULT_TEAM_TAGS: TeamTag[] = [
-  { id: "1", name: "Tutorial", color: "#2E7D32" },
-  { id: "2", name: "Podcast", color: "#1565C0" },
-  { id: "3", name: "Curso", color: "#F57C00" },
-  { id: "4", name: "Roteiro", color: "#7B1FA2" },
-  { id: "5", name: "Artigo", color: "#C2185B" }
-];
+export interface ApiMaterialDto {
+  id: string | number;
+  cardId?: string | number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy?: { userId: string | number; name: string } | null;
+  createdAt: string;
+  downloadUrl?: string;
+}
 
 export interface ApiCourseDto {
   id: string | number;
@@ -257,6 +264,8 @@ export interface ApiCourseDto {
   title: string;
   description?: string;
   modulesCount?: number;
+  status?: "DRAFT" | "PUBLISHED";
+  publishedAt?: string | null;
   createdAt: string;
 }
 
@@ -268,6 +277,9 @@ export interface ApiLessonDto {
   published?: boolean;
   sortOrder: number;
   projectId?: string | number;
+  description?: string;
+  contentUrl?: string;
+  materials?: ApiMaterialDto[];
   createdAt?: string;
 }
 
@@ -285,7 +297,7 @@ export interface TeamMember {
   userId: string;
   name: string;
   email: string;
-  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  role: TeamRoleName;
   joinedAt: string;
 }
 
@@ -294,7 +306,7 @@ export interface ApiTeamMemberDto {
   userId: string | number;
   name: string;
   email: string;
-  role: "ADMIN" | "CREATOR" | "REVIEWER";
+  role: TeamRoleName;
   joinedAt: string;
 }
 
@@ -323,40 +335,147 @@ export interface ApiScriptVersionDto {
   createdAt: string;
 }
 
-function mapBackendToFrontendItem(item: BackendKanbanItem): KanbanItem {
+export type IdeaSort = "recent" | "votes";
+
+export interface IdeaFilters {
+  q: string;
+  /** Id da etiqueta ("" = todas). */
+  tagId: string;
+  sort: IdeaSort;
+}
+
+const DEFAULT_IDEA_FILTERS: IdeaFilters = { q: "", tagId: "", sort: "recent" };
+
+// --- Auxiliares ---
+
+function errMsg(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function statusOf(error: unknown): number | undefined {
+  return (error as { status?: number } | null)?.status;
+}
+
+function notifyError(error: unknown, fallback: string) {
+  toast.error(errMsg(error, fallback));
+}
+
+function mapTask(t: ApiTaskDto): CardTask {
   return {
-    id: item.id.toString(),
-    title: item.title,
-    description: item.description || "",
-    state: (item.state as "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE") || "IDEATION",
-    createdAt: new Date(item.createdAt).getTime(),
-    targetAudience: item.targetAudience || "",
-    pedagogicalObjective: item.pedagogicalObjective || "",
-    progress: item.progress || 0,
-    tasksTotal: item.tasksTotal || 0,
-    tasksDone: item.tasksDone || 0,
-    columnId: item.columnId ? item.columnId.toString() : undefined,
-    dueDate: item.dueDate || undefined
+    id: String(t.id),
+    cardId: String(t.cardId),
+    title: t.title,
+    completed: Boolean(t.completed),
+    sortOrder: t.sortOrder,
+    assignee: t.assignee
+      ? { memberId: String(t.assignee.memberId), userId: String(t.assignee.userId), name: t.assignee.name }
+      : null,
+    dueDate: t.dueDate || null,
+    createdAt: t.createdAt || ""
   };
 }
 
+function mapCard(c: ApiCardDto, column?: { id: string; name: string }): ProjectCard {
+  return {
+    id: String(c.id),
+    uuid: c.uuid,
+    teamId: c.teamId !== undefined ? String(c.teamId) : undefined,
+    title: c.title,
+    description: c.description || "",
+    type: column ? (c.type || "PROJECT") : "IDEA",
+    columnId: c.columnId !== undefined && c.columnId !== null ? String(c.columnId) : column?.id,
+    columnName: column?.name,
+    sortOrder: c.sortOrder || 0,
+    progress: c.progress || 0,
+    tasksTotal: c.tasksTotal || 0,
+    tasksDone: c.tasksDone || 0,
+    targetAudience: c.targetAudience,
+    pedagogicalObjective: c.pedagogicalObjective,
+    tasks: Array.isArray(c.tasks) ? c.tasks.map(mapTask) : [],
+    tag: c.tag || undefined,
+    tagId: c.tagId !== undefined && c.tagId !== null ? String(c.tagId) : undefined,
+    tagColor: c.tagColor || undefined,
+    dueDate: c.dueDate || undefined,
+    votes: c.votes,
+    votedByMe: c.votedByMe,
+    columnSince: c.columnSince || undefined,
+    reviewStatus: c.reviewStatus,
+    createdAt: c.createdAt || "",
+    updatedAt: c.updatedAt
+  };
+}
+
+function mapMaterial(m: ApiMaterialDto, fallbackCardId: string): MaterialItem {
+  return {
+    id: String(m.id),
+    cardId: m.cardId !== undefined ? String(m.cardId) : fallbackCardId,
+    fileName: m.fileName,
+    contentType: m.contentType,
+    sizeBytes: m.sizeBytes,
+    uploadedBy: m.uploadedBy ? { userId: String(m.uploadedBy.userId ?? ""), name: m.uploadedBy.name || "" } : undefined,
+    createdAt: m.createdAt,
+    downloadUrl: m.downloadUrl
+  };
+}
+
+function mapCourse(c: ApiCourseDto): Course {
+  return {
+    id: String(c.id),
+    teamId: String(c.teamId),
+    title: c.title,
+    description: c.description,
+    modulesCount: c.modulesCount || 0,
+    status: c.status,
+    publishedAt: c.publishedAt,
+    createdAt: c.createdAt
+  };
+}
+
+function mapSummary(raw: { cardId: string | number; summary: string; generatedAt: string; basedOn?: string }): ProjectSummary {
+  return {
+    cardId: String(raw.cardId),
+    summary: raw.summary,
+    generatedAt: raw.generatedAt,
+    basedOn: raw.basedOn || "SCRIPT"
+  };
+}
+
+function flattenCards(columns: BoardColumn[]): KanbanItem[] {
+  return columns.flatMap(col => col.cards.map(card => ({
+    id: card.id,
+    title: card.title,
+    description: card.description,
+    createdAt: card.createdAt ? new Date(card.createdAt).getTime() : 0,
+    targetAudience: card.targetAudience,
+    pedagogicalObjective: card.pedagogicalObjective,
+    progress: card.progress,
+    tasksTotal: card.tasksTotal,
+    tasksDone: card.tasksDone,
+    columnId: col.id,
+    dueDate: card.dueDate
+  })));
+}
+
+function buildIdeasQuery(filters: IdeaFilters): string {
+  const params = new URLSearchParams();
+  if (filters.q.trim()) params.set("q", filters.q.trim());
+  if (filters.tagId) params.set("tagId", filters.tagId);
+  params.set("sort", filters.sort);
+  return params.toString();
+}
+
 interface AppState {
-  // Estado Legado (para testes e componentes retrocompatíveis)
+  // Seleção do projeto e erro geral
   items: KanbanItem[];
   selectedProjectId: string | null;
   error: string | null;
   clearError: () => void;
   resetStore: () => void;
   setSelectedProjectId: (id: string | null) => void;
-  fetchItems: () => Promise<void>;
-  addIdea: (title: string, description: string) => Promise<void>;
-  convertToProject: (id: string, title: string, audience?: string, objective?: string) => Promise<boolean>;
-  updateProject: (id: string, title: string, audience: string, objective: string, state?: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE", progress?: number, dueDate?: string) => Promise<void>;
-  updateState: (id: string, state: "IDEATION" | "IN_PRODUCTION" | "REVIEW" | "DONE") => Promise<void>;
-  updateProgress: (id: string, progress: number) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
+  /** Edita título, público, objetivo e prazo do card (PUT /kanban/{id}); "" no prazo limpa. */
+  updateProject: (id: string, title: string, audience: string, objective: string, dueDate?: string) => Promise<boolean>;
 
-  // Fase 2 & 3: Equipes & Membros
+  // Equipes & Membros
   teams: Team[];
   activeTeamId: string | null;
   activeTeam: Team | null;
@@ -365,31 +484,50 @@ interface AppState {
   setActiveTeamId: (teamId: string) => Promise<void>;
   createTeam: (name: string) => Promise<Team | null>;
   fetchTeamMembers: (teamId?: string) => Promise<void>;
-  addTeamMember: (email: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
-  updateTeamMemberRole: (memberId: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
+  addTeamMember: (email: string, role: TeamRoleName) => Promise<boolean>;
+  updateTeamMemberRole: (memberId: string, role: TeamRoleName) => Promise<boolean>;
   removeTeamMember: (memberId: string) => Promise<boolean>;
 
-  // Fase 2: Quadro Dinâmico & Caixa de Entrada (Inbox)
+  // Quadro dinâmico & Caixa de Entrada
   board: { teamId: string; teamName: string; columns: BoardColumn[] } | null;
   ideas: ProjectCard[];
+  ideaFilters: IdeaFilters;
   fetchBoard: () => Promise<void>;
   fetchIdeas: () => Promise<void>;
-  createBoardCard: (data: { title: string; description?: string; columnId?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<ProjectCard | null>;
-  createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string; tag?: string }) => Promise<ProjectCard | null>;
+  /** Atualiza os filtros da caixa de entrada e recarrega a lista no servidor (q, tagId, sort). */
+  setIdeaFilters: (filters: Partial<IdeaFilters>) => Promise<void>;
+  createBoardCard: (data: { title: string; description?: string; columnId?: string; targetAudience?: string; pedagogicalObjective?: string; tagId?: number }) => Promise<ProjectCard | null>;
+  createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string; tagId?: number }) => Promise<ProjectCard | null>;
   voteIdea: (cardId: string) => Promise<void>;
   convertInboxIdea: (cardId: string, columnId?: string, data?: { targetAudience?: string; pedagogicalObjective?: string }) => Promise<boolean>;
-  moveCard: (cardId: string, columnId: string, sortOrder?: number) => Promise<void>;
+  moveCard: (cardId: string, columnId: string, sortOrder?: number) => Promise<boolean>;
   deleteCard: (cardId: string) => Promise<void>;
   addColumn: (name: string) => Promise<void>;
   renameColumn: (columnId: string, name: string) => Promise<boolean>;
   deleteColumn: (columnId: string, targetColumnId?: string) => Promise<boolean>;
+  reorderColumns: (columnIds: string[]) => Promise<boolean>;
 
-  // Fase 2: Checklist & Tarefas dos Cards
+  // Tarefas dos cards
   createTask: (cardId: string, title: string) => Promise<CardTask | null>;
   toggleTask: (cardId: string, taskId: string) => Promise<void>;
   deleteTask: (cardId: string, taskId: string) => Promise<void>;
+  /** assigneeMemberId: 0 remove o responsável; dueDate: "" remove o prazo. */
+  updateCardTaskDetails: (
+    cardId: string,
+    taskId: string,
+    updates: { title?: string; assigneeMemberId?: number; dueDate?: string }
+  ) => Promise<boolean>;
+  reorderCardTasks: (cardId: string, taskIds: string[]) => Promise<boolean>;
+  fetchCardHistory: (cardId: string) => Promise<CardMovementHistory[]>;
 
-  // Fase 2: Cursos, Módulos e Lições
+  // Etiquetas (gerenciadas somente pelo Administrador)
+  teamTags: TeamTag[];
+  fetchTeamTags: () => Promise<void>;
+  createTeamTag: (name: string, color: string) => Promise<TeamTag | null>;
+  updateTeamTag: (tagId: string, updates: { name?: string; color?: string }) => Promise<boolean>;
+  deleteTeamTag: (tagId: string) => Promise<boolean>;
+
+  // Cursos, Módulos e Lições
   courses: Course[];
   activeCourse: CourseDetail | null;
   fetchCourses: () => Promise<void>;
@@ -401,28 +539,23 @@ interface AppState {
   updateCourseModule: (courseId: string, moduleId: string, title: string) => Promise<boolean>;
   deleteCourseModule: (courseId: string, moduleId: string) => Promise<void>;
   createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string) => Promise<void>;
-  updateCourseLesson: (courseId: string, moduleId: string, lessonId: string, data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ"; published?: boolean; projectId?: number }) => Promise<boolean>;
+  updateCourseLesson: (courseId: string, moduleId: string, lessonId: string, data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ"; published?: boolean; projectId?: number; description?: string; contentUrl?: string }) => Promise<boolean>;
   deleteCourseLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
+  reorderCourseLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<boolean>;
+  checkCoursePublication: (courseId: string) => Promise<PublicationCheckResult | null>;
+  publishCourse: (courseId: string) => Promise<boolean>;
+  unpublishCourse: (courseId: string) => Promise<boolean>;
+  exportCourseCsv: (courseId: string) => Promise<boolean>;
 
-  // Fase 3: Estúdio de Roteiro Avançado (Exportação e Versões)
+  // Estúdio de roteiro (exportação e versões)
   exportScript: (cardId: string) => Promise<ScriptExportData | null>;
   fetchScriptVersions: (cardId: string) => Promise<ScriptVersionData[]>;
   restoreScriptVersion: (cardId: string, versionId: string) => Promise<boolean>;
 
-  // Fase 5 / Documento 04: Esteira Avançada & Alertas
+  // Alertas, revisão, materiais e resumo (rotas do contrato final)
   alerts: AlertItem[];
   fetchAlerts: () => Promise<void>;
-
-  reorderColumns: (columnIds: string[]) => Promise<boolean>;
-
-  updateCardTaskDetails: (
-    cardId: string,
-    taskId: string,
-    updates: { title?: string; assigneeMemberId?: number; dueDate?: string }
-  ) => Promise<boolean>;
-  reorderCardTasks: (cardId: string, taskIds: string[]) => Promise<boolean>;
-
-  fetchCardHistory: (cardId: string) => Promise<CardMovementHistory[]>;
   submitCardReview: (
     cardId: string,
     decision: "APPROVED" | "CHANGES_REQUESTED",
@@ -433,6 +566,7 @@ interface AppState {
   fetchCardMaterials: (cardId: string) => Promise<MaterialItem[]>;
   uploadMaterial: (cardId: string, file: File) => Promise<MaterialItem | null>;
   deleteMaterial: (materialId: string, cardId: string) => Promise<boolean>;
+  downloadMaterial: (material: MaterialItem) => Promise<boolean>;
   linkMaterialToLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
   unlinkMaterialFromLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
 
@@ -440,21 +574,10 @@ interface AppState {
   fetchCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
   generateCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
 
-  checkCoursePublication: (courseId: string) => Promise<PublicationCheckResult>;
-  publishCourse: (courseId: string) => Promise<boolean>;
-  unpublishCourse: (courseId: string) => Promise<boolean>;
-  exportCourseCsv: (courseId: string) => void;
-  reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
-  reorderCourseLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<boolean>;
-
-  teamTags: TeamTag[];
-  fetchTeamTags: () => Promise<void>;
-  createTeamTag: (name: string, color: string) => Promise<TeamTag | null>;
-  deleteTeamTag: (tagId: string) => Promise<boolean>;
-
+  // Convites e administração da equipe
   teamInvites: TeamInvite[];
   fetchTeamInvites: () => Promise<void>;
-  createTeamInvite: (email: string, role: "ADMIN" | "CREATOR" | "REVIEWER") => Promise<boolean>;
+  createTeamInvite: (email: string, role: TeamRoleName) => Promise<boolean>;
   cancelTeamInvite: (inviteId: string) => Promise<boolean>;
   renameTeam: (name: string) => Promise<boolean>;
   deleteTeam: (teamId: string) => Promise<boolean>;
@@ -469,46 +592,56 @@ interface AppState {
   toggleFavorite: (color: OklchColor) => void;
 }
 
+const EMPTY_SESSION_STATE = {
+  items: [] as KanbanItem[],
+  selectedProjectId: null as string | null,
+  error: null as string | null,
+  teams: [] as Team[],
+  activeTeamId: null as string | null,
+  activeTeam: null as Team | null,
+  teamMembers: [] as TeamMember[],
+  board: null as AppState["board"],
+  ideas: [] as ProjectCard[],
+  ideaFilters: DEFAULT_IDEA_FILTERS,
+  courses: [] as Course[],
+  activeCourse: null as CourseDetail | null,
+  alerts: [] as AlertItem[],
+  cardMaterials: {} as Record<string, MaterialItem[]>,
+  cardSummaries: {} as Record<string, ProjectSummary>,
+  teamInvites: [] as TeamInvite[],
+  teamTags: [] as TeamTag[],
+};
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      items: [],
-      selectedProjectId: null,
-      error: null,
-      teams: [],
-      activeTeamId: null,
-      activeTeam: null,
-      teamMembers: [],
-      board: null,
-      ideas: [],
-      courses: [],
-      activeCourse: null,
-      alerts: [],
-      cardMaterials: {},
-      cardSummaries: {},
-      teamInvites: [],
-      teamTags: DEFAULT_TEAM_TAGS,
+      ...EMPTY_SESSION_STATE,
 
       clearError: () => set({ error: null }),
-      resetStore: () => set({
-        items: [],
-        selectedProjectId: null,
-        error: null,
-        teams: [],
-        activeTeamId: null,
-        activeTeam: null,
-        teamMembers: [],
-        board: null,
-        ideas: [],
-        courses: [],
-        activeCourse: null,
-        alerts: [],
-        cardMaterials: {},
-        cardSummaries: {},
-        teamInvites: [],
-      }),
+      resetStore: () => set({ ...EMPTY_SESSION_STATE }),
 
       setSelectedProjectId: (id) => set({ selectedProjectId: id }),
+
+      updateProject: async (id, title, audience, objective, dueDate) => {
+        try {
+          set({ error: null });
+          await apiRequest("PUT", `/api/v1/kanban/${id}`, {
+            title,
+            targetAudience: audience,
+            pedagogicalObjective: objective,
+            // Prazo: "" limpa, undefined mantém o valor salvo
+            ...(dueDate !== undefined ? { dueDate } : {})
+          });
+          toast.success("Projeto atualizado!");
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          const message = errMsg(error, "Erro ao atualizar projeto");
+          set({ error: message });
+          toast.error(message);
+          return false;
+        }
+      },
 
       // --- Equipes ---
       fetchTeams: async () => {
@@ -517,10 +650,10 @@ export const useAppStore = create<AppState>()(
           const rawTeams = await apiRequest("GET", "/api/v1/teams");
           if (Array.isArray(rawTeams) && rawTeams.length > 0) {
             const mappedTeams: Team[] = rawTeams.map(t => ({
-              id: t.id.toString(),
+              id: String(t.id),
               name: t.name,
-              role: t.role || "CREATOR",
-              membersCount: t.membersCount || 1,
+              role: t.role,
+              membersCount: t.membersCount,
               createdAt: t.createdAt
             }));
 
@@ -532,54 +665,51 @@ export const useAppStore = create<AppState>()(
             const active = mappedTeams.find(t => t.id === activeId) || null;
             set({ teams: mappedTeams, activeTeamId: activeId, activeTeam: active });
 
-            if (activeId) {
-              await get().fetchBoard();
-              await get().fetchIdeas();
-              await get().fetchCourses();
-            }
+            await Promise.all([get().fetchBoard(), get().fetchIdeas(), get().fetchCourses(), get().fetchTeamTags(), get().fetchTeamMembers()]);
             return;
           }
           set({ teams: [], activeTeamId: null, activeTeam: null });
         } catch (err: unknown) {
-          const message = err instanceof Error ? err.message : "Não foi possível carregar as equipes.";
-          set({ error: message, teams: [], activeTeamId: null, activeTeam: null });
-          toast.error("Não foi possível carregar as equipes. Tente novamente.");
+          const message = errMsg(err, "Não foi possível carregar as equipes.");
+          set({ error: message });
+          toast.error(message);
         }
       },
 
       setActiveTeamId: async (teamId) => {
         const found = get().teams.find(t => t.id === teamId) || null;
-        set({ activeTeamId: teamId, activeTeam: found });
-        await get().fetchBoard();
-        await get().fetchIdeas();
-        await get().fetchCourses();
+        set({
+          activeTeamId: teamId,
+          activeTeam: found,
+          board: null,
+          ideas: [],
+          courses: [],
+          activeCourse: null,
+          teamTags: [],
+          teamMembers: [],
+          selectedProjectId: null,
+          ideaFilters: DEFAULT_IDEA_FILTERS
+        });
+        await Promise.all([get().fetchBoard(), get().fetchIdeas(), get().fetchCourses(), get().fetchTeamTags(), get().fetchTeamMembers()]);
       },
 
       createTeam: async (name) => {
         try {
           const raw = await apiRequest("POST", "/api/v1/teams", { name });
-          if (raw) {
-            const newTeam: Team = {
-              id: raw.id.toString(),
-              name: raw.name,
-              role: raw.role || "ADMIN",
-              membersCount: raw.membersCount || 1,
-              createdAt: raw.createdAt
-            };
-            set(state => ({
-              teams: [...state.teams, newTeam],
-              activeTeamId: newTeam.id,
-              activeTeam: newTeam
-            }));
-            toast.success("Equipe criada com sucesso!");
-            await get().fetchBoard();
-            await get().fetchIdeas();
-            return newTeam;
-          }
-          return null;
+          if (!raw) return null;
+          const newTeam: Team = {
+            id: String(raw.id),
+            name: raw.name,
+            role: raw.role,
+            membersCount: raw.membersCount,
+            createdAt: raw.createdAt
+          };
+          toast.success("Equipe criada com sucesso!");
+          set(state => ({ teams: [...state.teams, newTeam] }));
+          await get().setActiveTeamId(newTeam.id);
+          return newTeam;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao criar equipe";
-          toast.error(msg);
+          notifyError(error, "Erro ao criar equipe");
           return null;
         }
       },
@@ -592,17 +722,17 @@ export const useAppStore = create<AppState>()(
           const rawMembers = await apiRequest("GET", `/api/v1/teams/${targetTeamId}/members`);
           if (Array.isArray(rawMembers)) {
             const mappedMembers: TeamMember[] = rawMembers.map((m: ApiTeamMemberDto) => ({
-              id: m.id.toString(),
-              userId: m.userId.toString(),
+              id: String(m.id),
+              userId: String(m.userId),
               name: m.name,
               email: m.email,
-              role: m.role || "CREATOR",
+              role: m.role,
               joinedAt: m.joinedAt
             }));
             set({ teamMembers: mappedMembers });
           }
         } catch (error) {
-          console.error("Erro ao carregar membros da equipe:", error);
+          notifyError(error, "Erro ao carregar membros da equipe");
         }
       },
 
@@ -612,15 +742,12 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/members`, { email, role });
-          if (raw) {
-            toast.success("Membro adicionado à equipe com sucesso!");
-            await get().fetchTeamMembers(teamId);
-            return true;
-          }
-          return false;
+          if (!raw) return false;
+          toast.success("Membro adicionado à equipe com sucesso!");
+          await get().fetchTeamMembers(teamId);
+          return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao adicionar membro";
-          toast.error(msg);
+          notifyError(error, "Erro ao adicionar membro");
           return false;
         }
       },
@@ -635,8 +762,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchTeamMembers(teamId);
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao atualizar papel";
-          toast.error(msg);
+          notifyError(error, "Erro ao atualizar papel");
           return false;
         }
       },
@@ -651,8 +777,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchTeamMembers(teamId);
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao remover membro";
-          toast.error(msg);
+          notifyError(error, "Erro ao remover membro");
           return false;
         }
       },
@@ -667,74 +792,30 @@ export const useAppStore = create<AppState>()(
           const rawBoard = await apiRequest("GET", `/api/v1/teams/${teamId}/board`);
           if (rawBoard && Array.isArray(rawBoard.columns)) {
             const mappedColumns: BoardColumn[] = rawBoard.columns.map((col: ApiColumnDto) => ({
-              id: col.id.toString(),
+              id: String(col.id),
               name: col.name,
               sortOrder: col.sortOrder,
-              cards: Array.isArray(col.cards) ? col.cards.map((c: ApiCardDto) => ({
-                id: c.id.toString(),
-                teamId: c.teamId?.toString(),
-                title: c.title,
-                description: c.description || "",
-                type: c.type || "PROJECT",
-                columnId: c.columnId ? c.columnId.toString() : col.id.toString(),
-                columnName: col.name,
-                sortOrder: c.sortOrder || 0,
-                progress: c.progress || 0,
-                tasksTotal: c.tasksTotal || 0,
-                tasksDone: c.tasksDone || 0,
-                targetAudience: c.targetAudience,
-                pedagogicalObjective: c.pedagogicalObjective,
-                tasks: Array.isArray(c.tasks) ? c.tasks.map((t: ApiTaskDto) => ({
-                  id: t.id.toString(),
-                  cardId: t.cardId.toString(),
-                  title: t.title,
-                  completed: Boolean(t.completed),
-                  sortOrder: t.sortOrder,
-                  createdAt: t.createdAt
-                })) : [],
-                tag: c.tag || undefined,
-                dueDate: c.dueDate || undefined,
-                createdAt: c.createdAt || new Date().toISOString(),
-                updatedAt: c.updatedAt
-              })) : []
+              cards: Array.isArray(col.cards)
+                ? col.cards.map((c: ApiCardDto) => mapCard(c, { id: String(col.id), name: col.name }))
+                : []
             }));
 
-            // Sincroniza também items para retrocompatibilidade
-            const flattenedCards: KanbanItem[] = [];
-            mappedColumns.forEach(col => {
-              col.cards.forEach(card => {
-                flattenedCards.push({
-                  id: card.id,
-                  title: card.title,
-                  description: card.description,
-                  state: col.name === "Concluído" ? "DONE" : "IN_PRODUCTION",
-                  createdAt: new Date(card.createdAt).getTime(),
-                  targetAudience: card.targetAudience,
-                  pedagogicalObjective: card.pedagogicalObjective,
-                  progress: card.progress,
-                  tasksTotal: card.tasksTotal,
-                  tasksDone: card.tasksDone,
-                  columnId: col.id,
-                  dueDate: card.dueDate
-                });
-              });
-            });
+            const items = flattenCards(mappedColumns);
+            const selected = get().selectedProjectId;
+            const selectedStillExists = selected !== null && items.some(i => i.id === selected);
 
             set({
               board: {
-                teamId: rawBoard.teamId.toString(),
+                teamId: String(rawBoard.teamId),
                 teamName: rawBoard.teamName,
                 columns: mappedColumns
               },
-              items: flattenedCards
+              items,
+              selectedProjectId: selectedStillExists ? selected : (items[0]?.id ?? null)
             });
-
-            if (flattenedCards.length > 0 && !get().selectedProjectId) {
-              set({ selectedProjectId: flattenedCards[0].id });
-            }
           }
         } catch (error) {
-          console.error("Erro ao buscar quadro dinâmico:", error);
+          notifyError(error, "Erro ao carregar o quadro");
         }
       },
 
@@ -743,31 +824,18 @@ export const useAppStore = create<AppState>()(
         if (!teamId) return;
 
         try {
-          const rawIdeas = await apiRequest("GET", `/api/v1/teams/${teamId}/ideas`);
+          const rawIdeas = await apiRequest("GET", `/api/v1/teams/${teamId}/ideas?${buildIdeasQuery(get().ideaFilters)}`);
           if (Array.isArray(rawIdeas)) {
-            const mappedIdeas: ProjectCard[] = rawIdeas.map((c: ApiCardDto) => ({
-              id: c.id.toString(),
-              teamId: c.teamId?.toString(),
-              title: c.title,
-              description: c.description || "",
-              type: "IDEA",
-              sortOrder: c.sortOrder || 0,
-              progress: c.progress || 0,
-              tasksTotal: c.tasksTotal || 0,
-              tasksDone: c.tasksDone || 0,
-              targetAudience: c.targetAudience,
-              pedagogicalObjective: c.pedagogicalObjective,
-              tag: c.tag || undefined,
-              votes: c.votes || 0,
-              votedByMe: Boolean(c.votedByMe),
-              createdAt: c.createdAt || new Date().toISOString(),
-              updatedAt: c.updatedAt
-            }));
-            set({ ideas: mappedIdeas });
+            set({ ideas: rawIdeas.map((c: ApiCardDto) => mapCard(c)) });
           }
         } catch (error) {
-          console.error("Erro ao carregar ideias:", error);
+          notifyError(error, "Erro ao carregar ideias");
         }
+      },
+
+      setIdeaFilters: async (filters) => {
+        set(state => ({ ideaFilters: { ...state.ideaFilters, ...filters } }));
+        await get().fetchIdeas();
       },
 
       createBoardCard: async (data) => {
@@ -776,15 +844,12 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards`, data);
-          if (raw) {
-            toast.success("Card de projeto criado!");
-            await get().fetchBoard();
-            return raw;
-          }
-          return null;
+          if (!raw) return null;
+          toast.success("Card de projeto criado!");
+          await get().fetchBoard();
+          return mapCard(raw, { id: String(raw.columnId ?? ""), name: "" });
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao criar card";
-          toast.error(msg);
+          notifyError(error, "Erro ao criar card");
           return null;
         }
       },
@@ -795,15 +860,12 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/ideas`, data);
-          if (raw) {
-            toast.success("Ideia guardada na Caixa de Entrada!");
-            await get().fetchIdeas();
-            return raw;
-          }
-          return null;
+          if (!raw) return null;
+          toast.success("Ideia guardada na Caixa de Entrada!");
+          await get().fetchIdeas();
+          return mapCard(raw);
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao criar ideia";
-          toast.error(msg);
+          notifyError(error, "Erro ao criar ideia");
           return null;
         }
       },
@@ -817,13 +879,12 @@ export const useAppStore = create<AppState>()(
           if (raw) {
             set(state => ({
               ideas: state.ideas.map(idea => idea.id === cardId
-                ? { ...idea, votes: raw.votes || 0, votedByMe: Boolean(raw.votedByMe) }
+                ? { ...idea, votes: raw.votes, votedByMe: Boolean(raw.votedByMe) }
                 : idea)
             }));
           }
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao registrar voto";
-          toast.error(msg);
+          notifyError(error, "Erro ao registrar voto");
         }
       },
 
@@ -843,15 +904,14 @@ export const useAppStore = create<AppState>()(
           await get().fetchBoard();
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao converter ideia";
-          toast.error(msg);
+          notifyError(error, "Erro ao converter ideia");
           return false;
         }
       },
 
       moveCard: async (cardId, columnId, sortOrder = 0) => {
         const teamId = get().activeTeamId;
-        if (!teamId) return;
+        if (!teamId) return false;
 
         try {
           await apiRequest("PATCH", `/api/v1/teams/${teamId}/cards/${cardId}/move`, {
@@ -859,9 +919,10 @@ export const useAppStore = create<AppState>()(
             sortOrder
           });
           await get().fetchBoard();
+          return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao mover card";
-          toast.error(msg);
+          notifyError(error, "Erro ao mover card");
+          return false;
         }
       },
 
@@ -875,8 +936,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchBoard();
           await get().fetchIdeas();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao excluir card";
-          toast.error(msg);
+          notifyError(error, "Erro ao excluir card");
         }
       },
 
@@ -889,8 +949,7 @@ export const useAppStore = create<AppState>()(
           toast.success(`Coluna "${name}" criada!`);
           await get().fetchBoard();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao criar coluna";
-          toast.error(msg);
+          notifyError(error, "Erro ao criar coluna");
         }
       },
 
@@ -904,8 +963,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchBoard();
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao renomear coluna";
-          toast.error(msg);
+          notifyError(error, "Erro ao renomear coluna");
           return false;
         }
       },
@@ -923,8 +981,23 @@ export const useAppStore = create<AppState>()(
           await get().fetchBoard();
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao remover coluna";
-          toast.error(msg);
+          notifyError(error, "Erro ao remover coluna");
+          return false;
+        }
+      },
+
+      reorderColumns: async (columnIds) => {
+        const teamId = get().activeTeamId;
+        if (!teamId || !get().board) return false;
+
+        try {
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/columns/order`, {
+            columnIds: columnIds.map(Number)
+          });
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao reordenar colunas");
           return false;
         }
       },
@@ -936,15 +1009,12 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/tasks`, { title });
-          if (raw) {
-            toast.success("Tarefa adicionada!");
-            await get().fetchBoard();
-            return raw;
-          }
-          return null;
+          if (!raw) return null;
+          toast.success("Tarefa adicionada!");
+          await get().fetchBoard();
+          return mapTask(raw);
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao adicionar tarefa";
-          toast.error(msg);
+          notifyError(error, "Erro ao adicionar tarefa");
           return null;
         }
       },
@@ -957,8 +1027,7 @@ export const useAppStore = create<AppState>()(
           await apiRequest("PATCH", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/${taskId}/toggle`);
           await get().fetchBoard();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao alternar tarefa";
-          toast.error(msg);
+          notifyError(error, "Erro ao alternar tarefa");
         }
       },
 
@@ -971,8 +1040,135 @@ export const useAppStore = create<AppState>()(
           toast.success("Tarefa removida!");
           await get().fetchBoard();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao remover tarefa";
-          toast.error(msg);
+          notifyError(error, "Erro ao remover tarefa");
+        }
+      },
+
+      updateCardTaskDetails: async (cardId, taskId, updates) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/${taskId}`, updates);
+          toast.success("Tarefa atualizada com sucesso!");
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao atualizar tarefa");
+          return false;
+        }
+      },
+
+      reorderCardTasks: async (cardId, taskIds) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/order`, {
+            taskIds: taskIds.map(Number)
+          });
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao reordenar tarefas");
+          return false;
+        }
+      },
+
+      fetchCardHistory: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return [];
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/history`);
+          if (!Array.isArray(raw)) return [];
+          return raw.map((h: { columnId: string | number; columnName: string; enteredAt: string; movedBy?: { userId: string | number; name: string } | null }) => ({
+            columnId: String(h.columnId),
+            columnName: h.columnName,
+            enteredAt: h.enteredAt,
+            movedBy: h.movedBy ? { userId: String(h.movedBy.userId), name: h.movedBy.name } : null
+          }));
+        } catch (error) {
+          notifyError(error, "Erro ao carregar o histórico");
+          return [];
+        }
+      },
+
+      // --- Etiquetas ---
+      fetchTeamTags: async () => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return;
+
+        try {
+          const data = await apiRequest("GET", `/api/v1/teams/${teamId}/tags`);
+          if (Array.isArray(data)) {
+            set({
+              teamTags: data.map((t: { id: string | number; name: string; color: string }) => ({
+                id: String(t.id),
+                name: t.name,
+                color: t.color
+              }))
+            });
+          }
+        } catch (error) {
+          notifyError(error, "Erro ao carregar etiquetas");
+        }
+      },
+
+      createTeamTag: async (name, color) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+
+        try {
+          const data = await apiRequest("POST", `/api/v1/teams/${teamId}/tags`, { name: name.trim(), color });
+          if (!data) return null;
+          const newTag: TeamTag = { id: String(data.id), name: data.name, color: data.color };
+          set(state => ({ teamTags: [...state.teamTags, newTag] }));
+          toast.success("Etiqueta criada com sucesso!");
+          return newTag;
+        } catch (error) {
+          notifyError(error, "Erro ao criar etiqueta");
+          return null;
+        }
+      },
+
+      updateTeamTag: async (tagId, updates) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          const data = await apiRequest("PATCH", `/api/v1/teams/${teamId}/tags/${tagId}`, updates);
+          if (data) {
+            set(state => ({
+              teamTags: state.teamTags.map(t => t.id === tagId ? { id: String(data.id), name: data.name, color: data.color } : t)
+            }));
+          }
+          toast.success("Etiqueta atualizada!");
+          // Cards e ideias mostram o nome e a cor da etiqueta
+          await Promise.all([get().fetchBoard(), get().fetchIdeas()]);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao atualizar etiqueta");
+          return false;
+        }
+      },
+
+      deleteTeamTag: async (tagId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiRequest("DELETE", `/api/v1/teams/${teamId}/tags/${tagId}`);
+          set(state => ({
+            teamTags: state.teamTags.filter(t => t.id !== tagId),
+            ideaFilters: state.ideaFilters.tagId === tagId ? { ...state.ideaFilters, tagId: "" } : state.ideaFilters
+          }));
+          toast.success("Etiqueta removida.");
+          await Promise.all([get().fetchBoard(), get().fetchIdeas()]);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao remover etiqueta");
+          return false;
         }
       },
 
@@ -984,18 +1180,10 @@ export const useAppStore = create<AppState>()(
         try {
           const rawCourses = await apiRequest("GET", `/api/v1/teams/${teamId}/courses`);
           if (Array.isArray(rawCourses)) {
-            const mappedCourses: Course[] = rawCourses.map((c: ApiCourseDto) => ({
-              id: c.id.toString(),
-              teamId: c.teamId.toString(),
-              title: c.title,
-              description: c.description,
-              modulesCount: c.modulesCount || 0,
-              createdAt: c.createdAt
-            }));
-            set({ courses: mappedCourses });
+            set({ courses: rawCourses.map(mapCourse) });
           }
         } catch (error) {
-          console.error("Erro ao carregar cursos:", error);
+          notifyError(error, "Erro ao carregar cursos");
         }
       },
 
@@ -1007,24 +1195,25 @@ export const useAppStore = create<AppState>()(
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/courses/${courseId}`);
           if (raw) {
             const detail: CourseDetail = {
-              id: raw.id.toString(),
-              teamId: raw.teamId.toString(),
-              title: raw.title,
-              description: raw.description,
-              createdAt: raw.createdAt,
+              ...mapCourse(raw),
+              modulesCount: Array.isArray(raw.modules) ? raw.modules.length : raw.modulesCount,
               modules: Array.isArray(raw.modules) ? raw.modules.map((m: ApiModuleDto) => ({
-                id: m.id.toString(),
-                courseId: m.courseId ? m.courseId.toString() : raw.id.toString(),
+                id: String(m.id),
+                courseId: m.courseId !== undefined ? String(m.courseId) : String(raw.id),
                 title: m.title,
                 sortOrder: m.sortOrder,
+                createdAt: m.createdAt,
                 lessons: Array.isArray(m.lessons) ? m.lessons.map((l: ApiLessonDto) => ({
-                  id: l.id.toString(),
-                  moduleId: l.moduleId ? l.moduleId.toString() : m.id.toString(),
+                  id: String(l.id),
+                  moduleId: l.moduleId !== undefined ? String(l.moduleId) : String(m.id),
                   title: l.title,
                   type: (l.type || "VIDEO") as CourseLesson["type"],
                   published: Boolean(l.published),
                   sortOrder: l.sortOrder,
-                  projectId: l.projectId ? l.projectId.toString() : undefined,
+                  projectId: l.projectId ? String(l.projectId) : undefined,
+                  description: l.description,
+                  contentUrl: l.contentUrl,
+                  materials: Array.isArray(l.materials) ? l.materials.map(mat => mapMaterial(mat, "")) : undefined,
                   createdAt: l.createdAt
                 })) : []
               })) : []
@@ -1032,7 +1221,7 @@ export const useAppStore = create<AppState>()(
             set({ activeCourse: detail });
           }
         } catch (error) {
-          console.error("Erro ao carregar detalhes do curso:", error);
+          notifyError(error, "Erro ao carregar o curso");
         }
       },
 
@@ -1042,15 +1231,12 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/courses`, { title, description });
-          if (raw) {
-            toast.success("Curso pedagógico criado!");
-            await get().fetchCourses();
-            return raw;
-          }
-          return null;
+          if (!raw) return null;
+          toast.success("Curso pedagógico criado!");
+          await get().fetchCourses();
+          return mapCourse(raw);
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao criar curso";
-          toast.error(msg);
+          notifyError(error, "Erro ao criar curso");
           return null;
         }
       },
@@ -1060,20 +1246,15 @@ export const useAppStore = create<AppState>()(
         if (!teamId) return false;
 
         try {
-          try {
-            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}`, { title, description });
-          } catch (e) {
-            console.warn("Backend PUT /courses não implementado ou falhou, atualizando estado local:", e);
-          }
-          set(state => ({
-            courses: state.courses.map(c => c.id === courseId ? { ...c, title, description } : c),
-            activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, title, description: description ?? state.activeCourse.description } : state.activeCourse
-          }));
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/courses/${courseId}`, { title, description });
           toast.success("Curso atualizado com sucesso!");
+          await get().fetchCourses();
+          if (get().activeCourse?.id === courseId) {
+            await get().fetchCourseDetails(courseId);
+          }
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao atualizar curso";
-          toast.error(msg);
+          notifyError(error, "Erro ao atualizar curso");
           return false;
         }
       },
@@ -1090,8 +1271,7 @@ export const useAppStore = create<AppState>()(
           }
           await get().fetchCourses();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao excluir curso";
-          toast.error(msg);
+          notifyError(error, "Erro ao excluir curso");
         }
       },
 
@@ -1105,8 +1285,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchCourseDetails(courseId);
           await get().fetchCourses();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao adicionar módulo";
-          toast.error(msg);
+          notifyError(error, "Erro ao adicionar módulo");
         }
       },
 
@@ -1115,25 +1294,12 @@ export const useAppStore = create<AppState>()(
         if (!teamId) return false;
 
         try {
-          try {
-            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}`, { title });
-          } catch (e) {
-            console.warn("Backend PUT /modules não implementado ou falhou, atualizando estado local:", e);
-          }
-          set(state => {
-            if (!state.activeCourse || state.activeCourse.id !== courseId) return state;
-            return {
-              activeCourse: {
-                ...state.activeCourse,
-                modules: state.activeCourse.modules.map(m => m.id === moduleId ? { ...m, title } : m)
-              }
-            };
-          });
+          await apiRequest("PATCH", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}`, { title });
           toast.success("Módulo atualizado com sucesso!");
+          await get().fetchCourseDetails(courseId);
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao atualizar módulo";
-          toast.error(msg);
+          notifyError(error, "Erro ao atualizar módulo");
           return false;
         }
       },
@@ -1148,8 +1314,7 @@ export const useAppStore = create<AppState>()(
           await get().fetchCourseDetails(courseId);
           await get().fetchCourses();
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao excluir módulo";
-          toast.error(msg);
+          notifyError(error, "Erro ao excluir módulo");
         }
       },
 
@@ -1166,8 +1331,7 @@ export const useAppStore = create<AppState>()(
           toast.success("Aula adicionada!");
           await get().fetchCourseDetails(courseId);
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao adicionar aula";
-          toast.error(msg);
+          notifyError(error, "Erro ao adicionar aula");
         }
       },
 
@@ -1180,27 +1344,9 @@ export const useAppStore = create<AppState>()(
           toast.success("Aula atualizada com sucesso!");
           await get().fetchCourseDetails(courseId);
           return true;
-        } catch {
-          set(state => {
-            if (!state.activeCourse || state.activeCourse.id !== courseId) return state;
-            return {
-              activeCourse: {
-                ...state.activeCourse,
-                modules: state.activeCourse.modules.map(m => m.id === moduleId ? {
-                  ...m,
-                  lessons: m.lessons.map(l => l.id === lessonId ? {
-                    ...l,
-                    title: data.title ?? l.title,
-                    type: (data.type as CourseLesson["type"]) ?? l.type,
-                    published: data.published ?? l.published,
-                    projectId: data.projectId !== undefined ? data.projectId.toString() : l.projectId
-                  } : l)
-                } : m)
-              }
-            };
-          });
-          toast.success("Aula atualizada com sucesso!");
-          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao atualizar aula");
+          return false;
         }
       },
 
@@ -1213,163 +1359,107 @@ export const useAppStore = create<AppState>()(
           toast.success("Aula removida!");
           await get().fetchCourseDetails(courseId);
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao excluir aula";
-          toast.error(msg);
+          notifyError(error, "Erro ao excluir aula");
         }
       },
 
-      // --- Métodos Legados ---
-      fetchItems: async () => {
-        try {
-          set({ error: null });
-          const rawItems = await apiRequest("GET", "/api/v1/kanban");
-          if (Array.isArray(rawItems)) {
-            const mapped = rawItems.map(mapBackendToFrontendItem);
-            set({ items: mapped });
-            const projects = mapped.filter(i => i.state !== "IDEATION");
-            if (projects.length > 0 && !get().selectedProjectId) {
-              set({ selectedProjectId: projects[0].id });
-            }
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao carregar itens do Kanban";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao buscar itens do Kanban:", error);
-        }
-      },
-
-      addIdea: async (title, description) => {
-        // Com o quadro da equipe carregado, a ideia vai para a Caixa de Entrada da equipe ativa
-        if (get().board && get().activeTeamId) {
-          await get().createInboxIdea({ title, description });
-          return;
-        }
+      reorderCourseModules: async (courseId, moduleIds) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
 
         try {
-          set({ error: null });
-          const rawItem = await apiRequest("POST", "/api/v1/kanban", { title, description });
-          if (rawItem) {
-            const mapped = mapBackendToFrontendItem(rawItem);
-            set((state) => ({ items: [mapped, ...state.items] }));
-            toast.success("Ideia registrada com sucesso!");
-          }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao criar ideia";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao criar ideia:", error);
-        }
-      },
-
-      convertToProject: async (id, title, audience = "", objective = "") => {
-        try {
-          set({ error: null });
-          const rawItem = await apiRequest("POST", `/api/v1/kanban/${id}/convert`, {
-            title,
-            targetAudience: audience,
-            pedagogicalObjective: objective
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/order`, {
+            moduleIds: moduleIds.map(Number)
           });
-          if (rawItem) {
-            const mapped = mapBackendToFrontendItem(rawItem);
-            set((state) => ({
-              items: state.items.map((i) => (i.id === id ? mapped : i)),
-              selectedProjectId: state.selectedProjectId || id
-            }));
-            toast.success("Projeto ativado no pipeline de produção!");
-            return true;
-          }
-          return false;
+          await get().fetchCourseDetails(courseId);
+          return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao converter ideia em projeto";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao converter ideia em projeto:", error);
+          notifyError(error, "Erro ao reordenar módulos");
           return false;
         }
       },
 
-      updateProject: async (id, title, audience, objective, state, progress, dueDate) => {
+      reorderCourseLessons: async (courseId, moduleId, lessonIds) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
         try {
-          set({ error: null });
-          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, {
-            title,
-            targetAudience: audience,
-            pedagogicalObjective: objective,
-            state,
-            progress,
-            // Prazo: "" limpa, undefined mantém o valor salvo
-            ...(dueDate !== undefined ? { dueDate } : {})
+          await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/order`, {
+            lessonIds: lessonIds.map(Number)
           });
-          if (rawItem) {
-            const mapped = mapBackendToFrontendItem(rawItem);
-            set((currentState) => ({
-              items: currentState.items.map((i) => (i.id === id ? mapped : i))
-            }));
-            toast.success("Projeto atualizado!");
-            // No quadro da equipe os cards vêm do board; recarrega para refletir a edição
-            if (get().board) {
-              await get().fetchBoard();
-            }
-          }
+          await get().fetchCourseDetails(courseId);
+          return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao atualizar projeto";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao atualizar projeto:", error);
+          notifyError(error, "Erro ao reordenar aulas");
+          return false;
         }
       },
 
-      updateState: async (id, state) => {
+      checkCoursePublication: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+
         try {
-          set({ error: null });
-          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { state });
-          if (rawItem) {
-            const mapped = mapBackendToFrontendItem(rawItem);
-            set((currentState) => ({
-              items: currentState.items.map((i) => (i.id === id ? mapped : i))
-            }));
-          }
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/courses/${courseId}/publication-check`);
+          if (!raw || typeof raw.publishable !== "boolean") return null;
+          return {
+            publishable: raw.publishable,
+            problems: Array.isArray(raw.problems) ? raw.problems.map((p: { type: string; ids?: Array<string | number>; titles?: string[]; message: string }) => ({
+              type: p.type,
+              ids: (p.ids || []).map(Number),
+              titles: p.titles || [],
+              message: p.message
+            })) : []
+          };
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao atualizar estado";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao atualizar estado:", error);
+          notifyError(error, "Erro ao verificar a publicação do curso");
+          return null;
         }
       },
 
-      updateProgress: async (id, progress) => {
+      publishCourse: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
         try {
-          set({ error: null });
-          const rawItem = await apiRequest("PUT", `/api/v1/kanban/${id}`, { progress });
-          if (rawItem) {
-            const mapped = mapBackendToFrontendItem(rawItem);
-            set((state) => ({
-              items: state.items.map((i) => (i.id === id ? mapped : i))
-            }));
-          }
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/publish`);
+          toast.success("Curso publicado com sucesso!");
+          await get().fetchCourses();
+          await get().fetchCourseDetails(courseId);
+          return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao atualizar progresso";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao atualizar progresso:", error);
+          notifyError(error, "Erro ao publicar o curso");
+          return false;
         }
       },
 
-      deleteItem: async (id) => {
+      unpublishCourse: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
         try {
-          set({ error: null });
-          await apiRequest("DELETE", `/api/v1/kanban/${id}`);
-          set((state) => ({
-            items: state.items.filter((i) => i.id !== id),
-            selectedProjectId: state.selectedProjectId === id ? null : state.selectedProjectId
-          }));
-          toast.success("Item excluído com sucesso!");
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/unpublish`);
+          toast.success("Curso despublicado e retornado para rascunho.");
+          await get().fetchCourses();
+          await get().fetchCourseDetails(courseId);
+          return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Erro ao excluir item";
-          set({ error: message });
-          toast.error(message);
-          console.error("Erro ao deletar item:", error);
+          notifyError(error, "Erro ao despublicar o curso");
+          return false;
+        }
+      },
+
+      exportCourseCsv: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiDownload(`/api/v1/teams/${teamId}/courses/${courseId}/export?format=csv`, `curso-${courseId}.csv`);
+          toast.success("Estrutura do curso exportada em CSV com sucesso!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao exportar o curso");
+          return false;
         }
       },
 
@@ -1377,21 +1467,19 @@ export const useAppStore = create<AppState>()(
       exportScript: async (cardId) => {
         try {
           const raw = await apiRequest("GET", `/api/v1/kanban/${cardId}/script/export`);
-          if (raw) {
-            return {
-              cardId: raw.cardId.toString(),
-              cardTitle: raw.cardTitle,
-              targetAudience: raw.targetAudience,
-              pedagogicalObjective: raw.pedagogicalObjective,
-              rawContent: raw.rawContent || "",
-              markdownFormatted: raw.markdownFormatted || "",
-              wordCount: raw.wordCount || 0,
-              estimatedMinutes: raw.estimatedMinutes || 0
-            };
-          }
-          return null;
+          if (!raw) return null;
+          return {
+            cardId: String(raw.cardId),
+            cardTitle: raw.cardTitle,
+            targetAudience: raw.targetAudience,
+            pedagogicalObjective: raw.pedagogicalObjective,
+            rawContent: raw.rawContent || "",
+            markdownFormatted: raw.markdownFormatted || "",
+            wordCount: raw.wordCount,
+            estimatedMinutes: raw.estimatedMinutes
+          };
         } catch (error) {
-          console.warn("Endpoint /script/export indisponível, permitindo fallback no cliente:", error);
+          notifyError(error, "Erro ao exportar o roteiro");
           return null;
         }
       },
@@ -1399,17 +1487,15 @@ export const useAppStore = create<AppState>()(
       fetchScriptVersions: async (cardId) => {
         try {
           const rawVersions = await apiRequest("GET", `/api/v1/kanban/${cardId}/script/versions`);
-          if (Array.isArray(rawVersions)) {
-            return rawVersions.map((v: ApiScriptVersionDto, idx: number) => ({
-              id: v.id.toString(),
-              versionNumber: v.versionNumber || (rawVersions.length - idx),
-              content: v.content || "",
-              createdAt: v.createdAt
-            }));
-          }
-          return [];
+          if (!Array.isArray(rawVersions)) return [];
+          return rawVersions.map((v: ApiScriptVersionDto, idx: number) => ({
+            id: String(v.id),
+            versionNumber: v.versionNumber || (rawVersions.length - idx),
+            content: v.content || "",
+            createdAt: v.createdAt
+          }));
         } catch (error) {
-          console.error("Erro ao buscar versões do roteiro:", error);
+          notifyError(error, "Erro ao buscar as versões do roteiro");
           return [];
         }
       },
@@ -1420,13 +1506,12 @@ export const useAppStore = create<AppState>()(
           toast.success("Versão restaurada com sucesso!");
           return true;
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Erro ao restaurar versão";
-          toast.error(msg);
+          notifyError(error, "Erro ao restaurar versão");
           return false;
         }
       },
 
-      // --- Fase 5 / Documento 04: Esteira Avançada & Alertas ---
+      // --- Alertas ---
       fetchAlerts: async () => {
         const teamId = get().activeTeamId;
         if (!teamId) return;
@@ -1437,243 +1522,38 @@ export const useAppStore = create<AppState>()(
             set({
               alerts: raw.map(a => ({
                 type: a.type,
-                cardId: a.cardId?.toString() || "",
-                cardTitle: a.cardTitle || "",
-                taskId: a.taskId ? a.taskId.toString() : null,
-                taskTitle: a.taskTitle || null,
+                cardId: String(a.cardId),
+                cardTitle: a.cardTitle,
+                taskId: a.taskId !== undefined && a.taskId !== null ? String(a.taskId) : null,
+                taskTitle: a.taskTitle ?? null,
                 dueDate: a.dueDate,
                 daysLeft: a.daysLeft
               }))
             });
-            return;
           }
-        } catch {
-          // Fallback gracioso
-        }
-
-        const board = get().board;
-        if (!board) return;
-
-        const calculated: AlertItem[] = [];
-        const now = Date.now();
-
-        board.columns.forEach(col => {
-          col.cards.forEach(card => {
-            if (card.dueDate) {
-              const diffMs = new Date(card.dueDate).getTime() - now;
-              const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-              if (daysLeft < 0) {
-                calculated.push({
-                  type: "CARD_OVERDUE",
-                  cardId: card.id,
-                  cardTitle: card.title,
-                  dueDate: card.dueDate,
-                  daysLeft
-                });
-              } else if (daysLeft <= 3) {
-                calculated.push({
-                  type: "CARD_DUE_SOON",
-                  cardId: card.id,
-                  cardTitle: card.title,
-                  dueDate: card.dueDate,
-                  daysLeft
-                });
-              }
-            }
-
-            if (card.tasks && card.tasks.length > 0) {
-              card.tasks.forEach(task => {
-                if (!task.completed && task.dueDate) {
-                  const diffMs = new Date(task.dueDate).getTime() - now;
-                  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                  if (daysLeft < 0) {
-                    calculated.push({
-                      type: "TASK_OVERDUE",
-                      cardId: card.id,
-                      cardTitle: card.title,
-                      taskId: task.id,
-                      taskTitle: task.title,
-                      dueDate: task.dueDate,
-                      daysLeft
-                    });
-                  } else if (daysLeft <= 3) {
-                    calculated.push({
-                      type: "TASK_DUE_SOON",
-                      cardId: card.id,
-                      cardTitle: card.title,
-                      taskId: task.id,
-                      taskTitle: task.title,
-                      dueDate: task.dueDate,
-                      daysLeft
-                    });
-                  }
-                }
-              });
-            }
-          });
-        });
-
-        calculated.sort((a, b) => a.daysLeft - b.daysLeft);
-        set({ alerts: calculated });
-      },
-
-      reorderColumns: async (columnIds: string[]) => {
-        const teamId = get().activeTeamId;
-        if (!teamId || !get().board) return false;
-
-        const currentCols = get().board!.columns;
-        const reordered = columnIds
-          .map((id, index) => {
-            const found = currentCols.find(c => c.id === id);
-            return found ? { ...found, sortOrder: index } : null;
-          })
-          .filter(Boolean) as BoardColumn[];
-
-        set(state => ({
-          board: state.board ? { ...state.board, columns: reordered } : null
-        }));
-
-        try {
-          await apiRequest("PUT", `/api/v1/teams/${teamId}/columns/order`, {
-            columnIds: columnIds.map(Number)
-          });
-          return true;
-        } catch {
-          return true;
+        } catch (error) {
+          // id fixo evita empilhar o mesmo aviso a cada carregamento
+          toast.error(errMsg(error, "Erro ao carregar os alertas"), { id: "alerts-error" });
         }
       },
 
-      updateCardTaskDetails: async (cardId, taskId, updates) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return false;
-
-        try {
-          await apiRequest("PATCH", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/${taskId}`, updates);
-        } catch (e) {
-          console.warn("Backend PATCH task details indisponível, aplicando atualização local:", e);
-        }
-
-        set(state => {
-          if (!state.board) return state;
-          const updatedCols = state.board.columns.map(col => ({
-            ...col,
-            cards: col.cards.map(card => {
-              if (card.id !== cardId || !card.tasks) return card;
-              return {
-                ...card,
-                tasks: card.tasks.map(t => {
-                  if (t.id !== taskId) return t;
-                  const member = updates.assigneeMemberId
-                    ? state.teamMembers.find(m => Number(m.id) === updates.assigneeMemberId)
-                    : null;
-                  return {
-                    ...t,
-                    title: updates.title ?? t.title,
-                    dueDate: updates.dueDate !== undefined ? updates.dueDate : t.dueDate,
-                    assignee: updates.assigneeMemberId === 0 ? null : (member ? { memberId: member.id, userId: member.userId, name: member.name } : t.assignee)
-                  };
-                })
-              };
-            })
-          }));
-          return { board: { ...state.board, columns: updatedCols } };
-        });
-
-        toast.success("Tarefa atualizada com sucesso!");
-        return true;
-      },
-
-      reorderCardTasks: async (cardId, taskIds) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return false;
-
-        set(state => {
-          if (!state.board) return state;
-          const updatedCols = state.board.columns.map(col => ({
-            ...col,
-            cards: col.cards.map(card => {
-              if (card.id !== cardId || !card.tasks) return card;
-              const taskMap = new Map(card.tasks.map(t => [t.id, t]));
-              const reorderedTasks = taskIds
-                .map((id, idx) => {
-                  const found = taskMap.get(id);
-                  return found ? { ...found, sortOrder: idx } : null;
-                })
-                .filter(Boolean) as CardTask[];
-              return { ...card, tasks: reorderedTasks };
-            })
-          }));
-          return { board: { ...state.board, columns: updatedCols } };
-        });
-
-        try {
-          await apiRequest("PUT", `/api/v1/teams/${teamId}/cards/${cardId}/tasks/order`, {
-            taskIds: taskIds.map(Number)
-          });
-          return true;
-        } catch {
-          return true;
-        }
-      },
-
-      fetchCardHistory: async (cardId) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return [];
-
-        try {
-          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/history`);
-          if (Array.isArray(raw)) {
-            return raw.map(h => ({
-              columnId: h.columnId?.toString() || "",
-              columnName: h.columnName || "",
-              enteredAt: h.enteredAt,
-              movedBy: h.movedBy ? { userId: h.movedBy.userId?.toString() || "", name: h.movedBy.name || "" } : null
-            }));
-          }
-        } catch {
-          // Fallback gracioso
-        }
-
-        const board = get().board;
-        const currentCard = board?.columns.flatMap(c => c.cards).find(c => c.id === cardId);
-        const col = board?.columns.find(c => c.cards.some(card => card.id === cardId));
-
-        return [
-          {
-            columnId: col?.id || "1",
-            columnName: col?.name || "Roteiro",
-            enteredAt: currentCard?.updatedAt || currentCard?.createdAt || new Date().toISOString(),
-            movedBy: { userId: "1", name: "Você" }
-          }
-        ];
-      },
-
+      // --- Revisão ---
       submitCardReview: async (cardId, decision, comment) => {
         const teamId = get().activeTeamId;
         if (!teamId) return false;
 
         try {
-          await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/reviews`, {
-            decision,
-            comment
-          });
-        } catch (e) {
-          console.warn("Backend POST /reviews indisponível, aplicando atualização local:", e);
+          await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/reviews`, { decision, comment });
+          toast.success(decision === "APPROVED" ? "Projeto aprovado!" : "Revisão enviada com observações!");
+          await get().fetchBoard();
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao registrar a revisão");
+          return false;
         }
-
-        set(state => {
-          if (!state.board) return state;
-          const updatedCols = state.board.columns.map(col => ({
-            ...col,
-            cards: col.cards.map(c => c.id === cardId ? { ...c, reviewStatus: decision } : c)
-          }));
-          return { board: { ...state.board, columns: updatedCols } };
-        });
-
-        toast.success(decision === "APPROVED" ? "Projeto aprovado!" : "Revisão enviada com observações!");
-        return true;
       },
 
+      // --- Materiais ---
       fetchCardMaterials: async (cardId) => {
         const teamId = get().activeTeamId;
         if (!teamId) return get().cardMaterials[cardId] || [];
@@ -1681,21 +1561,12 @@ export const useAppStore = create<AppState>()(
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/materials`);
           if (Array.isArray(raw)) {
-            const mapped: MaterialItem[] = raw.map(m => ({
-              id: m.id.toString(),
-              cardId: m.cardId?.toString() || cardId,
-              fileName: m.fileName,
-              contentType: m.contentType,
-              sizeBytes: m.sizeBytes,
-              uploadedBy: m.uploadedBy ? { userId: m.uploadedBy.userId?.toString() || "", name: m.uploadedBy.name || "" } : undefined,
-              createdAt: m.createdAt,
-              downloadUrl: m.downloadUrl || `/api/v1/teams/${teamId}/materials/${m.id}/download`
-            }));
+            const mapped = raw.map((m: ApiMaterialDto) => mapMaterial(m, cardId));
             set(state => ({ cardMaterials: { ...state.cardMaterials, [cardId]: mapped } }));
             return mapped;
           }
-        } catch {
-          // Retorna cache
+        } catch (error) {
+          notifyError(error, "Erro ao carregar os materiais");
         }
         return get().cardMaterials[cardId] || [];
       },
@@ -1705,7 +1576,8 @@ export const useAppStore = create<AppState>()(
         if (!teamId) return null;
 
         const allowedExtensions = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".gif"];
-        const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+        const dot = file.name.lastIndexOf(".");
+        const ext = dot >= 0 ? file.name.substring(dot).toLowerCase() : "";
         if (!allowedExtensions.includes(ext)) {
           toast.error("Formato não suportado. Envie arquivos PDF, Office, TXT ou imagens.");
           return null;
@@ -1722,49 +1594,20 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/materials`, formData);
-          if (raw) {
-            const mapped: MaterialItem = {
-              id: raw.id.toString(),
-              cardId: raw.cardId ? raw.cardId.toString() : cardId,
-              fileName: raw.fileName || file.name,
-              contentType: raw.contentType || file.type,
-              sizeBytes: raw.sizeBytes || file.size,
-              uploadedBy: raw.uploadedBy ? { userId: raw.uploadedBy.userId?.toString() || "", name: raw.uploadedBy.name || "" } : undefined,
-              createdAt: raw.createdAt || new Date().toISOString(),
-              downloadUrl: raw.downloadUrl || `/api/v1/teams/${teamId}/materials/${raw.id}/download`
-            };
-            set(state => ({
-              cardMaterials: {
-                ...state.cardMaterials,
-                [cardId]: [...(state.cardMaterials[cardId] || []), mapped]
-              }
-            }));
-            toast.success("Material enviado com sucesso!");
-            return mapped;
-          }
-        } catch (e) {
-          console.warn("Backend POST /materials indisponível, simulando upload local:", e);
+          if (!raw) return null;
+          const mapped = mapMaterial(raw, cardId);
+          set(state => ({
+            cardMaterials: {
+              ...state.cardMaterials,
+              [cardId]: [...(state.cardMaterials[cardId] || []), mapped]
+            }
+          }));
+          toast.success("Material enviado com sucesso!");
+          return mapped;
+        } catch (error) {
+          notifyError(error, "Erro ao enviar o material");
+          return null;
         }
-
-        const localMaterial: MaterialItem = {
-          id: "mat-" + Date.now(),
-          cardId,
-          fileName: file.name,
-          contentType: file.type || "application/octet-stream",
-          sizeBytes: file.size,
-          uploadedBy: { userId: "me", name: "Você" },
-          createdAt: new Date().toISOString(),
-          downloadUrl: typeof URL !== "undefined" && typeof URL.createObjectURL === "function" ? URL.createObjectURL(file) : undefined
-        };
-
-        set(state => ({
-          cardMaterials: {
-            ...state.cardMaterials,
-            [cardId]: [...(state.cardMaterials[cardId] || []), localMaterial]
-          }
-        }));
-        toast.success("Material enviado com sucesso!");
-        return localMaterial;
       },
 
       deleteMaterial: async (materialId, cardId) => {
@@ -1773,18 +1616,32 @@ export const useAppStore = create<AppState>()(
 
         try {
           await apiRequest("DELETE", `/api/v1/teams/${teamId}/materials/${materialId}`);
-        } catch {
-          // ignora falha
+          set(state => ({
+            cardMaterials: {
+              ...state.cardMaterials,
+              [cardId]: (state.cardMaterials[cardId] || []).filter(m => m.id !== materialId)
+            }
+          }));
+          toast.success("Material removido!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao remover o material");
+          return false;
         }
+      },
 
-        set(state => ({
-          cardMaterials: {
-            ...state.cardMaterials,
-            [cardId]: (state.cardMaterials[cardId] || []).filter(m => m.id !== materialId)
-          }
-        }));
-        toast.success("Material removido!");
-        return true;
+      downloadMaterial: async (material) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          // O token vai no cabeçalho (fetch + blob); um link direto não enviaria o token
+          await apiDownload(`/api/v1/teams/${teamId}/materials/${material.id}/download`, material.fileName);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao baixar o material");
+          return false;
+        }
       },
 
       linkMaterialToLesson: async (courseId, moduleId, lessonId, materialId) => {
@@ -1795,13 +1652,13 @@ export const useAppStore = create<AppState>()(
           await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials`, {
             materialId: Number(materialId)
           });
-        } catch (e) {
-          console.warn("Backend link material indisponível:", e);
+          toast.success("Material vinculado à aula!");
+          await get().fetchCourseDetails(courseId);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao vincular o material");
+          return false;
         }
-
-        await get().fetchCourseDetails(courseId);
-        toast.success("Material vinculado à aula!");
-        return true;
       },
 
       unlinkMaterialFromLesson: async (courseId, moduleId, lessonId, materialId) => {
@@ -1810,15 +1667,16 @@ export const useAppStore = create<AppState>()(
 
         try {
           await apiRequest("DELETE", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/materials/${materialId}`);
-        } catch (e) {
-          console.warn("Backend unlink material indisponível:", e);
+          toast.success("Material desvinculado da aula!");
+          await get().fetchCourseDetails(courseId);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao desvincular o material");
+          return false;
         }
-
-        await get().fetchCourseDetails(courseId);
-        toast.success("Material desvinculado da aula!");
-        return true;
       },
 
+      // --- Resumo ---
       fetchCardSummary: async (cardId) => {
         const teamId = get().activeTeamId;
         if (!teamId) return get().cardSummaries[cardId] || null;
@@ -1826,17 +1684,15 @@ export const useAppStore = create<AppState>()(
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/summary`);
           if (raw) {
-            const summary: ProjectSummary = {
-              cardId: raw.cardId.toString(),
-              summary: raw.summary,
-              generatedAt: raw.generatedAt,
-              basedOn: raw.basedOn || "SCRIPT"
-            };
+            const summary = mapSummary(raw);
             set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: summary } }));
             return summary;
           }
-        } catch {
-          // ignora
+        } catch (error) {
+          // 404 significa apenas que ainda não existe resumo gerado
+          if (statusOf(error) !== 404) {
+            notifyError(error, "Erro ao carregar o resumo");
+          }
         }
         return get().cardSummaries[cardId] || null;
       },
@@ -1847,177 +1703,18 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/summary`);
-          if (raw) {
-            const summary: ProjectSummary = {
-              cardId: raw.cardId.toString(),
-              summary: raw.summary,
-              generatedAt: raw.generatedAt,
-              basedOn: raw.basedOn || "SCRIPT"
-            };
-            set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: summary } }));
-            toast.success("Resumo gerado com sucesso pela inteligência artificial!");
-            return summary;
-          }
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "";
-          if (msg.includes("Dados insuficientes")) {
-            toast.error(msg);
-            return null;
-          }
-          console.warn("Backend resumo IA indisponível, gerando resumo síntese:", e);
+          if (!raw) return null;
+          const summary = mapSummary(raw);
+          set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: summary } }));
+          toast.success("Resumo gerado com sucesso!");
+          return summary;
+        } catch (error) {
+          notifyError(error, "Erro ao gerar o resumo");
+          return null;
         }
-
-        const card = get().board?.columns.flatMap(c => c.cards).find(c => c.id === cardId);
-        const localSummary: ProjectSummary = {
-          cardId,
-          summary: `Resumo Síntese: Projeto "${card?.title || "Sem título"}" estruturado para o público "${card?.targetAudience || "Geral"}", visando "${card?.pedagogicalObjective || "Desenvolvimento de competências essenciais"}". Apresenta sequência didática clara com conceitos fundamentais e aplicação prática.`,
-          generatedAt: new Date().toISOString(),
-          basedOn: "SCRIPT"
-        };
-
-        set(state => ({ cardSummaries: { ...state.cardSummaries, [cardId]: localSummary } }));
-        toast.success("Resumo gerado com sucesso pela inteligência artificial!");
-        return localSummary;
       },
 
-      checkCoursePublication: async (courseId) => {
-        const teamId = get().activeTeamId;
-        if (teamId) {
-          try {
-            const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/courses/${courseId}/publication-check`);
-            if (raw && typeof raw.publishable === "boolean") {
-              return raw as PublicationCheckResult;
-            }
-          } catch {
-            // fallback local
-          }
-        }
-
-        const detail = get().activeCourse;
-        const problems: PublicationCheckProblem[] = [];
-
-        if (!detail || !detail.modules || detail.modules.length === 0) {
-          problems.push({
-            type: "NO_MODULES",
-            message: "O curso não possui módulos cadastrados. Adicione pelo menos um módulo."
-          });
-        } else {
-          detail.modules.forEach(m => {
-            if (!m.lessons || m.lessons.length === 0) {
-              problems.push({
-                type: "EMPTY_MODULE",
-                moduleId: Number(m.id),
-                moduleTitle: m.title,
-                message: `O módulo "${m.title}" não tem aulas.`
-              });
-            } else {
-              m.lessons.forEach(l => {
-                const hasUrl = Boolean(l.contentUrl && l.contentUrl.trim());
-                const hasMat = Boolean(l.materials && l.materials.length > 0);
-                if (!hasUrl && !hasMat) {
-                  problems.push({
-                    type: "LESSON_WITHOUT_MATERIAL",
-                    moduleId: Number(m.id),
-                    lessonId: Number(l.id),
-                    lessonTitle: l.title,
-                    message: `A aula "${l.title}" não tem material nem link de conteúdo.`
-                  });
-                }
-              });
-            }
-          });
-        }
-
-        return {
-          publishable: problems.length === 0,
-          problems
-        };
-      },
-
-      publishCourse: async (courseId) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return false;
-
-        try {
-          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/publish`);
-        } catch (e) {
-          console.warn("Backend publish indisponível, simulando publicação:", e);
-        }
-
-        const now = new Date().toISOString();
-        set(state => ({
-          courses: state.courses.map(c => c.id === courseId ? { ...c, status: "PUBLISHED", publishedAt: now } : c),
-          activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, status: "PUBLISHED", publishedAt: now } : state.activeCourse
-        }));
-        toast.success("Curso publicado com sucesso!");
-        return true;
-      },
-
-      unpublishCourse: async (courseId) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return false;
-
-        try {
-          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/unpublish`);
-        } catch (e) {
-          console.warn("Backend unpublish indisponível, alterando para rascunho:", e);
-        }
-
-        set(state => ({
-          courses: state.courses.map(c => c.id === courseId ? { ...c, status: "DRAFT", publishedAt: null } : c),
-          activeCourse: state.activeCourse?.id === courseId ? { ...state.activeCourse, status: "DRAFT", publishedAt: null } : state.activeCourse
-        }));
-        toast.success("Curso despublicado e retornado para rascunho.");
-        return true;
-      },
-
-      exportCourseCsv: (courseId) => {
-        const course = get().activeCourse?.id === courseId ? get().activeCourse : null;
-        if (!course) {
-          toast.error("Selecione o curso para exportar.");
-          return;
-        }
-
-        const headers = "modulo_ordem;modulo_titulo;aula_ordem;aula_titulo;aula_tipo;aula_publicada;aula_link;projeto_id;materiais";
-        const rows: string[] = [];
-
-        course.modules.forEach(m => {
-          m.lessons.forEach(l => {
-            const mats = l.materials ? l.materials.map(mat => mat.fileName).join(", ") : "";
-            const row = [
-              m.sortOrder,
-              `"${m.title.replace(/"/g, '""')}"`,
-              l.sortOrder,
-              `"${l.title.replace(/"/g, '""')}"`,
-              l.type,
-              l.published ? "SIM" : "NAO",
-              `"${(l.contentUrl || "").replace(/"/g, '""')}"`,
-              l.projectId || "",
-              `"${mats.replace(/"/g, '""')}"`
-            ].join(";");
-            rows.push(row);
-          });
-        });
-
-        const csvContent = "\uFEFF" + [headers, ...rows].join("\r\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const url = typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
-          ? URL.createObjectURL(blob)
-          : "blob:mock-csv";
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `curso-${courseId}.csv`);
-        document.body.appendChild(link);
-        if (typeof link.click === "function") {
-          link.click();
-        }
-        document.body.removeChild(link);
-        if (typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
-          URL.revokeObjectURL(url);
-        }
-        toast.success("Estrutura do curso exportada em CSV com sucesso!");
-      },
-
+      // --- Convites e administração da equipe ---
       fetchTeamInvites: async () => {
         const teamId = get().activeTeamId;
         if (!teamId) return;
@@ -2027,18 +1724,18 @@ export const useAppStore = create<AppState>()(
           if (Array.isArray(raw)) {
             set({
               teamInvites: raw.map(i => ({
-                id: i.id.toString(),
+                id: String(i.id),
                 email: i.email,
-                role: i.role || "CREATOR",
-                status: i.status || "PENDING",
-                invitedBy: i.invitedBy ? { userId: i.invitedBy.userId?.toString() || "", name: i.invitedBy.name || "" } : undefined,
+                role: i.role,
+                status: i.status,
+                invitedBy: i.invitedBy ? { userId: String(i.invitedBy.userId ?? ""), name: i.invitedBy.name || "" } : undefined,
                 createdAt: i.createdAt,
                 expiresAt: i.expiresAt
               }))
             });
           }
-        } catch {
-          // ignora
+        } catch (error) {
+          notifyError(error, "Erro ao carregar os convites");
         }
       },
 
@@ -2048,28 +1745,14 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/invites`, { email, role });
-          if (raw) {
-            toast.success(`Convite enviado para ${email}!`);
-            await get().fetchTeamInvites();
-            return true;
-          }
-        } catch (e) {
-          console.warn("Backend POST /invites indisponível, simulando convite local:", e);
+          if (!raw) return false;
+          toast.success(`Convite enviado para ${email}!`);
+          await get().fetchTeamInvites();
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao enviar o convite");
+          return false;
         }
-
-        const localInvite: TeamInvite = {
-          id: "inv-" + Date.now(),
-          email,
-          role,
-          status: "PENDING",
-          invitedBy: { userId: "me", name: "Você" },
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        };
-
-        set(state => ({ teamInvites: [localInvite, ...state.teamInvites] }));
-        toast.success(`Convite enviado para ${email}!`);
-        return true;
       },
 
       cancelTeamInvite: async (inviteId) => {
@@ -2078,13 +1761,13 @@ export const useAppStore = create<AppState>()(
 
         try {
           await apiRequest("DELETE", `/api/v1/teams/${teamId}/invites/${inviteId}`);
-        } catch {
-          // ignora
+          set(state => ({ teamInvites: state.teamInvites.filter(i => i.id !== inviteId) }));
+          toast.success("Convite cancelado!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao cancelar o convite");
+          return false;
         }
-
-        set(state => ({ teamInvites: state.teamInvites.filter(i => i.id !== inviteId) }));
-        toast.success("Convite cancelado!");
-        return true;
       },
 
       renameTeam: async (name) => {
@@ -2093,160 +1776,37 @@ export const useAppStore = create<AppState>()(
 
         try {
           await apiRequest("PATCH", `/api/v1/teams/${teamId}`, { name });
-        } catch (e) {
-          console.warn("Backend PATCH /teams indisponível:", e);
+          set(state => ({
+            teams: state.teams.map(t => t.id === teamId ? { ...t, name } : t),
+            activeTeam: state.activeTeam?.id === teamId ? { ...state.activeTeam, name } : state.activeTeam,
+            board: state.board ? { ...state.board, teamName: name } : null
+          }));
+          toast.success("Equipe renomeada com sucesso!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao renomear a equipe");
+          return false;
         }
-
-        set(state => ({
-          teams: state.teams.map(t => t.id === teamId ? { ...t, name } : t),
-          activeTeam: state.activeTeam?.id === teamId ? { ...state.activeTeam, name } : state.activeTeam,
-          board: state.board ? { ...state.board, teamName: name } : null
-        }));
-        toast.success("Equipe renomeada com sucesso!");
-        return true;
       },
 
       deleteTeam: async (teamId) => {
         try {
           await apiRequest("DELETE", `/api/v1/teams/${teamId}`);
-        } catch (e) {
-          console.warn("Backend DELETE /teams indisponível:", e);
+        } catch (error) {
+          notifyError(error, "Erro ao excluir a equipe");
+          return false;
         }
 
         const remaining = get().teams.filter(t => t.id !== teamId);
-        set({
-          teams: remaining,
-          activeTeamId: remaining.length > 0 ? remaining[0].id : null,
-          activeTeam: remaining.length > 0 ? remaining[0] : null,
-          board: null
-        });
-
+        set({ teams: remaining });
         toast.success("Equipe excluída com sucesso.");
-        if (remaining.length > 0) {
-          await get().setActiveTeamId(remaining[0].id);
-        }
-        return true;
-      },
-
-      reorderCourseModules: async (courseId: string, moduleIds: string[]) => {
-        const teamId = get().activeTeam?.id;
-        const currentCourse = get().activeCourse;
-        if (!currentCourse || currentCourse.id !== courseId) return false;
-
-        const modulesMap = new Map(currentCourse.modules.map(m => [m.id, m]));
-        const reordered = moduleIds
-          .map((id, index) => {
-            const mod = modulesMap.get(id);
-            return mod ? { ...mod, sortOrder: index } : null;
-          })
-          .filter((m): m is NonNullable<typeof m> => m !== null);
-
-        const updatedCourse = { ...currentCourse, modules: reordered };
-        set({
-          activeCourse: updatedCourse,
-          courses: get().courses.map(c => c.id === courseId ? updatedCourse : c)
-        });
-
-        if (teamId) {
-          try {
-            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/order`, { moduleIds });
-          } catch (e) {
-            console.warn("Backend reorder modules indisponível:", e);
+        if (get().activeTeamId === teamId) {
+          if (remaining.length > 0) {
+            await get().setActiveTeamId(remaining[0].id);
+          } else {
+            set({ ...EMPTY_SESSION_STATE });
           }
         }
-        return true;
-      },
-
-      reorderCourseLessons: async (courseId: string, moduleId: string, lessonIds: string[]) => {
-        const teamId = get().activeTeam?.id;
-        const currentCourse = get().activeCourse;
-        if (!currentCourse || currentCourse.id !== courseId) return false;
-
-        const updatedModules = currentCourse.modules.map(mod => {
-          if (mod.id !== moduleId) return mod;
-          const lessonsMap = new Map(mod.lessons.map(l => [l.id, l]));
-          const reorderedLessons = lessonIds
-            .map((id) => lessonsMap.get(id))
-            .filter((l): l is NonNullable<typeof l> => l !== null);
-          return { ...mod, lessons: reorderedLessons };
-        });
-
-        const updatedCourse = { ...currentCourse, modules: updatedModules };
-        set({
-          activeCourse: updatedCourse,
-          courses: get().courses.map(c => c.id === courseId ? updatedCourse : c)
-        });
-
-        if (teamId) {
-          try {
-            await apiRequest("PUT", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons/order`, { lessonIds });
-          } catch (e) {
-            console.warn("Backend reorder lessons indisponível:", e);
-          }
-        }
-        return true;
-      },
-
-      fetchTeamTags: async () => {
-        const teamId = get().activeTeam?.id;
-        if (!teamId) return;
-        try {
-          const data = await apiRequest("GET", `/api/v1/teams/${teamId}/tags`);
-          if (Array.isArray(data) && data.length > 0) {
-            set({
-              teamTags: data.map((t: { id: string | number; name: string; color?: string }) => ({
-                id: String(t.id),
-                name: t.name,
-                color: t.color || "#2E7D32"
-              }))
-            });
-            return;
-          }
-        } catch {
-          // Fallback gracioso com DEFAULT_TEAM_TAGS
-        }
-        set({ teamTags: DEFAULT_TEAM_TAGS });
-      },
-
-      createTeamTag: async (name: string, color: string) => {
-        const teamId = get().activeTeam?.id;
-        const current = get().teamTags;
-        const normalized = name.trim();
-        if (current.some(t => t.name.toLowerCase() === normalized.toLowerCase())) {
-          toast.error("Já existe uma etiqueta com esse nome.");
-          return null;
-        }
-
-        try {
-          if (teamId) {
-            const data = await apiRequest("POST", `/api/v1/teams/${teamId}/tags`, { name: normalized, color });
-            if (data && data.id) {
-              const newTag: TeamTag = { id: String(data.id), name: data.name, color: data.color || color };
-              set({ teamTags: [...current, newTag] });
-              toast.success("Etiqueta criada com sucesso!");
-              return newTag;
-            }
-          }
-        } catch {
-          // Fallback local
-        }
-        const fallbackTag: TeamTag = { id: `tag-${Date.now()}`, name: normalized, color };
-        set({ teamTags: [...current, fallbackTag] });
-        toast.success("Etiqueta adicionada!");
-        return fallbackTag;
-      },
-
-      deleteTeamTag: async (tagId: string) => {
-        const teamId = get().activeTeam?.id;
-        try {
-          if (teamId) {
-            await apiRequest("DELETE", `/api/v1/teams/${teamId}/tags/${tagId}`);
-          }
-        } catch {
-          // Fallback local
-        }
-        set({ teamTags: get().teamTags.filter(t => t.id !== tagId) });
-        toast.success("Etiqueta removida.");
         return true;
       },
 

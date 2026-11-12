@@ -12,10 +12,11 @@ import { UserSettingsDialog } from "./UserSettingsDialog";
 import { TeamSwitcher } from "./TeamSwitcher";
 import { useAppStore } from "@/store/useAppStore";
 import { deleteCookie } from "@/lib/api";
+import { canEditProduction } from "@/lib/roles";
 
 interface NavbarProps {
   activeTab?: string;
-  onNavigate?: (tab: "kanban" | "inbox" | "courses" | "curriculum" | "editor") => void;
+  onNavigate?: (tab: "kanban" | "inbox" | "courses" | "editor") => void;
 }
 
 export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
@@ -24,7 +25,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const activeTeamId = useAppStore((state) => state.activeTeamId);
   const alerts = useAppStore((state) => state.alerts);
   const fetchAlerts = useAppStore((state) => state.fetchAlerts);
-  const canCreate = !activeTeam || activeTeam.role !== "REVIEWER";
+  const canCreate = canEditProduction(activeTeam?.role);
 
   React.useEffect(() => {
     if (activeTeamId) {

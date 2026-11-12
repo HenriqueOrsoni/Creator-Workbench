@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getSafeRedirect, buildLoginUrl } from "@/lib/redirect";
 
 const PUBLIC_ROUTES = ["/login", "/registrar", "/convite"];
 const emptySubscribe = () => () => {};
@@ -17,6 +18,7 @@ function checkAuthToken(): boolean {
       const payload = JSON.parse(atob(parts[1]));
       if (payload.exp && payload.exp * 1000 < Date.now()) {
         document.cookie = "creator_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "creator_user_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         return false;
       }
     }
@@ -45,9 +47,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hasToken && !isPublicRoute) {
-      router.replace("/login");
+      router.replace(buildLoginUrl(pathname, window.location.search));
     } else if (hasToken && (pathname === "/login" || pathname === "/registrar")) {
-      router.replace("/");
+      router.replace(getSafeRedirect(window.location.search));
     }
   }, [pathname, router, isPublicRoute, hasToken]);
 

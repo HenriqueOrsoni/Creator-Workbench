@@ -9,6 +9,8 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
   const mockConvertInboxIdea = jest.fn();
   const mockDeleteCard = jest.fn();
   const mockVoteIdea = jest.fn();
+  const mockSetIdeaFilters = jest.fn();
+  const mockFetchTeamTags = jest.fn();
 
   const mockIdeas: ProjectCard[] = [
     {
@@ -34,6 +36,8 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
       tasksTotal: 0,
       tasksDone: 0,
       tag: 'Podcast',
+      tagId: '2',
+      tagColor: '#1565C0',
       votes: 0,
       votedByMe: false,
       createdAt: new Date().toISOString(),
@@ -52,25 +56,66 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
           { id: 'col-2', name: 'Roteiro', sortOrder: 1, cards: [] },
         ],
       },
+      activeTeam: null,
       fetchIdeas: mockFetchIdeas,
       createInboxIdea: mockCreateInboxIdea,
       convertInboxIdea: mockConvertInboxIdea,
       deleteCard: mockDeleteCard,
       voteIdea: mockVoteIdea,
+      setIdeaFilters: mockSetIdeaFilters,
+      fetchTeamTags: mockFetchTeamTags,
+      ideaFilters: { q: '', tagId: '', sort: 'recent' },
+      teamTags: [
+        { id: '1', name: 'Tutorial', color: '#2E7D32' },
+        { id: '2', name: 'Podcast', color: '#1565C0' },
+      ],
     });
   });
 
-  it('filtra as ideias pela etiqueta escolhida', () => {
+  it('filtros de etiqueta vêm do servidor e pedem a lista filtrada (tagId)', () => {
+    render(<IdeasInbox />);
+
+    expect(screen.getByRole('button', { name: 'Todas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tutorial' })).toBeInTheDocument();
+
+    // O primeiro "Podcast" é o botão do filtro; o selo do card é um texto simples
+    fireEvent.click(screen.getByRole('button', { name: 'Podcast' }));
+    expect(mockSetIdeaFilters).toHaveBeenCalledWith({ tagId: '2' });
+  });
+
+  it('não cria filtros de etiqueta fixos: sem etiquetas do servidor só existe "Todas"', () => {
+    useAppStore.setState({ teamTags: [] });
+    render(<IdeasInbox />);
+
+    expect(screen.getByRole('button', { name: 'Todas' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tutorial' })).not.toBeInTheDocument();
+  });
+
+  it('busca e ordenação são enviadas ao servidor (q e sort)', () => {
+    jest.useFakeTimers();
+    try {
+      render(<IdeasInbox />);
+
+      fireEvent.change(screen.getByPlaceholderText('Buscar ideias...'), { target: { value: 'grafos' } });
+      expect(mockSetIdeaFilters).not.toHaveBeenCalled();
+      act(() => {
+        jest.advanceTimersByTime(400);
+      });
+      expect(mockSetIdeaFilters).toHaveBeenCalledWith({ q: 'grafos' });
+
+      fireEvent.click(screen.getByRole('button', { name: /recentes/i }));
+      expect(mockSetIdeaFilters).toHaveBeenCalledWith({ sort: 'votes' });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('mostra a lista exatamente como o servidor devolveu (sem refiltrar no cliente)', () => {
+    useAppStore.setState({ ideaFilters: { q: '', tagId: '2', sort: 'recent' }, ideas: [mockIdeas[0]] });
     render(<IdeasInbox />);
 
     expect(screen.getByText('Ideia sobre Micro-frontend')).toBeInTheDocument();
-    expect(screen.getByText('Podcast sobre Grafos')).toBeInTheDocument();
-
-    // O primeiro "Podcast" é o botão do filtro; o badge do card vem depois
-    fireEvent.click(screen.getAllByRole('button', { name: 'Podcast' })[0]);
-
-    expect(screen.queryByText('Ideia sobre Micro-frontend')).not.toBeInTheDocument();
-    expect(screen.getByText('Podcast sobre Grafos')).toBeInTheDocument();
+    expect(screen.queryByText('Podcast sobre Grafos')).not.toBeInTheDocument();
   });
 
   it('mostra os votos salvos e envia o voto ao servidor', () => {
@@ -83,14 +128,15 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
     expect(mockVoteIdea).toHaveBeenCalledWith('50');
   });
 
-  it('envia a etiqueta escolhida ao criar a ideia', async () => {
+  it('envia o tagId escolhido ao criar a ideia', async () => {
+    mockCreateInboxIdea.mockResolvedValue({ id: '60' });
     render(<IdeasInbox />);
 
     fireEvent.click(screen.getByRole('button', { name: /nova ideia/i }));
     fireEvent.change(screen.getByPlaceholderText('Ex: Minicurso sobre Algoritmos de Busca'), {
       target: { value: 'Artigo sobre BFS' },
     });
-    fireEvent.change(screen.getByLabelText('Etiqueta'), { target: { value: 'Artigo' } });
+    fireEvent.change(screen.getByLabelText('Etiqueta'), { target: { value: '1' } });
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /guardar na inbox/i }));
@@ -98,8 +144,18 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
 
     expect(mockCreateInboxIdea).toHaveBeenCalledWith(expect.objectContaining({
       title: 'Artigo sobre BFS',
-      tag: 'Artigo',
+      tagId: 1,
     }));
+  });
+
+  it('Revisor não vê criar, excluir nem converter ideias, mas pode votar', () => {
+    useAppStore.setState({ activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' } });
+    render(<IdeasInbox />);
+
+    expect(screen.queryByRole('button', { name: /nova ideia/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Excluir ideia')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /converter em projeto/i })).not.toBeInTheDocument();
+    expect(screen.getByTitle('Remover meu voto')).toBeInTheDocument();
   });
 
   it('renderiza título e ideias presentes na Caixa de Entrada', () => {

@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
   ArrowRight, 
-  ArrowUpRight, 
   Settings2, 
   Trash2, 
   Target, 
@@ -13,7 +12,8 @@ import {
   BookOpenCheck,
   ListChecks,
   Plus,
-  Calendar
+  Calendar,
+  Clock
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -28,6 +28,9 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import { useAppStore, KanbanItem, ProjectCard } from "../../store/useAppStore";
+import { canEditProduction, canManageColumns } from "../../lib/roles";
+import { formatLocalDate, daysUntil } from "../../lib/dates";
+import { formatDateTime } from "../../lib/dates";
 import { IdeaDialog } from "./IdeaDialog";
 import { CardTaskDialog } from "./CardTaskDialog";
 
@@ -37,46 +40,14 @@ interface KanbanBoardProps {
 
 interface BoardCardItem extends KanbanItem {
   columnId?: string;
-  rawCard?: ProjectCard;
+  rawCard: ProjectCard;
 }
 
-const LEGACY_COLUMNS = [
-  { 
-    id: "IDEATION", 
-    title: "Ideação", 
-    color: "bg-zinc-400 dark:bg-zinc-600", 
-    border: "border-zinc-200 dark:border-zinc-800",
-    text: "text-zinc-600 dark:text-zinc-400"
-  },
-  { 
-    id: "IN_PRODUCTION", 
-    title: "Em Produção", 
-    color: "bg-amber-500", 
-    border: "border-amber-200 dark:border-amber-900/50",
-    text: "text-amber-600 dark:text-amber-500"
-  },
-  { 
-    id: "REVIEW", 
-    title: "Em Revisão", 
-    color: "bg-sky-500", 
-    border: "border-sky-200 dark:border-sky-900/50",
-    text: "text-sky-600 dark:text-sky-500"
-  },
-  { 
-    id: "DONE", 
-    title: "Concluído", 
-    color: "bg-emerald-500", 
-    border: "border-emerald-200 dark:border-emerald-900/50",
-    text: "text-emerald-600 dark:text-emerald-500"
-  }
-];
+const COLUMN_COLORS = ["bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500", "bg-indigo-500"];
 
 export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   const {
-    items,
     board,
-    updateState,
-    deleteItem,
     moveCard,
     deleteCard,
     addColumn,
@@ -88,16 +59,44 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     setSelectedProjectId
   } = useAppStore();
 
-  // Só administradores configuram as colunas da equipe
-  const canManageColumns = activeTeam ? activeTeam.role === "ADMIN" : false;
-  const isReviewer = activeTeam?.role === "REVIEWER";
-  const canEditCards = !isReviewer;
+  // Papéis: só o Administrador configura colunas; Revisor é somente leitura
+  const canManageBoardColumns = canManageColumns(activeTeam?.role);
+  const canEditCards = canEditProduction(activeTeam?.role);
   const [editingColumn, setEditingColumn] = React.useState<{ id: string; name: string } | null>(null);
   const [columnNameDraft, setColumnNameDraft] = React.useState("");
   const [columnTargetId, setColumnTargetId] = React.useState("");
 
+  const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
+  const [selectedItemForDialog, setSelectedItemForDialog] = React.useState<KanbanItem | null>(null);
+  const [itemToDelete, setItemToDelete] = React.useState<KanbanItem | null>(null);
+  const [selectedCardForTasks, setSelectedCardForTasks] = React.useState<ProjectCard | null>(null);
+
+  const [openAddColumn, setOpenAddColumn] = React.useState(false);
+  const [newColumnName, setNewColumnName] = React.useState("");
+
+  // O quadro vem sempre do servidor; sem ele não há o que mostrar
+  const dynamicColumns = (board?.columns ?? []).map((col, idx) => ({
+    id: col.id,
+    name: col.name,
+    color: COLUMN_COLORS[idx % COLUMN_COLORS.length],
+    cards: col.cards.map((c): BoardCardItem => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      createdAt: c.createdAt ? new Date(c.createdAt).getTime() : 0,
+      targetAudience: c.targetAudience,
+      pedagogicalObjective: c.pedagogicalObjective,
+      progress: c.progress,
+      tasksTotal: c.tasksTotal,
+      tasksDone: c.tasksDone,
+      columnId: col.id,
+      dueDate: c.dueDate,
+      rawCard: c
+    }))
+  }));
+
   const handleMoveColumn = async (colIndex: number, direction: "left" | "right") => {
-    if (!dynamicColumns || dynamicColumns.length < 2) return;
+    if (dynamicColumns.length < 2) return;
     const targetIndex = direction === "left" ? colIndex - 1 : colIndex + 1;
     if (targetIndex < 0 || targetIndex >= dynamicColumns.length) return;
 
@@ -108,80 +107,15 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     await reorderColumns(newCols.map(c => c.id));
   };
 
-  const [activeConvertId, setActiveConvertId] = React.useState<string | null>(null);
-  const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
-  const [selectedItemForDialog, setSelectedItemForDialog] = React.useState<KanbanItem | null>(null);
-  const [itemToDelete, setItemToDelete] = React.useState<KanbanItem | null>(null);
-  const [selectedCardForTasks, setSelectedCardForTasks] = React.useState<ProjectCard | null>(null);
-
-  const [openAddColumn, setOpenAddColumn] = React.useState(false);
-  const [newColumnName, setNewColumnName] = React.useState("");
-
-  // Determina se usamos o quadro dinâmico do backend ou o fallback legado
-  const useDynamicColumns = Boolean(board && board.columns && board.columns.length > 0);
-
-  const dynamicColumns = (!useDynamicColumns || !board)
-    ? LEGACY_COLUMNS.map(col => ({
-        id: col.id,
-        name: col.title,
-        color: col.color,
-        cards: items.filter(i => i.state === col.id)
-      }))
-    : board.columns.map((col, idx) => {
-        const colors = ["bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500", "bg-indigo-500"];
-        return {
-          id: col.id,
-          name: col.name,
-          color: colors[idx % colors.length],
-          cards: col.cards.map(c => ({
-            id: c.id,
-            title: c.title,
-            description: c.description,
-            state: (col.name === "Concluído" ? "DONE" : "IN_PRODUCTION") as KanbanItem["state"],
-            createdAt: new Date(c.createdAt).getTime(),
-            targetAudience: c.targetAudience,
-            pedagogicalObjective: c.pedagogicalObjective,
-            progress: c.progress,
-            tasksTotal: c.tasksTotal,
-            tasksDone: c.tasksDone,
-            columnId: col.id,
-            dueDate: c.dueDate,
-            rawCard: c
-          }))
-        };
-      });
-
+  // As setas movem o card para a coluna vizinha (PATCH .../cards/{id}/move)
   const handleMoveLeft = async (item: BoardCardItem, colIndex: number) => {
-    if (useDynamicColumns && colIndex > 0) {
-      const prevCol = dynamicColumns[colIndex - 1];
-      await moveCard(item.id, prevCol.id);
-      return;
-    }
-
-    if (item.state === "DONE") {
-      await updateState(item.id, "REVIEW");
-    } else if (item.state === "REVIEW") {
-      await updateState(item.id, "IN_PRODUCTION");
-    } else if (item.state === "IN_PRODUCTION") {
-      await updateState(item.id, "IDEATION");
-    }
+    if (colIndex <= 0) return;
+    await moveCard(item.id, dynamicColumns[colIndex - 1].id);
   };
 
   const handleMoveRight = async (item: BoardCardItem, colIndex: number) => {
-    if (useDynamicColumns && colIndex < dynamicColumns.length - 1) {
-      const nextCol = dynamicColumns[colIndex + 1];
-      await moveCard(item.id, nextCol.id);
-      return;
-    }
-
-    if (item.state === "IDEATION") {
-      setSelectedItemForDialog(item);
-      setActiveConvertId(item.id);
-    } else if (item.state === "IN_PRODUCTION") {
-      await updateState(item.id, "REVIEW");
-    } else if (item.state === "REVIEW") {
-      await updateState(item.id, "DONE");
-    }
+    if (colIndex >= dynamicColumns.length - 1) return;
+    await moveCard(item.id, dynamicColumns[colIndex + 1].id);
   };
 
   const handleOpenEdit = (item: KanbanItem) => {
@@ -191,12 +125,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
 
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
-
-    if (useDynamicColumns) {
-      await deleteCard(itemToDelete.id);
-    } else {
-      await deleteItem(itemToDelete.id);
-    }
+    await deleteCard(itemToDelete.id);
     setItemToDelete(null);
   };
 
@@ -230,18 +159,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   };
 
   const openTaskChecklist = (card: BoardCardItem) => {
-    const projectCard: ProjectCard = card.rawCard || {
-      id: card.id,
-      title: card.title,
-      description: card.description,
-      type: "PROJECT",
-      sortOrder: 0,
-      progress: card.progress,
-      tasksTotal: card.tasksTotal || 0,
-      tasksDone: card.tasksDone || 0,
-      createdAt: new Date().toISOString()
-    };
-    setSelectedCardForTasks(projectCard);
+    setSelectedCardForTasks(card.rawCard);
   };
 
   return (
@@ -250,14 +168,14 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="text-xs font-semibold py-1 px-2.5 bg-background border-border rounded-md shadow-xs">
-            {board ? board.teamName : "Quadro Geral"}
+            {board ? board.teamName : "Carregando quadro..."}
           </Badge>
           <span className="text-xs text-muted-foreground font-medium">
             {dynamicColumns.reduce((acc, col) => acc + col.cards.length, 0)} cards em produção
           </span>
         </div>
 
-        {canManageColumns && (
+        {canManageBoardColumns && (
           <Button
             variant="outline"
             size="sm"
@@ -289,7 +207,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                   <Badge variant="outline" className="bg-background border-border font-semibold text-muted-foreground text-[11px] px-2 py-0.5 rounded-md">
                     {colItems.length}
                   </Badge>
-                  {useDynamicColumns && canManageColumns && (
+                  {canManageBoardColumns && (
                     <div className="flex items-center gap-0.5">
                       <Button
                         variant="ghost"
@@ -391,8 +309,8 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                               </p>
                             )}
 
-                            {/* Detalhes de Projetos (State != IDEATION) */}
-                            {item.state !== "IDEATION" && (
+                            {/* Detalhes do projeto */}
+                            {(
                               <div className="space-y-3 pt-2 border-t border-border">
                                 {item.targetAudience && (
                                   <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -408,18 +326,33 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                   </div>
                                 )}
 
+                                {item.rawCard.tag && (
+                                  <div>
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold text-white"
+                                      style={{ backgroundColor: item.rawCard.tagColor || "#64748B" }}
+                                      title="Etiqueta"
+                                    >
+                                      {item.rawCard.tag}
+                                    </span>
+                                  </div>
+                                )}
+
                                 <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
                                   <Calendar size={12} className="text-muted-foreground shrink-0" />
-                                  <span>{new Date(item.createdAt).toLocaleDateString("pt-BR")}</span>
+                                  <span>Criado em {item.createdAt ? new Date(item.createdAt).toLocaleDateString("pt-BR") : "-"}</span>
                                 </div>
 
+                                {item.rawCard.columnSince && (
+                                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground" title="Data em que o card entrou nesta coluna">
+                                    <Clock size={12} className="text-muted-foreground shrink-0" />
+                                    <span>Na coluna desde {formatDateTime(item.rawCard.columnSince)}</span>
+                                  </div>
+                                )}
+
                                 {item.dueDate && (() => {
-                                  // dueDate vem como AAAA-MM-DD; compara só a data, sem fuso
-                                  const [y, m, d] = item.dueDate.split("-").map(Number);
-                                  const due = new Date(y, m - 1, d);
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                  // dueDate vem como AAAA-MM-DD; datas locais evitam o erro de um dia por causa do UTC
+                                  const diffDays = daysUntil(item.dueDate) ?? 0;
                                   const overdue = diffDays < 0;
                                   const dueSoon = diffDays >= 0 && diffDays <= 3;
                                   return (
@@ -431,7 +364,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                     >
                                       <Calendar size={12} className="shrink-0" />
                                       <span>
-                                        Prazo {due.toLocaleDateString("pt-BR")}
+                                        Prazo {formatLocalDate(item.dueDate)}
                                         {overdue ? " • vencido" : dueSoon ? ` • vence em ${diffDays === 0 ? "hoje" : `${diffDays}d`}` : ""}
                                       </span>
                                     </div>
@@ -472,7 +405,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                               {/* Setas de Movimento de Status (BF-07: desabilitado para Revisor) */}
                               {canEditCards ? (
                                 <div className="flex items-center gap-1">
-                                  {(useDynamicColumns ? colIndex > 0 : item.state !== "IDEATION") && (
+                                  {colIndex > 0 && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -484,7 +417,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                     </Button>
                                   )}
                                   
-                                  {(useDynamicColumns ? colIndex < dynamicColumns.length - 1 : item.state !== "DONE") && (
+                                  {colIndex < dynamicColumns.length - 1 && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -498,21 +431,8 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                 </div>
                               ) : <div />}
 
-                              {/* Ação Principal Dependente do Status */}
-                              {item.state === "IDEATION" && canEditCards ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedItemForDialog(item);
-                                    setActiveConvertId(item.id);
-                                  }}
-                                  className="h-8 px-3 text-[10px] font-black uppercase tracking-wider text-primary hover:bg-primary/5 rounded-xl border border-primary/20 gap-1.5"
-                                >
-                                  <span>Ativar Projeto</span>
-                                  <ArrowUpRight size={12} />
-                                </Button>
-                              ) : item.state === "IDEATION" ? null : (
+                              {/* Ações do projeto */}
+                              {(
                                 <div className="flex items-center gap-1">
                                   <Button
                                     variant="ghost"
@@ -565,11 +485,10 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
       {selectedItemForDialog && (
         <IdeaDialog
           item={selectedItemForDialog}
-          mode={activeConvertId ? "convert" : "edit"}
-          open={Boolean(activeConvertId || activeEditId)}
+          mode="edit"
+          open={Boolean(activeEditId)}
           onOpenChange={(open) => {
             if (!open) {
-              setActiveConvertId(null);
               setActiveEditId(null);
               setSelectedItemForDialog(null);
             }

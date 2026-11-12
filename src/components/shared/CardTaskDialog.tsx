@@ -24,6 +24,8 @@ import {
   CardTask
 } from "@/store/useAppStore";
 import { toast } from "sonner";
+import { canEditProduction, canReviewCards } from "@/lib/roles";
+import { formatLocalDate, formatDateTime } from "@/lib/dates";
 
 interface CardTaskDialogProps {
   card: ProjectCard | null;
@@ -44,6 +46,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     fetchCardMaterials,
     uploadMaterial,
     deleteMaterial,
+    downloadMaterial,
     cardSummaries,
     fetchCardSummary,
     generateCardSummary,
@@ -52,8 +55,9 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     activeTeam
   } = useAppStore();
 
-  const isReviewer = activeTeam?.role === "REVIEWER";
-  const canEditTasks = !isReviewer;
+  // Revisor é somente leitura: não edita, move, exclui nem envia arquivos (BF-07)
+  const canEditTasks = canEditProduction(activeTeam?.role);
+  const canReview = canReviewCards(activeTeam?.role);
 
   const [activeTab, setActiveTab] = useState("tarefas");
   const [newTitle, setNewTitle] = useState("");
@@ -103,9 +107,17 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     } else if (activeTab === "resumo") {
       fetchCardSummary(currentCard.id);
     } else if (activeTab === "historico") {
+      let cancelled = false;
       fetchCardHistory(currentCard.id)
-        .then(h => setHistory(h))
-        .finally(() => setLoadingHistory(false));
+        .then(h => {
+          if (!cancelled) setHistory(h);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingHistory(false);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [open, activeTab, currentCard?.id, fetchCardMaterials, fetchCardSummary, fetchCardHistory]);
 
@@ -218,6 +230,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           value={activeTab}
           onValueChange={(val) => {
             setActiveTab(val);
+            // Mostra "Carregando..." até a API responder (a busca roda no efeito acima)
             if (val === "historico") {
               setLoadingHistory(true);
             }
@@ -274,8 +287,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   >
                     <button
                       type="button"
-                      onClick={canEditTasks ? () => toggleTask(currentCard.id, task.id) : undefined}
-                      className={`flex items-center gap-2 flex-1 text-left min-w-0 ${canEditTasks ? "cursor-pointer" : "cursor-default"}`}
+                      onClick={() => toggleTask(currentCard.id, task.id)}
+                      className="flex items-center gap-2 flex-1 text-left min-w-0 cursor-pointer"
                     >
                       {task.completed ? (
                         <CheckSquare className="w-4 h-4 text-primary shrink-0" />
@@ -298,7 +311,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                           )}
                           {task.dueDate && (
                             <span className="flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5" /> {task.dueDate}
+                              <Calendar className="w-2.5 h-2.5" /> {formatLocalDate(task.dueDate)}
                             </span>
                           )}
                         </div>
@@ -315,6 +328,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                             })}
                             className="h-6 rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
                             title="Atribuir responsável"
+                            aria-label={`Responsável pela tarefa ${task.title}`}
                           >
                             <option value="0">Sem resp.</option>
                             {teamMembers.map(m => (
@@ -322,6 +336,14 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                             ))}
                           </select>
                         )}
+                        <input
+                          type="date"
+                          aria-label={`Prazo da tarefa ${task.title}`}
+                          value={task.dueDate || ""}
+                          onChange={(e) => updateCardTaskDetails(currentCard.id, task.id, { dueDate: e.target.value })}
+                          className="h-6 rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
+                          title="Prazo da tarefa (limpe o campo para remover)"
+                        />
                         <Button
                           variant="ghost"
                           size="icon"
@@ -329,6 +351,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                           onClick={() => handleMoveTask(task.id, "up")}
                           className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-20"
                           title="Mover para cima"
+                          aria-label={`Mover tarefa ${task.title} para cima`}
                         >
                           <ArrowUp className="w-3 h-3" />
                         </Button>
@@ -339,6 +362,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                           onClick={() => handleMoveTask(task.id, "down")}
                           className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-20"
                           title="Mover para baixo"
+                          aria-label={`Mover tarefa ${task.title} para baixo`}
                         >
                           <ArrowDown className="w-3 h-3" />
                         </Button>
@@ -401,7 +425,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     Clique para enviar material de apoio
                   </span>
                   <span className="text-[10px] text-muted-foreground">
-                    PDF, Office (Word, Excel, PowerPoint), TXT e imagens até 20 MB (FE-11)
+                    PDF, Office (Word, Excel, PowerPoint), TXT e imagens até 20 MB
                   </span>
                 </label>
 
@@ -437,16 +461,17 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {mat.downloadUrl && (
-                        <a
-                          href={mat.downloadUrl}
-                          download={mat.fileName}
-                          className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-                          title="Baixar material"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => downloadMaterial(mat)}
+                        className="h-7 w-7 text-muted-foreground hover:text-primary rounded-md"
+                        title="Baixar material"
+                        aria-label={`Baixar ${mat.fileName}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </Button>
                       {canEditTasks && (
                         <Button
                           variant="ghost"
@@ -491,7 +516,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     {summary.summary}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    Gerado em {new Date(summary.generatedAt).toLocaleString()} a partir do {summary.basedOn === "SCRIPT" ? "roteiro de produção" : "briefing"}.
+                    Gerado em {formatDateTime(summary.generatedAt)} a partir do {summary.basedOn === "SCRIPT" ? "roteiro de produção" : "briefing"}.
                   </p>
                 </div>
               ) : (
@@ -518,7 +543,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 </Badge>
               </div>
 
-              {(isReviewer || activeTeam?.role === "ADMIN") && (
+              {canReview && (
                 <form onSubmit={handleSubmitReview} className="space-y-3 pt-2 border-t border-border">
                   <div>
                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
@@ -600,12 +625,12 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                           Movido para &ldquo;{item.columnName}&rdquo;
                         </span>
                         <p className="text-[10px] text-muted-foreground">
-                          Por {item.movedBy?.name || "Autor da conta"}
+                          Por {item.movedBy?.name || "Sem autor registrado"}
                         </p>
                       </div>
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {new Date(item.enteredAt).toLocaleDateString()} {new Date(item.enteredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatDateTime(item.enteredAt)}
                     </span>
                   </div>
                 ))

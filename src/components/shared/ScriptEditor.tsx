@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/api";
+import { canEditProduction } from "@/lib/roles";
+import { formatDateTime } from "@/lib/dates";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 
@@ -58,31 +60,23 @@ interface BackendScriptVersion {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
-  const { exportScript, activeTeam, items, board, setSelectedProjectId, generateCardSummary } = useAppStore();
-  const isReviewer = activeTeam?.role === "REVIEWER";
-  const canEditScript = !isReviewer;
+  const { exportScript, activeTeam, items, setSelectedProjectId, generateCardSummary } = useAppStore();
+  const canEditRole = canEditProduction(activeTeam?.role);
+  // Se o roteiro não carregou, não deixa editar (um salvamento apagaria o roteiro real)
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  const canEditScript = canEditRole && !loadFailed;
   const [snapshots, setSnapshots] = React.useState<Array<{ id: string; timestamp: number; content: string }>>([]);
 
   const [openSummaryDialog, setOpenSummaryDialog] = React.useState(false);
   const [summaryData, setSummaryData] = React.useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
 
-  const projects = React.useMemo(() => {
-    if (board?.columns && board.columns.length > 0) {
-      const list: Array<{ id: string; title: string }> = [];
-      board.columns.forEach((col) => {
-        col.cards.forEach((card) => {
-          list.push({ id: card.id, title: card.title });
-        });
-      });
-      if (list.length > 0) return list;
-    }
-    return items.filter((i) => i.state !== "IDEATION").map((i) => ({ id: i.id, title: i.title }));
-  }, [board, items]);
+  const projects = React.useMemo(() => items.map((i) => ({ id: i.id, title: i.title })), [items]);
 
+  // BF-14: sempre mostra o nome do projeto selecionado
   const currentProject = projects.find((p) => p.id === kanbanItemId) || {
     id: kanbanItemId,
-    title: "Projeto de Produção",
+    title: `Projeto #${kanbanItemId}`,
   };
 
 
@@ -135,30 +129,30 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
   const fetchScript = React.useCallback(async () => {
     if (!kanbanItemId || !editor) return;
     try {
+      // BF-18: sem roteiro salvo o servidor responde 200 com content vazio
       const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script`);
-      if (data) {
-        editor.commands.setContent(data.content || "");
-      }
-    } catch {
-      console.warn("Nenhum roteiro salvo anteriormente. Iniciando em branco.");
-      editor.commands.setContent("");
+      editor.commands.setContent(data?.content || "");
+      setHasUnsavedChanges(false);
+      setLoadFailed(false);
+    } catch (error) {
+      setLoadFailed(true);
+      toast.error((error as Error).message || "Erro ao carregar o roteiro.");
     }
   }, [kanbanItemId, editor]);
 
   const fetchVersions = React.useCallback(async () => {
     if (!kanbanItemId) return;
     try {
+      // BF-18: sem roteiro o servidor responde [] (lista vazia)
       const data = await apiRequest("GET", `/api/v1/kanban/${kanbanItemId}/script/versions`);
-      if (Array.isArray(data)) {
-        const mapped = data.map((v: BackendScriptVersion) => ({
-          id: v.id.toString(),
-          timestamp: new Date(v.createdAt).getTime(),
-          content: v.content
-        }));
-        setSnapshots(mapped);
-      }
+      const list: BackendScriptVersion[] = Array.isArray(data) ? data : [];
+      setSnapshots(list.map((v) => ({
+        id: v.id.toString(),
+        timestamp: new Date(v.createdAt).getTime(),
+        content: v.content
+      })));
     } catch (error) {
-      console.error("Erro ao buscar histórico de versões:", error);
+      toast.error((error as Error).message || "Erro ao buscar o histórico de versões.");
     }
   }, [kanbanItemId]);
 
@@ -188,30 +182,11 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
     if (canEditScript) {
       await handleSave();
     }
+    // A exportação vem do servidor (GET .../script/export); se falhar, a store já mostrou a mensagem
     const data = await exportScript(kanbanItemId);
-    let markdown = data?.markdownFormatted;
-    let cardTitle = data?.cardTitle;
-
-    if (!markdown) {
-      // Fallback para geração no cliente caso o backend ainda não possua o endpoint de exportação
-      const html = editor?.getHTML() || "";
-      const cleanText = editor?.getText() || "";
-      const words = cleanText.trim() ? cleanText.trim().split(/\s+/).length : 0;
-      const minutes = Math.max(1, Math.ceil(words / 140));
-
-      markdown = `# Roteiro de Produção\n\n` +
-        `**Métricas de Locução:** ${words} palavras • ~${minutes} min (base: 140 ppm)\n\n---\n\n` +
-        html
-          .replace(/<h1>(.*?)<\/h1>/gi, "# $1\n\n")
-          .replace(/<h2>(.*?)<\/h2>/gi, "## $1\n\n")
-          .replace(/<h3>(.*?)<\/h3>/gi, "### $1\n\n")
-          .replace(/<p>(.*?)<\/p>/gi, "$1\n\n")
-          .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
-          .replace(/<em>(.*?)<\/em>/gi, "*$1*")
-          .replace(/<li>(.*?)<\/li>/gi, "- $1\n")
-          .replace(/<[^>]*>/g, "");
-      cardTitle = currentProject.title || "roteiro";
-    }
+    if (!data) return;
+    const markdown = data.markdownFormatted;
+    const cardTitle = data.cardTitle;
 
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -378,7 +353,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                             SNAPSHOT
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-medium">
-                            {new Date(s.timestamp).toLocaleDateString()} {new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatDateTime(new Date(s.timestamp).toISOString())}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate leading-relaxed">

@@ -80,4 +80,150 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
 
     expect(mockCreateTask).toHaveBeenCalledWith('10', 'Editar cortes de áudio');
   });
+
+  describe('edição de tarefa, histórico e papéis', () => {
+    const mockUpdateDetails = jest.fn();
+    const mockReorder = jest.fn();
+    const mockHistory = jest.fn();
+    const mockDownload = jest.fn();
+
+    function seed(role: 'ADMIN' | 'CREATOR' | 'REVIEWER') {
+      useAppStore.setState({
+        activeTeam: { id: 't1', name: 'Equipe', role, membersCount: 2, createdAt: 'x' },
+        teamMembers: [
+          { id: '21', userId: '4', name: 'Ana Souza', email: 'ana@x.com', role: 'CREATOR', joinedAt: 'x' },
+        ],
+        updateCardTaskDetails: mockUpdateDetails,
+        reorderCardTasks: mockReorder,
+        fetchCardHistory: mockHistory,
+        downloadMaterial: mockDownload,
+        fetchCardMaterials: jest.fn().mockResolvedValue([]),
+        cardMaterials: {
+          '10': [{ id: '77', cardId: '10', fileName: 'apostila.pdf', contentType: 'application/pdf', sizeBytes: 2048, createdAt: 'x' }],
+        },
+      });
+    }
+
+    beforeEach(() => {
+      seed('CREATOR');
+      mockHistory.mockResolvedValue([]);
+    });
+
+    it('define o responsável escolhendo um membro da equipe (memberId)', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Responsável pela tarefa Gravar tela'), { target: { value: '21' } });
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { assigneeMemberId: 21 });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Responsável pela tarefa Gravar tela'), { target: { value: '0' } });
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { assigneeMemberId: 0 });
+    });
+
+    it('define e limpa o prazo da tarefa ("" remove)', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Prazo da tarefa Gravar tela'), { target: { value: '2026-11-18' } });
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { dueDate: '2026-11-18' });
+
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText('Prazo da tarefa Escrever roteiro'), { target: { value: '' } });
+      });
+      // O campo já estava vazio, então não há mudança a enviar
+      expect(mockUpdateDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('mostra o prazo da tarefa no mesmo dia (sem erro de fuso)', () => {
+      const card = { ...mockCard, tasks: [{ ...mockCard.tasks![1], dueDate: '2026-11-12' }] };
+      useAppStore.setState({ board: { teamId: '1', teamName: 'Equipe', columns: [{ id: 'c', name: 'Pesquisa', sortOrder: 0, cards: [card] }] } });
+      render(<CardTaskDialog card={card} open={true} onOpenChange={() => {}} />);
+
+      expect(screen.getByText('12/11/2026')).toBeInTheDocument();
+    });
+
+    it('reordena com as setas enviando a nova ordem dos ids', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Mover tarefa Gravar tela para cima'));
+      });
+      expect(mockReorder).toHaveBeenCalledWith('10', ['102', '101']);
+      // A primeira tarefa não tem seta para cima habilitada
+      expect(screen.getByLabelText('Mover tarefa Escrever roteiro para cima')).toBeDisabled();
+    });
+
+    it('aba Histórico mostra "Carregando" enquanto busca e depois a lista da API', async () => {
+      let resolve: (v: unknown) => void = () => {};
+      mockHistory.mockReturnValue(new Promise(r => { resolve = r; }));
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: 'Histórico' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Histórico' }));
+      });
+      expect(screen.getByText('Carregando histórico...')).toBeInTheDocument();
+
+      await act(async () => {
+        resolve([{ columnId: '2', columnName: 'Roteiro', enteredAt: '2026-11-10T14:00:00Z', movedBy: { userId: '4', name: 'Ana Souza' } }]);
+      });
+      expect(screen.queryByText('Carregando histórico...')).not.toBeInTheDocument();
+      expect(screen.getByText(/Movido para/)).toBeInTheDocument();
+      expect(screen.getByText('Por Ana Souza')).toBeInTheDocument();
+    });
+
+    it('baixar material usa downloadMaterial (fetch + blob com token), não um link direto', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Materiais/ }));
+        fireEvent.click(screen.getByRole('tab', { name: /Materiais/ }));
+      });
+      const button = screen.getByLabelText('Baixar apostila.pdf');
+      expect(button.tagName).toBe('BUTTON');
+      expect(button).not.toHaveAttribute('href');
+
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(mockDownload).toHaveBeenCalledWith(expect.objectContaining({ id: '77', fileName: 'apostila.pdf' }));
+    });
+
+    it('BF-07: Revisor não edita, move, exclui nem adiciona tarefas, mas pode marcar tarefas e decidir a revisão', async () => {
+      seed('REVIEWER');
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      expect(screen.queryByLabelText('Prazo da tarefa Gravar tela')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Responsável pela tarefa Gravar tela')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Mover tarefa Gravar tela para cima')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Excluir tarefa')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/gravar áudio da intro/i)).not.toBeInTheDocument();
+
+      // Marcar tarefa continua permitido para qualquer membro (rota do servidor aceita Revisor)
+      await act(async () => {
+        fireEvent.click(screen.getByText('Gravar tela'));
+      });
+      expect(mockToggleTask).toHaveBeenCalledWith('10', '102');
+
+      await act(async () => {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: 'Revisão' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Revisão' }));
+      });
+      expect(screen.getByRole('button', { name: /registrar decisão de revisão/i })).toBeInTheDocument();
+    });
+
+    it('Criador não vê a decisão de revisão', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: 'Revisão' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Revisão' }));
+      });
+      expect(screen.queryByRole('button', { name: /registrar decisão de revisão/i })).not.toBeInTheDocument();
+    });
+  });
 });

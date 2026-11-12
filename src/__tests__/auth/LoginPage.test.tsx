@@ -101,4 +101,30 @@ describe('4.2 Componentes de Autenticação — LoginPage (FT-07)', () => {
 
     expect(apiModule.apiRequest).not.toHaveBeenCalled();
   });
+
+  it('honra o ?redirect= codificado depois do login', async () => {
+    window.history.pushState({}, '', '/login?redirect=%2Fconvite%3Ftoken%3Dabc');
+    (apiModule.apiRequest as jest.Mock).mockResolvedValueOnce({ token: 'jwt', userId: 7 });
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByPlaceholderText('operador@creator.studio'), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'senha123' } });
+    fireEvent.click(screen.getByRole('button', { name: /iniciar sessão/i }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/convite?token=abc'));
+    window.history.pushState({}, '', '/');
+  });
+
+  it('ignora ?redirect= apontando para outro site', async () => {
+    window.history.pushState({}, '', '/login?redirect=https%3A%2F%2Fmau.com');
+    (apiModule.apiRequest as jest.Mock).mockResolvedValueOnce({ token: 'jwt', userId: 7 });
+
+    render(<LoginPage />);
+    fireEvent.change(screen.getByPlaceholderText('operador@creator.studio'), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'senha123' } });
+    fireEvent.click(screen.getByRole('button', { name: /iniciar sessão/i }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/'));
+    window.history.pushState({}, '', '/');
+  });
 });

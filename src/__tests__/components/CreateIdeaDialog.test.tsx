@@ -5,14 +5,16 @@ import { useAppStore } from '@/store/useAppStore';
 
 describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
   const mockCreateInboxIdea = jest.fn();
-  const mockAddIdea = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     useAppStore.setState({
       activeTeamId: 'team-1',
       createInboxIdea: mockCreateInboxIdea,
-      addIdea: mockAddIdea,
+      teamTags: [
+        { id: '3', name: 'Tutorial', color: '#2E7D32' },
+        { id: '4', name: 'Podcast', color: '#1565C0' },
+      ],
     });
   });
 
@@ -26,23 +28,25 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
     expect(screen.getByText(/capturar nova ideia/i)).toBeInTheDocument();
   });
 
-  it('valida campos e submete ideia unificada com campos pedagógicos e etiqueta para a Caixa de Entrada', async () => {
+  it('lista só as etiquetas que vieram do servidor', () => {
+    render(<CreateIdeaDialog />);
+    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+
+    const options = screen.getAllByRole('option').map(o => o.textContent);
+    expect(options).toEqual(['Sem etiqueta', 'Tutorial', 'Podcast']);
+  });
+
+  it('valida campos e envia a ideia com tagId (e não o nome da etiqueta)', async () => {
+    mockCreateInboxIdea.mockResolvedValue({ id: '9' });
     render(<CreateIdeaDialog />);
 
-    const triggerBtn = screen.getByRole('button', { name: /nova_ideia/i });
-    fireEvent.click(triggerBtn);
+    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
 
-    const titleInput = screen.getByPlaceholderText(/minicurso sobre algoritmos/i);
-    const descInput = screen.getByPlaceholderText(/anotações rápidas/i);
-    const audienceInput = screen.getByPlaceholderText(/iniciantes em cs/i);
-    const objectiveInput = screen.getByPlaceholderText(/compreender bfs e dfs/i);
-    const tagSelect = screen.getByLabelText(/etiqueta/i);
-
-    fireEvent.change(titleInput, { target: { value: 'Série sobre Inteligência Artificial' } });
-    fireEvent.change(descInput, { target: { value: 'Gravar 5 episódios detalhando arquitetura e modelos de linguagem.' } });
-    fireEvent.change(audienceInput, { target: { value: 'Desenvolvedores Júnior' } });
-    fireEvent.change(objectiveInput, { target: { value: 'Compreender Transformers e Embeddings' } });
-    fireEvent.change(tagSelect, { target: { value: 'Tutorial' } });
+    fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Série sobre Inteligência Artificial' } });
+    fireEvent.change(screen.getByPlaceholderText(/anotações rápidas/i), { target: { value: 'Gravar 5 episódios detalhando arquitetura e modelos de linguagem.' } });
+    fireEvent.change(screen.getByPlaceholderText(/iniciantes em cs/i), { target: { value: 'Desenvolvedores Júnior' } });
+    fireEvent.change(screen.getByPlaceholderText(/compreender bfs e dfs/i), { target: { value: 'Compreender Transformers e Embeddings' } });
+    fireEvent.change(screen.getByLabelText(/etiqueta/i), { target: { value: '3' } });
 
     const submitBtn = screen.getByRole('button', { name: /guardar na inbox/i });
     fireEvent.submit(submitBtn.closest('form')!);
@@ -53,34 +57,34 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
         description: 'Gravar 5 episódios detalhando arquitetura e modelos de linguagem.',
         targetAudience: 'Desenvolvedores Júnior',
         pedagogicalObjective: 'Compreender Transformers e Embeddings',
-        tag: 'Tutorial',
+        tagId: 3,
       });
     });
   });
 
-  it('faz fallback para addIdea quando não há equipe ativa', async () => {
-    useAppStore.setState({
-      activeTeamId: null,
-      createInboxIdea: undefined,
-      addIdea: mockAddIdea,
-    });
-
+  it('sem etiqueta escolhida envia tagId indefinido', async () => {
+    mockCreateInboxIdea.mockResolvedValue({ id: '9' });
     render(<CreateIdeaDialog />);
+    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
 
-    const triggerBtn = screen.getByRole('button', { name: /nova_ideia/i });
-    fireEvent.click(triggerBtn);
-
-    const titleInput = screen.getByPlaceholderText(/minicurso sobre algoritmos/i);
-    const descInput = screen.getByPlaceholderText(/anotações rápidas/i);
-
-    fireEvent.change(titleInput, { target: { value: 'Ideia Legada Sem Equipe' } });
-    fireEvent.change(descInput, { target: { value: 'Notas sobre a ideia legada.' } });
-
-    const submitBtn = screen.getByRole('button', { name: /guardar na inbox/i });
-    fireEvent.submit(submitBtn.closest('form')!);
+    fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Ideia sem etiqueta' } });
+    fireEvent.submit(screen.getByRole('button', { name: /guardar na inbox/i }).closest('form')!);
 
     await waitFor(() => {
-      expect(mockAddIdea).toHaveBeenCalledWith('Ideia Legada Sem Equipe', 'Notas sobre a ideia legada.');
+      expect(mockCreateInboxIdea).toHaveBeenCalledWith(expect.objectContaining({ title: 'Ideia sem etiqueta', tagId: undefined }));
     });
+  });
+
+  it('quando o servidor recusa a ideia, o diálogo continua aberto com o que foi digitado', async () => {
+    mockCreateInboxIdea.mockResolvedValue(null);
+    render(<CreateIdeaDialog />);
+    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+
+    fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Ideia que falha' } });
+    fireEvent.submit(screen.getByRole('button', { name: /guardar na inbox/i }).closest('form')!);
+
+    await waitFor(() => expect(mockCreateInboxIdea).toHaveBeenCalled());
+    expect(screen.getByText(/capturar nova ideia/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Ideia que falha')).toBeInTheDocument();
   });
 });

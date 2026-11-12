@@ -172,12 +172,12 @@ export function ConviteContent() {
             <p className="text-xs text-center text-muted-foreground mb-1">
               Faça login com a conta <strong>{invite.email}</strong> para aceitar o convite:
             </p>
-            <Link href={`/login?redirect=/convite?token=${token}`} className="block">
+            <Link href={`/login?redirect=${encodeURIComponent(`/convite?token=${token}`)}`} className="block">
               <Button className="w-full h-10 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary hover:bg-primary-hover text-primary-foreground gap-2 shadow-xs">
                 <LogIn className="w-4 h-4" /> Entrar na Minha Conta
               </Button>
             </Link>
-            <Link href={`/register?redirect=/convite?token=${token}`} className="block">
+            <Link href={`/registrar?redirect=${encodeURIComponent(`/convite?token=${token}`)}`} className="block">
               <Button variant="outline" className="w-full h-10 rounded-lg text-xs font-semibold uppercase tracking-wider gap-2 border-border">
                 <UserPlus className="w-4 h-4" /> Criar uma Nova Conta
               </Button>

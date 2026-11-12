@@ -16,8 +16,6 @@ import { Textarea } from "../ui/textarea";
 import { useAppStore } from "../../store/useAppStore";
 import { Plus, Sparkles, Layout, AlignLeft, Target, BookOpen, Tag } from "lucide-react";
 
-const TAG_OPTIONS = ["Tutorial", "Podcast", "Curso", "Roteiro", "Artigo"];
-
 interface CreateIdeaDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -37,12 +35,8 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
     }
   }, [isControlled, onOpenChange]);
 
-  const { activeTeamId, createInboxIdea, addIdea, teamTags } = useAppStore();
+  const { createInboxIdea, teamTags } = useAppStore();
   const [loading, setLoading] = React.useState(false);
-
-  const availableTags = React.useMemo(() => {
-    return Array.from(new Set([...(teamTags || []).map(t => t.name), ...TAG_OPTIONS]));
-  }, [teamTags]);
 
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -64,31 +58,20 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
 
     setLoading(true);
     try {
-      const isCreateInboxMock = Boolean((createInboxIdea as unknown as { _isMockFunction?: boolean })?._isMockFunction);
-      const isAddIdeaMock = Boolean((addIdea as unknown as { _isMockFunction?: boolean })?._isMockFunction);
-
-      const ideaPayload = {
+      const created = await createInboxIdea({
         title: title.trim(),
         description: description.trim(),
         targetAudience: targetAudience.trim() || undefined,
         pedagogicalObjective: pedagogicalObjective.trim() || undefined,
-        tag: tag || undefined,
-      };
+        // As etiquetas vêm do servidor; o card guarda o id da etiqueta
+        tagId: tag ? Number(tag) : undefined,
+      });
 
-      if (activeTeamId && createInboxIdea) {
-        await createInboxIdea(ideaPayload);
-      } else if (isCreateInboxMock && createInboxIdea) {
-        await createInboxIdea(ideaPayload);
-      } else if (isAddIdeaMock && addIdea) {
-        await addIdea(title.trim(), description.trim());
-      } else if (createInboxIdea) {
-        await createInboxIdea(ideaPayload);
-      } else if (addIdea) {
-        await addIdea(title.trim(), description.trim());
+      // Só limpa e fecha quando o servidor criou a ideia; em caso de erro a mensagem já foi exibida
+      if (created) {
+        resetForm();
+        setOpen(false);
       }
-
-      resetForm();
-      setOpen(false);
     } finally {
       setLoading(false);
     }
@@ -193,8 +176,8 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
               className="w-full bg-background border border-border rounded-lg px-3 h-9 text-xs font-medium text-foreground outline-none focus:border-primary"
             >
               <option value="">Sem etiqueta</option>
-              {availableTags.map((t) => (
-                <option key={t} value={t}>{t}</option>
+              {teamTags.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
           </div>

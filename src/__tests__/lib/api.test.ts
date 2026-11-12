@@ -1,4 +1,4 @@
-import { setCookie, getCookie, deleteCookie, apiRequest } from '@/lib/api';
+import { setCookie, getCookie, deleteCookie, apiRequest, apiDownload } from '@/lib/api';
 
 describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
   const originalFetch = global.fetch;
@@ -136,5 +136,98 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
 
     expect(getCookie('creator_auth_token')).toBeNull();
     expect(window.localStorage.getItem('creator_auth_token')).toBeNull();
+  });
+
+  it('erros trazem a mensagem do servidor e o status HTTP', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: async () => ({ message: 'Já existe uma etiqueta com esse nome.' }),
+    });
+
+    await expect(apiRequest('POST', '/api/v1/teams/1/tags', { name: 'x' })).rejects.toMatchObject({
+      message: 'Já existe uma etiqueta com esse nome.',
+      status: 409,
+    });
+  });
+
+  it('403 mostra a mensagem e não derruba a sessão', async () => {
+    setCookie('creator_auth_token', 'abc', 86400);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: 'Seu papel na equipe não permite esta ação.' }),
+    });
+
+    await expect(apiRequest('PATCH', '/api/v1/teams/1/cards/2/move', {})).rejects.toMatchObject({
+      message: 'Seu papel na equipe não permite esta ação.',
+      status: 403,
+    });
+    expect(getCookie('creator_auth_token')).toBe('abc');
+  });
+
+  it('401 em rota protegida limpa token e creator_user_id', async () => {
+    setCookie('creator_auth_token', 'abc', 86400);
+    setCookie('creator_user_id', '9', 86400);
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ message: 'x' }) });
+
+    await expect(apiRequest('GET', '/api/v1/teams')).rejects.toMatchObject({ status: 401 });
+    expect(getCookie('creator_auth_token')).toBeNull();
+    expect(getCookie('creator_user_id')).toBeNull();
+  });
+
+  it('402 mostra a mensagem do plano', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 402,
+      json: async () => ({ message: 'Seu plano não permite esta ação.' }),
+    });
+
+    await expect(apiRequest('POST', '/api/v1/teams/1/courses', {})).rejects.toMatchObject({
+      message: 'Seu plano não permite esta ação.',
+      status: 402,
+    });
+  });
+
+  it('apiDownload baixa com fetch + blob enviando o token no cabeçalho', async () => {
+    setCookie('creator_auth_token', 'tok-123', 86400);
+    const blob = new Blob(['conteudo']);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      blob: async () => blob,
+      headers: { get: () => 'attachment; filename="curso-5.csv"' },
+    });
+    const createUrl = jest.fn().mockReturnValue('blob:x');
+    const revokeUrl = jest.fn();
+    window.URL.createObjectURL = createUrl;
+    window.URL.revokeObjectURL = revokeUrl;
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    await apiDownload('/api/v1/teams/1/materials/5/download', 'padrao.bin');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/api/v1/teams/1/materials/5/download',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer tok-123' }) })
+    );
+    expect(createUrl).toHaveBeenCalledWith(blob);
+    expect(clickSpy).toHaveBeenCalled();
+    expect(revokeUrl).toHaveBeenCalledWith('blob:x');
+    clickSpy.mockRestore();
+  });
+
+  it('apiDownload com erro lança a mensagem do servidor e não baixa nada', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Material não encontrado.' }),
+    });
+    window.URL.createObjectURL = jest.fn();
+
+    await expect(apiDownload('/api/v1/teams/1/materials/9/download', 'x')).rejects.toMatchObject({
+      message: 'Material não encontrado.',
+      status: 404,
+    });
+    expect(window.URL.createObjectURL).not.toHaveBeenCalled();
   });
 });
