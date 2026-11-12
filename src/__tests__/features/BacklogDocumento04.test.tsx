@@ -8,6 +8,14 @@ import { UserSettingsDialog } from "@/components/shared/UserSettingsDialog";
 import { ConviteContent } from "@/app/convite/page";
 import * as apiModule from "@/lib/api";
 
+// Telas de marcos futuros ficam ligadas aqui para testar o comportamento delas
+jest.mock('@/lib/features', () => ({
+  FEATURES: {
+    materials: true, summary: true, review: true, invites: true, coursePublish: true,
+    courseCsv: true, teamManage: true, accountSecurity: true, alerts: true,
+  },
+}));
+
 jest.mock("@/lib/api", () => ({
   ...jest.requireActual("@/lib/api"),
   apiRequest: jest.fn(),

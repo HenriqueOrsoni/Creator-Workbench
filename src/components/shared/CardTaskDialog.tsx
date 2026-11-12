@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import { canEditProduction, canReviewCards } from "@/lib/roles";
 import { formatLocalDate, formatDateTime } from "@/lib/dates";
+import { FEATURES } from "@/lib/features";
 
 interface CardTaskDialogProps {
   card: ProjectCard | null;
@@ -118,9 +119,9 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
   // Carrega dados sob demanda conforme a aba ativa
   useEffect(() => {
     if (!open || !currentCard?.id) return;
-    if (activeTab === "materiais") {
+    if (activeTab === "materiais" && FEATURES.materials) {
       fetchCardMaterials(currentCard.id);
-    } else if (activeTab === "resumo") {
+    } else if (activeTab === "resumo" && FEATURES.summary) {
       fetchCardSummary(currentCard.id);
     } else if (activeTab === "historico") {
       let cancelled = false;
@@ -231,7 +232,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border border-border shadow-lg font-sans">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
@@ -269,19 +270,25 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           }}
           className="w-full mt-2"
         >
-          <TabsList className="grid grid-cols-5 w-full bg-muted/50 p-1 rounded-lg text-xs">
-            <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md">
+          <TabsList className="flex w-full justify-start overflow-x-auto bg-muted/50 p-1 rounded-lg text-xs">
+            <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md shrink-0">
               Tarefas ({tasks.length})
             </TabsTrigger>
-            <TabsTrigger value="materiais" className="text-xs font-semibold rounded-md">
-              Materiais ({materials.length})
-            </TabsTrigger>
-            <TabsTrigger value="resumo" className="text-xs font-semibold rounded-md">
-              Resumo IA
-            </TabsTrigger>
-            <TabsTrigger value="revisao" className="text-xs font-semibold rounded-md">
-              Revisão
-            </TabsTrigger>
+            {FEATURES.materials && (
+              <TabsTrigger value="materiais" className="text-xs font-semibold rounded-md">
+                Materiais ({materials.length})
+              </TabsTrigger>
+            )}
+            {FEATURES.summary && (
+              <TabsTrigger value="resumo" className="text-xs font-semibold rounded-md">
+                Resumo IA
+              </TabsTrigger>
+            )}
+            {FEATURES.review && (
+              <TabsTrigger value="revisao" className="text-xs font-semibold rounded-md">
+                Revisão
+              </TabsTrigger>
+            )}
             <TabsTrigger value="historico" className="text-xs font-semibold rounded-md">
               Histórico
             </TabsTrigger>
@@ -315,7 +322,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 tasks.map((task: CardTask, idx: number) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border group hover:border-primary/40 transition-all shadow-2xs gap-2"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-card border border-border group hover:border-primary/40 transition-all shadow-2xs gap-2"
                   >
                     {editingTask?.id === task.id ? (
                       <Input
@@ -370,14 +377,14 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     )}
 
                     {canEditTasks && (
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1 sm:shrink-0">
                         {teamMembers.length > 0 && (
                           <select
                             value={task.assignee?.memberId || "0"}
                             onChange={(e) => updateCardTaskDetails(currentCard.id, task.id, {
                               assigneeMemberId: Number(e.target.value)
                             })}
-                            className="h-6 rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
+                            className="h-6 max-w-[9rem] rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
                             title="Atribuir responsável"
                             aria-label={`Responsável pela tarefa ${task.title}`}
                           >
@@ -393,7 +400,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                           aria-label={`Prazo da tarefa ${task.title}`}
                           defaultValue={task.dueDate || ""}
                           onBlur={(e) => commitTaskDueDate(task, e.target.value)}
-                          className="h-6 rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
+                          className="h-6 max-w-[9rem] rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
                           title="Prazo da tarefa (salvo ao sair do campo)"
                         />
                         {task.dueDate && (
@@ -479,7 +486,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           </TabsContent>
 
           {/* Aba 2: Materiais de Apoio (FE-10, FE-11, FE-12) */}
-          <TabsContent value="materiais" className="space-y-3 pt-3">
+          {FEATURES.materials && (
+<TabsContent value="materiais" className="space-y-3 pt-3">
             {canEditTasks && (
               <div className="border border-dashed border-border rounded-xl p-4 text-center bg-muted/20 hover:bg-muted/30 transition-colors">
                 <input
@@ -563,9 +571,11 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
+)}
 
           {/* Aba 3: Resumo com Inteligência Artificial (FE-17) */}
-          <TabsContent value="resumo" className="space-y-3 pt-3">
+          {FEATURES.summary && (
+<TabsContent value="resumo" className="space-y-3 pt-3">
             <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 font-heading">
@@ -600,9 +610,11 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
+)}
 
           {/* Aba 4: Revisão Pedagógica (FE-27) */}
-          <TabsContent value="revisao" className="space-y-3 pt-3">
+          {FEATURES.review && (
+<TabsContent value="revisao" className="space-y-3 pt-3">
             <div className="p-3.5 rounded-xl border border-border bg-card space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">
@@ -674,6 +686,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
+)}
 
           {/* Aba 5: Histórico de Movimentações (FE-05) */}
           <TabsContent value="historico" className="space-y-2 pt-3">

@@ -3,6 +3,14 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { CardTaskDialog } from '@/components/shared/CardTaskDialog';
 import { useAppStore, ProjectCard } from '@/store/useAppStore';
 
+// Telas de marcos futuros ficam ligadas aqui para testar o comportamento delas
+jest.mock('@/lib/features', () => ({
+  FEATURES: {
+    materials: true, summary: true, review: true, invites: true, coursePublish: true,
+    courseCsv: true, teamManage: true, accountSecurity: true, alerts: true,
+  },
+}));
+
 describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
   const mockCreateTask = jest.fn();
   const mockToggleTask = jest.fn();

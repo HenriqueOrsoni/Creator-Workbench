@@ -25,7 +25,8 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { useAppStore, type KanbanItem } from "../../store/useAppStore";
 import { projectUpdateSchema } from "../../lib/validation";
-import { Target, BookOpen, Layout, Settings2, Calendar } from "lucide-react";
+import { Target, BookOpen, Layout, Settings2, Calendar, Tag } from "lucide-react";
+import { canEditProduction } from "../../lib/roles";
 
 /**
  * Componente: IdeaDialog
@@ -73,6 +74,11 @@ export function IdeaDialog({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen;
   const updateProject = useAppStore((state) => state.updateProject);
+  const teamTags = useAppStore((state) => state.teamTags);
+  const role = useAppStore((state) => state.activeTeam?.role);
+  const canChooseTag = canEditProduction(role);
+  const effectiveTagId = item?.tagId || "";
+  const [tagId, setTagId] = React.useState(effectiveTagId);
 
   const form = useForm<IdeaFormValues>({
     resolver: zodResolver(projectUpdateSchema),
@@ -94,8 +100,9 @@ export function IdeaDialog({
         pedagogicalObjective: effectiveObjective,
         dueDate: effectiveDueDate,
       });
+      setTagId(effectiveTagId);
     }
-  }, [open, effectiveTitle, effectiveAudience, effectiveObjective, effectiveDueDate, form]);
+  }, [open, effectiveTitle, effectiveAudience, effectiveObjective, effectiveDueDate, effectiveTagId, form]);
 
   async function onSubmit(values: IdeaFormValues) {
     // Só fecha o modal quando o servidor aceitou a edição; em caso de erro a mensagem já foi exibida
@@ -104,7 +111,9 @@ export function IdeaDialog({
       values.title,
       values.targetAudience,
       values.pedagogicalObjective,
-      values.dueDate || ""
+      values.dueDate || "",
+      // Etiqueta só vai quando mudou ("" remove a etiqueta)
+      canChooseTag && tagId !== effectiveTagId ? tagId : undefined
     );
     if (saved) setOpen(false);
   }
@@ -209,6 +218,27 @@ export function IdeaDialog({
                 </FormItem>
               )}
             />
+
+            {canChooseTag && (
+              <div>
+                <label htmlFor="project-tag" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
+                  <Tag size={13} className="text-primary" />
+                  Etiqueta
+                </label>
+                <select
+                  id="project-tag"
+                  aria-label="Etiqueta"
+                  value={tagId}
+                  onChange={(e) => setTagId(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 h-10 text-xs font-medium text-foreground outline-none focus:border-primary"
+                >
+                  <option value="">Sem etiqueta</option>
+                  {teamTags.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <DialogFooter className="pt-4 border-t border-border flex items-center justify-end gap-2.5">
                <Button

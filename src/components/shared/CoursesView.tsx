@@ -20,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAppStore, type PublicationCheckProblem } from "@/store/useAppStore";
+import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
 import { toast } from "sonner";
 
@@ -380,7 +381,7 @@ export function CoursesView() {
                     <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
                       Curso Ativo
                     </Badge>
-                    {activeCourse.status === "PUBLISHED" ? (
+                    {FEATURES.coursePublish && (activeCourse.status === "PUBLISHED" ? (
                       <Badge className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                         <Globe className="w-3 h-3 mr-1" /> Publicado
                       </Badge>
@@ -388,7 +389,7 @@ export function CoursesView() {
                       <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-border">
                         Rascunho
                       </Badge>
-                    )}
+                    ))}
                   </div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold text-foreground font-heading">
@@ -427,6 +428,7 @@ export function CoursesView() {
                   >
                     <Download className="w-3.5 h-3.5" /> JSON
                   </Button>
+                  {FEATURES.courseCsv && (
                   <Button
                     variant="outline"
                     onClick={() => exportCourseCsv(activeCourse.id)}
@@ -435,9 +437,10 @@ export function CoursesView() {
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> CSV
                   </Button>
+                  )}
                   {canEditCourses && (
                     <>
-                      {activeCourse.status === "PUBLISHED" ? (
+                      {FEATURES.coursePublish && (activeCourse.status === "PUBLISHED" ? (
                         <Button
                           variant="outline"
                           onClick={handleUnpublishCourse}
@@ -455,7 +458,7 @@ export function CoursesView() {
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Publicar Curso
                         </Button>
-                      )}
+                      ))}
                       <Button
                         onClick={() => setOpenCreateModule(true)}
                         className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"

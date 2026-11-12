@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen, ThumbsUp, Tag, Filter, Search } from "lucide-react";
+import { Sparkles, Plus, ArrowRight, Trash2, Lightbulb, Target, BookOpen, ThumbsUp, Tag, Filter, Search, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -16,12 +16,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAppStore, ProjectCard } from "@/store/useAppStore";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
+import { EditIdeaDialog } from "./EditIdeaDialog";
 import { canEditProduction } from "@/lib/roles";
 
 export function IdeasInbox() {
   const { ideas, board, fetchIdeas, convertInboxIdea, deleteCard, voteIdea, activeTeam, teamTags, fetchTeamTags, ideaFilters, setIdeaFilters } = useAppStore();
   const canCreate = canEditProduction(activeTeam?.role);
   const [openCreate, setOpenCreate] = React.useState(false);
+  const [ideaToEdit, setIdeaToEdit] = React.useState<ProjectCard | null>(null);
   const [ideaToDelete, setIdeaToDelete] = React.useState<ProjectCard | null>(null);
   const [convertingCard, setConvertingCard] = React.useState<ProjectCard | null>(null);
   const [selectedColumnId, setSelectedColumnId] = React.useState<string>("");
@@ -56,15 +58,18 @@ export function IdeasInbox() {
 
   const displayedIdeas = ideas;
 
+  const [convertTitle, setConvertTitle] = React.useState("");
   const [convertAudience, setConvertAudience] = React.useState("");
   const [convertObjective, setConvertObjective] = React.useState("");
   // Mesmos mínimos do formulário de edição do projeto (conversionSchema), para o projeto poder ser editado depois
   const audienceOk = convertAudience.trim().length >= 3;
   const objectiveOk = convertObjective.trim().length >= 10;
-  const canConvert = audienceOk && objectiveOk;
+  const titleOk = convertTitle.trim().length >= 3;
+  const canConvert = titleOk && audienceOk && objectiveOk;
 
   const openConvert = (idea: ProjectCard) => {
     setConvertingCard(idea);
+    setConvertTitle(idea.title);
     setConvertAudience(idea.targetAudience || "");
     setConvertObjective(idea.pedagogicalObjective || "");
     if (columns.length > 0) {
@@ -78,6 +83,7 @@ export function IdeasInbox() {
     setLoading(true);
     const targetCol = selectedColumnId || (columns.length > 0 ? columns[0].id : undefined);
     const converted = await convertInboxIdea(convertingCard.id, targetCol, {
+      title: convertTitle.trim(),
       targetAudience: convertAudience.trim(),
       pedagogicalObjective: convertObjective.trim()
     });
@@ -182,13 +188,15 @@ export function IdeasInbox() {
           <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
             Todas as ideias foram convertidas em projetos ou ainda não foram registradas.
           </p>
-          <Button
-            onClick={() => setOpenCreate(true)}
-            variant="outline"
-            className="mt-4 rounded-lg text-xs font-semibold gap-2 h-9"
-          >
-            <Plus className="w-3.5 h-3.5" /> Registrar Primeira Ideia
-          </Button>
+          {canCreate && (
+            <Button
+              onClick={() => setOpenCreate(true)}
+              variant="outline"
+              className="mt-4 rounded-lg text-xs font-semibold gap-2 h-9"
+            >
+              <Plus className="w-3.5 h-3.5" /> Registrar Primeira Ideia
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -226,6 +234,18 @@ export function IdeasInbox() {
                       <ThumbsUp className={`w-3 h-3 ${idea.votedByMe ? "fill-primary-foreground" : ""}`} />
                       <span>{idea.votes || 0}</span>
                     </button>
+                    {canCreate && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIdeaToEdit(idea)}
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md"
+                        title="Editar ideia"
+                        aria-label={`Editar ideia ${idea.title}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     {canCreate && (
                       <Button
                         variant="ghost"
@@ -285,6 +305,9 @@ export function IdeasInbox() {
       {/* Dialog Unificado de Criação de Ideia (BF-01 & BF-02) */}
       <CreateIdeaDialog open={openCreate} onOpenChange={setOpenCreate} />
 
+      {/* Edição de ideia (título, descrição e etiqueta) */}
+      <EditIdeaDialog idea={ideaToEdit} onOpenChange={(open) => !open && setIdeaToEdit(null)} />
+
       {/* Dialog de Confirmação de Exclusão de Ideia (BF-15) */}
       <Dialog open={Boolean(ideaToDelete)} onOpenChange={(open) => !open && setIdeaToDelete(null)}>
         <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
@@ -332,11 +355,27 @@ export function IdeasInbox() {
               Ativar Projeto no Quadro
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Escolha para qual coluna do quadro dinâmico o projeto &quot;{convertingCard?.title}&quot; deve entrar.
+              Confirme o título e escolha para qual coluna do quadro o projeto deve entrar.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="mt-4">
+            <label htmlFor="convert-title" className="block text-xs font-semibold text-foreground mb-1">
+              Título do Projeto *
+            </label>
+            <Input
+              id="convert-title"
+              placeholder="Título do projeto"
+              value={convertTitle}
+              onChange={(e) => setConvertTitle(e.target.value)}
+              className="rounded-lg h-9 text-xs"
+            />
+            {convertTitle.length > 0 && !titleOk && (
+              <p className="mt-1 text-[11px] text-destructive">O título deve ter pelo menos 3 caracteres.</p>
+            )}
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
                 Público-Alvo *

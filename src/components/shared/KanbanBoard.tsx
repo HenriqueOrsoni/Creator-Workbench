@@ -90,6 +90,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
       tasksDone: c.tasksDone,
       columnId: col.id,
       dueDate: c.dueDate,
+      tagId: c.tagId,
       rawCard: c
     }))
   }));
@@ -164,8 +165,8 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
   return (
     <div className="space-y-6 font-sans">
       {/* Barra Superior do Quadro Dinâmico */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
           <Badge variant="outline" className="text-xs font-semibold py-1 px-2.5 bg-background border-border rounded-md shadow-xs">
             {board ? board.teamName : "Carregando quadro..."}
           </Badge>

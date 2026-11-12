@@ -203,8 +203,92 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
     });
 
     expect(mockConvertInboxIdea).toHaveBeenCalledWith('50', 'col-1', {
+      title: 'Ideia sobre Micro-frontend',
       targetAudience: 'Iniciantes',
       pedagogicalObjective: 'Entender BFS',
     });
+  });
+
+  it('diálogo de conversão tem título preenchido e editável; título curto bloqueia e envia o título novo', async () => {
+    mockConvertInboxIdea.mockResolvedValue(true);
+    render(<IdeasInbox />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /converter em projeto/i })[0]);
+    const titleInput = screen.getByLabelText(/título do projeto/i) as HTMLInputElement;
+    expect(titleInput.value).toBe('Ideia sobre Micro-frontend');
+
+    fireEvent.change(screen.getAllByPlaceholderText('Ex: Iniciantes em CS').at(-1)!, { target: { value: 'Iniciantes' } });
+    fireEvent.change(screen.getAllByPlaceholderText('Ex: Compreender BFS e DFS').at(-1)!, { target: { value: 'Entender BFS' } });
+
+    fireEvent.change(titleInput, { target: { value: 'ab' } });
+    expect(screen.getByText('O título deve ter pelo menos 3 caracteres.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /confirmar e mover ao quadro/i })).toBeDisabled();
+
+    fireEvent.change(titleInput, { target: { value: 'Micro-frontend na prática' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /confirmar e mover ao quadro/i }));
+    });
+    expect(mockConvertInboxIdea).toHaveBeenCalledWith('50', 'col-1', expect.objectContaining({ title: 'Micro-frontend na prática' }));
+  });
+
+  it('Revisor com caixa vazia não vê "Registrar Primeira Ideia"; editor vê', () => {
+    useAppStore.setState({ ideas: [], activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' } });
+    const { unmount } = render(<IdeasInbox />);
+    expect(screen.queryByRole('button', { name: /registrar primeira ideia/i })).not.toBeInTheDocument();
+    unmount();
+
+    useAppStore.setState({ activeTeam: { id: 't1', name: 'Equipe', role: 'CREATOR', membersCount: 1, createdAt: 'x' } });
+    render(<IdeasInbox />);
+    expect(screen.getByRole('button', { name: /registrar primeira ideia/i })).toBeInTheDocument();
+  });
+
+  it('editor edita a ideia (título, descrição, etiqueta) e só envia a etiqueta quando mudou', async () => {
+    const mockUpdateIdea = jest.fn().mockResolvedValue(true);
+    useAppStore.setState({ updateIdea: mockUpdateIdea });
+    render(<IdeasInbox />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar ideia Ideia sobre Micro-frontend' }));
+    const title = screen.getByLabelText(/título da ideia/i) as HTMLInputElement;
+    expect(title.value).toBe('Ideia sobre Micro-frontend');
+
+    fireEvent.change(title, { target: { value: 'Micro-frontend 2' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    });
+    expect(mockUpdateIdea).toHaveBeenLastCalledWith('50', {
+      title: 'Micro-frontend 2',
+      description: 'Pesquisar arquitetura baseada em Module Federation',
+    });
+
+    // Troca a etiqueta de outra ideia que já tem uma, depois remove
+    fireEvent.click(screen.getByRole('button', { name: 'Editar ideia Podcast sobre Grafos' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Etiqueta' }), { target: { value: '' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    });
+    expect(mockUpdateIdea).toHaveBeenLastCalledWith('51', expect.objectContaining({ tagId: '' }));
+  });
+
+  it('edição com título curto não envia; falha do servidor mantém o diálogo aberto', async () => {
+    const mockUpdateIdea = jest.fn().mockResolvedValue(false);
+    useAppStore.setState({ updateIdea: mockUpdateIdea });
+    render(<IdeasInbox />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar ideia Ideia sobre Micro-frontend' }));
+    fireEvent.change(screen.getByLabelText(/título da ideia/i), { target: { value: 'ab' } });
+    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/título da ideia/i), { target: { value: 'Título válido' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    });
+    expect(mockUpdateIdea).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Editar Ideia')).toBeInTheDocument();
+  });
+
+  it('Revisor não vê o botão de editar ideia', () => {
+    useAppStore.setState({ activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' } });
+    render(<IdeasInbox />);
+    expect(screen.queryByRole('button', { name: /editar ideia/i })).not.toBeInTheDocument();
   });
 });

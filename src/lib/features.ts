@@ -1,0 +1,27 @@
+/**
+ * Telas cujo backend ainda não existe ficam escondidas.
+ * Cada marco liga as suas telas trocando a flag correspondente para `true`.
+ * Com a flag desligada, a tela não aparece e a rota não é chamada.
+ */
+export const FEATURES = {
+  /** Aba Materiais do card e vínculo de material com aula. */
+  materials: false,
+  /** Aba Resumo IA do card. */
+  summary: false,
+  /** Aba Revisão do card (decisão do revisor). */
+  review: false,
+  /** Convites de equipe (aba e ações). */
+  invites: false,
+  /** Publicar/despublicar curso e verificação de publicação. */
+  coursePublish: false,
+  /** Exportar curso em CSV. */
+  courseCsv: false,
+  /** Renomear e excluir equipe. */
+  teamManage: false,
+  /** Troca de e-mail e de senha nas configurações. */
+  accountSecurity: false,
+  /** Sino e painel de alertas. */
+  alerts: false,
+} as const;
+
+export type FeatureName = keyof typeof FEATURES;

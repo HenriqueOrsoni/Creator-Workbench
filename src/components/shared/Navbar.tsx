@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Menu, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, GraduationCap, Bell, AlertTriangle, Clock } from "lucide-react";
+import { Menu, Plus, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, GraduationCap, Bell, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -11,7 +11,8 @@ import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
 import { TeamSwitcher } from "./TeamSwitcher";
 import { useAppStore } from "@/store/useAppStore";
-import { deleteCookie } from "@/lib/api";
+import { deleteCookie, clearPersistedTeam } from "@/lib/api";
+import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
 
 interface NavbarProps {
@@ -28,7 +29,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const canCreate = canEditProduction(activeTeam?.role);
 
   React.useEffect(() => {
-    if (activeTeamId) {
+    if (FEATURES.alerts && activeTeamId) {
       fetchAlerts();
     }
   }, [activeTeamId, fetchAlerts]);
@@ -37,9 +38,11 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const totalAlerts = alerts.length;
 
   const handleLogout = () => {
+    // Limpa a equipe ativa guardada antes de qualquer nova busca (outro usuário pode entrar em seguida)
+    resetStore();
+    clearPersistedTeam();
     deleteCookie("creator_auth_token");
     deleteCookie("creator_user_id");
-    resetStore();
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
       window.location.href = "/login";
     }
@@ -47,7 +50,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
 
   return (
     <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-40 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Sheet>
           <SheetTrigger render={
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground md:hidden">
@@ -115,7 +118,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           </SheetContent>
         </Sheet>
 
-        <div className="flex items-center gap-2.5">
+        <div className="hidden sm:flex items-center gap-2.5">
           <div className="w-8 h-8 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center shadow-xs">
             <Zap className="w-4 h-4 fill-primary/30" />
           </div>
@@ -126,12 +129,12 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
 
         <div className="hidden sm:block h-4 w-[1px] bg-border mx-1" />
 
-        <div>
+        <div className="min-w-0">
           <TeamSwitcher />
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <div className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
           <button 
             onClick={() => onNavigate?.("inbox")}
@@ -168,14 +171,20 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
         {canCreate && (
           <CreateIdeaDialog
             trigger={
-              <Button className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5">
-                Capturar Ideia
+              <Button
+                aria-label="Capturar Ideia"
+                title="Capturar Ideia"
+                className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-2.5 sm:px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4 sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">Capturar Ideia</span>
               </Button>
             }
           />
         )}
 
         <div className="hidden sm:flex items-center gap-1">
+          {FEATURES.alerts && (
           <Popover>
             <PopoverTrigger render={
               <Button
@@ -249,6 +258,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
               </div>
             </PopoverContent>
           </Popover>
+          )}
           <ThemeToggle />
           <UserSettingsDialog
             trigger={
