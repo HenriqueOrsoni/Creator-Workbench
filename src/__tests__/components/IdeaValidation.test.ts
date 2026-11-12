@@ -32,7 +32,7 @@ describe('4.3 Validação de Conversão de Ideias e Regras Zod (FT-17)', () => {
     if (!result.success) {
       const fieldErrors = result.error.flatten().fieldErrors;
       expect(fieldErrors.pedagogicalObjective).toContain(
-        'Objetivo pedagógico deve ser detalhado (mínimo 10 chars).'
+        'Objetivo pedagógico deve ser detalhado (mínimo de 10 caracteres).'
       );
     }
   });

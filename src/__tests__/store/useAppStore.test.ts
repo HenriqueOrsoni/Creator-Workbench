@@ -262,7 +262,7 @@ describe('Store Zustand: dados vêm sempre da API', () => {
 
       mockRoutes({ [`GET ${T}/tags`]: new Error('Falha ao listar etiquetas.') });
       await useAppStore.getState().fetchTeamTags();
-      expect(toast.error).toHaveBeenCalledWith('Falha ao listar etiquetas.');
+      // Carga em segundo plano: sem aviso na tela, a lista anterior continua
       expect(useAppStore.getState().teamTags).toHaveLength(1);
     });
 
@@ -595,7 +595,7 @@ describe('Store Zustand: dados vêm sempre da API', () => {
       expect(toast.error).toHaveBeenCalledWith('Apenas Revisor ou Administrador pode revisar.');
     });
 
-    it('fetchAlerts usa só a resposta do servidor e não calcula alertas no cliente', async () => {
+    it('fetchAlerts com erro não avisa na tela e não calcula alertas no cliente', async () => {
       useAppStore.setState({
         board: { teamId: '7', teamName: 'X', columns: [{ id: '10', name: 'A', sortOrder: 0, cards: [{
           id: '1', title: 'Atrasado', description: '', type: 'PROJECT', sortOrder: 0, progress: 0, tasksTotal: 0, tasksDone: 0, dueDate: '2020-01-01', createdAt: 'x',
@@ -606,7 +606,8 @@ describe('Store Zustand: dados vêm sempre da API', () => {
       await useAppStore.getState().fetchAlerts();
 
       expect(useAppStore.getState().alerts).toEqual([]);
-      expect(toast.error).toHaveBeenCalledWith('Rota não encontrada.', { id: 'alerts-error' });
+      // Carga em segundo plano: não mostra aviso na tela
+      expect(toast.error).not.toHaveBeenCalled();
     });
 
     it('fetchAlerts mapeia a resposta do servidor', async () => {
@@ -640,6 +641,51 @@ describe('Store Zustand: dados vêm sempre da API', () => {
       expect(await useAppStore.getState().deleteTeam('7')).toBe(false);
       expect(useAppStore.getState().teams).toHaveLength(1);
       expect(toast.success).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Cargas em segundo plano não geram aviso na tela', () => {
+    let errSpy: jest.SpyInstance;
+    beforeEach(() => {
+      errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+    afterEach(() => errSpy.mockRestore());
+
+    it('fetchTeamInvites, fetchTeamTags, fetchTeamMembers e fetchCourses só registram no console', async () => {
+      mockRoutes({
+        [`GET ${T}/invites`]: new Error('Rota não encontrada.'),
+        [`GET ${T}/tags`]: new Error('Falha.'),
+        [`GET ${T}/members`]: new Error('Falha.'),
+        [`GET ${T}/courses`]: new Error('Falha.'),
+      });
+
+      await useAppStore.getState().fetchTeamInvites();
+      await useAppStore.getState().fetchTeamTags();
+      await useAppStore.getState().fetchTeamMembers();
+      await useAppStore.getState().fetchCourses();
+
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(errSpy).toHaveBeenCalledTimes(4);
+      expect(useAppStore.getState().teamInvites).toEqual([]);
+      expect(useAppStore.getState().teamTags).toEqual([]);
+      expect(useAppStore.getState().teamMembers).toEqual([]);
+      expect(useAppStore.getState().courses).toEqual([]);
+    });
+
+    it('fetchTeams: falha nas cargas secundárias não gera aviso (só o quadro/equipes principais)', async () => {
+      mockRoutes({
+        'GET /api/v1/teams': [{ id: 7, name: 'Estúdio', role: 'ADMIN', membersCount: 1, createdAt: 'x' }],
+        [`GET ${T}/board`]: boardResponse,
+        [`GET ${T}/ideas?sort=recent`]: [],
+        [`GET ${T}/courses`]: new Error('Falha.'),
+        [`GET ${T}/tags`]: new Error('Falha.'),
+        [`GET ${T}/members`]: new Error('Falha.'),
+      });
+
+      await useAppStore.getState().fetchTeams();
+
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(useAppStore.getState().board?.teamName).toBe('Estúdio Alfa');
     });
   });
 

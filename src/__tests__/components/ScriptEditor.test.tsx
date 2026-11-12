@@ -46,6 +46,7 @@ jest.mock('@/lib/api', () => ({
 describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAppStore.setState({ activeTeam: { id: 't1', name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' } });
     window.alert = jest.fn();
     window.confirm = jest.fn().mockReturnValue(true);
     jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
@@ -89,7 +90,7 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
 
     render(<ScriptEditor kanbanItemId="1" />);
 
-    const snapshotButton = screen.getByRole('button', { name: /^snapshot$/i });
+    const snapshotButton = screen.getByRole('button', { name: /^versão$/i });
     expect(snapshotButton).toBeInTheDocument();
 
     fireEvent.click(snapshotButton);

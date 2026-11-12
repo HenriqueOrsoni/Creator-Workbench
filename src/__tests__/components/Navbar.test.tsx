@@ -26,6 +26,7 @@ jest.mock('@/components/shared/TeamSwitcher', () => ({
 describe('TF-08 - Navbar Component Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useAppStore.setState({ activeTeam: { id: 't1', name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' } });
   });
 
   it('renderiza o título Workbench_CR e os atalhos de navegação', () => {

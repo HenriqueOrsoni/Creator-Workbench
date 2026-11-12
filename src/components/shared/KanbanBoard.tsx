@@ -29,8 +29,7 @@ import {
 } from "../ui/dialog";
 import { useAppStore, KanbanItem, ProjectCard } from "../../store/useAppStore";
 import { canEditProduction, canManageColumns } from "../../lib/roles";
-import { formatLocalDate, daysUntil } from "../../lib/dates";
-import { formatDateTime } from "../../lib/dates";
+import { formatLocalDate, daysUntil, formatDateTime } from "../../lib/dates";
 import { IdeaDialog } from "./IdeaDialog";
 import { CardTaskDialog } from "./CardTaskDialog";
 
@@ -310,8 +309,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                             )}
 
                             {/* Detalhes do projeto */}
-                            {(
-                              <div className="space-y-3 pt-2 border-t border-border">
+                            <div className="space-y-3 pt-2 border-t border-border">
                                 {item.targetAudience && (
                                   <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                     <Target size={12} className="text-primary shrink-0" />
@@ -397,8 +395,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                     />
                                   </div>
                                 </div>
-                              </div>
-                            )}
+                            </div>
 
                             {/* Card Actions */}
                             <div className="flex items-center justify-between gap-2 pt-2 mt-auto">
@@ -432,8 +429,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                               ) : <div />}
 
                               {/* Ações do projeto */}
-                              {(
-                                <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1">
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -459,8 +455,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                   >
                                     <BookOpenCheck size={11} />
                                   </Button>
-                                </div>
-                              )}
+                              </div>
                             </div>
                           </Card>
                         </motion.div>

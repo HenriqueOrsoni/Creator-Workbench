@@ -212,7 +212,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
       await apiRequest("PUT", `/api/v1/kanban/${kanbanItemId}/script`, { content });
       await apiRequest("POST", `/api/v1/kanban/${kanbanItemId}/script/versions`);
       fetchVersions();
-      toast.success("Snapshot de revisão criado com sucesso!");
+      toast.success("Versão do roteiro criada com sucesso!");
     } catch (error) {
       toast.error("Erro ao criar snapshot: " + (error as Error).message);
     }
@@ -350,7 +350,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 rounded-md text-[10px] uppercase tracking-wider px-2 py-0.5 font-semibold">
-                            SNAPSHOT
+                            VERSÃO
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-medium">
                             {formatDateTime(new Date(s.timestamp).toISOString())}
@@ -374,7 +374,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
               onClick={takeSnapshot}
               className="h-8 text-xs text-muted-foreground hover:text-foreground font-medium rounded-lg"
             >
-              Snapshot
+              Versão
             </Button>
           )}
 
@@ -446,7 +446,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
         </div>
       </div>
 
-      {/* Diálogo de Confirmação e Pré-visualização de Restauração de Snapshot (FE-14, FE-16) */}
+      {/* Diálogo de Confirmação e Pré-visualização de Restauração de versão (FE-14, FE-16) */}
       <Dialog 
         open={versionToRestore !== null} 
         onOpenChange={(open) => { 
@@ -464,12 +464,12 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           {versionToRestore && (
             <div className="my-2 border border-border rounded-lg bg-muted/40 p-3 max-h-56 overflow-y-auto">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Conteúdo do Snapshot ({snapshots.find(s => s.id === versionToRestore) ? new Date(snapshots.find(s => s.id === versionToRestore)!.timestamp).toLocaleString("pt-BR") : ""}):
+                Conteúdo da versão ({snapshots.find(s => s.id === versionToRestore) ? new Date(snapshots.find(s => s.id === versionToRestore)!.timestamp).toLocaleString("pt-BR") : ""}):
               </span>
               <div 
                 className="text-xs text-foreground/90 prose prose-sm dark:prose-invert max-w-none leading-relaxed"
                 dangerouslySetInnerHTML={{ 
-                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Snapshot vazio.</p>" 
+                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Versão vazia.</p>" 
                 }}
               />
             </div>

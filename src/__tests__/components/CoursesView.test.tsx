@@ -50,6 +50,7 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
   beforeEach(() => {
     jest.clearAllMocks();
     useAppStore.setState({
+      activeTeam: { id: 't1', name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' },
       courses: [mockCourse],
       activeCourse: mockCourseDetail,
       board: null,

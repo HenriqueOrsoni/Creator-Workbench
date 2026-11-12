@@ -34,8 +34,7 @@ export function canReviewCards(role?: string | null): boolean {
 }
 
 export function canEditProduction(role?: string | null): boolean {
-  // Se não houver equipe ativa (modo legado/individual), permite edição.
-  // Dentro de equipe, apenas ADMIN e CREATOR podem editar; REVIEWER é somente leitura.
-  if (!role) return true;
+  // Sem papel (sem equipe ativa) é somente leitura; REVIEWER também.
+  if (!role) return false;
   return role === "ADMIN" || role === "CREATOR";
 }

@@ -732,7 +732,8 @@ export const useAppStore = create<AppState>()(
             set({ teamMembers: mappedMembers });
           }
         } catch (error) {
-          notifyError(error, "Erro ao carregar membros da equipe");
+          // Carga em segundo plano: sem aviso na tela, a lista fica vazia
+          console.error("Erro ao carregar membros da equipe:", error);
         }
       },
 
@@ -1111,7 +1112,8 @@ export const useAppStore = create<AppState>()(
             });
           }
         } catch (error) {
-          notifyError(error, "Erro ao carregar etiquetas");
+          // Carga em segundo plano: sem aviso na tela
+          console.error("Erro ao carregar etiquetas:", error);
         }
       },
 
@@ -1183,7 +1185,8 @@ export const useAppStore = create<AppState>()(
             set({ courses: rawCourses.map(mapCourse) });
           }
         } catch (error) {
-          notifyError(error, "Erro ao carregar cursos");
+          // Carga em segundo plano: sem aviso na tela
+          console.error("Erro ao carregar cursos:", error);
         }
       },
 
@@ -1532,8 +1535,8 @@ export const useAppStore = create<AppState>()(
             });
           }
         } catch (error) {
-          // id fixo evita empilhar o mesmo aviso a cada carregamento
-          toast.error(errMsg(error, "Erro ao carregar os alertas"), { id: "alerts-error" });
+          // Carga em segundo plano (a cada troca de equipe): sem aviso na tela
+          console.error("Erro ao carregar os alertas:", error);
         }
       },
 
@@ -1735,7 +1738,8 @@ export const useAppStore = create<AppState>()(
             });
           }
         } catch (error) {
-          notifyError(error, "Erro ao carregar os convites");
+          // Carga ao abrir o diálogo: sem aviso na tela, a lista fica vazia
+          console.error("Erro ao carregar os convites:", error);
         }
       },
 

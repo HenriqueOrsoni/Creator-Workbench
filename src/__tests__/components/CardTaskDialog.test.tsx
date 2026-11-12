@@ -27,6 +27,7 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useAppStore.setState({
+      activeTeam: { id: 't1', name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' },
       createTask: mockCreateTask,
       toggleTask: mockToggleTask,
       deleteTask: mockDeleteTask,
@@ -123,19 +124,71 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
       expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { assigneeMemberId: 0 });
     });
 
-    it('define e limpa o prazo da tarefa ("" remove)', async () => {
+    it('salva o prazo só ao sair do campo e só com data completa', async () => {
       render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+      const input = screen.getByLabelText('Prazo da tarefa Gravar tela');
+
+      // Digitar (onChange) não envia nada
+      fireEvent.change(input, { target: { value: '2026-11-18' } });
+      expect(mockUpdateDetails).not.toHaveBeenCalled();
 
       await act(async () => {
-        fireEvent.change(screen.getByLabelText('Prazo da tarefa Gravar tela'), { target: { value: '2026-11-18' } });
+        fireEvent.blur(input);
       });
       expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { dueDate: '2026-11-18' });
+    });
+
+    it('data incompleta (campo vazio ao sair) não apaga o prazo', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+      const input = screen.getByLabelText('Prazo da tarefa Gravar tela');
 
       await act(async () => {
-        fireEvent.change(screen.getByLabelText('Prazo da tarefa Escrever roteiro'), { target: { value: '' } });
+        fireEvent.blur(input);
       });
-      // O campo já estava vazio, então não há mudança a enviar
-      expect(mockUpdateDetails).toHaveBeenCalledTimes(1);
+      expect(mockUpdateDetails).not.toHaveBeenCalled();
+    });
+
+    it('remove o prazo só pelo botão explícito "Remover prazo"', async () => {
+      const card = { ...mockCard, tasks: [{ ...mockCard.tasks![1], dueDate: '2026-11-12' }] };
+      useAppStore.setState({ board: { teamId: '1', teamName: 'Equipe', columns: [{ id: 'c', name: 'Pesquisa', sortOrder: 0, cards: [card] }] } });
+      render(<CardTaskDialog card={card} open={true} onOpenChange={() => {}} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Remover prazo da tarefa Gravar tela'));
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { dueDate: '' });
+    });
+
+    it('edita o título da tarefa: Enter salva, Esc cancela, sem mudança não envia', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+
+      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
+      let input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.change(input, { target: { value: 'Gravar tela inteira' } });
+      await act(async () => {
+        fireEvent.keyDown(input, { key: 'Enter' });
+      });
+      expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { title: 'Gravar tela inteira' });
+
+      mockUpdateDetails.mockClear();
+      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
+      input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.change(input, { target: { value: 'Outro nome' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(mockUpdateDetails).not.toHaveBeenCalled();
+      expect(screen.queryByLabelText('Título da tarefa Gravar tela')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
+      await act(async () => {
+        fireEvent.blur(screen.getByLabelText('Título da tarefa Gravar tela'));
+      });
+      expect(mockUpdateDetails).not.toHaveBeenCalled();
+    });
+
+    it('Revisor não vê a edição de título', () => {
+      seed('REVIEWER');
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+      expect(screen.queryByLabelText('Editar título da tarefa Gravar tela')).not.toBeInTheDocument();
     });
 
     it('mostra o prazo da tarefa no mesmo dia (sem erro de fuso)', () => {

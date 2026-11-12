@@ -56,7 +56,7 @@ describe('Fase 2 - IdeasInbox Component (Caixa de Entrada)', () => {
           { id: 'col-2', name: 'Roteiro', sortOrder: 1, cards: [] },
         ],
       },
-      activeTeam: null,
+      activeTeam: { id: 't1', name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' },
       fetchIdeas: mockFetchIdeas,
       createInboxIdea: mockCreateInboxIdea,
       convertInboxIdea: mockConvertInboxIdea,

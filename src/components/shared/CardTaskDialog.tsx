@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   CheckSquare, Square, Plus, Trash2, ListChecks, Paperclip,
   Sparkles, History, CheckCircle2, ArrowUp, ArrowDown,
-  UploadCloud, Download, User, Calendar, MessageSquare
+  UploadCloud, Download, User, Calendar, MessageSquare, Pencil, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   const [activeTab, setActiveTab] = useState("tarefas");
   const [newTitle, setNewTitle] = useState("");
+  // Edição do título da tarefa (Enter ou sair do campo salva; Esc cancela)
+  const [editingTask, setEditingTask] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Estados para Materiais (FE-10, FE-11)
@@ -136,6 +138,21 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     await createTask(currentCard.id, newTitle.trim());
     setNewTitle("");
     setLoading(false);
+  };
+
+  const commitTaskTitle = async (task: CardTask) => {
+    const draft = editingTask;
+    setEditingTask(null);
+    if (!draft || draft.id !== task.id) return;
+    const title = draft.title.trim();
+    if (!title || title === task.title) return;
+    await updateCardTaskDetails(currentCard.id, task.id, { title });
+  };
+
+  // Prazo: só salva uma data completa (AAAA-MM-DD); remover é uma ação explícita
+  const commitTaskDueDate = async (task: CardTask, value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value === (task.dueDate || "")) return;
+    await updateCardTaskDetails(currentCard.id, task.id, { dueDate: value });
   };
 
   const handleMoveTask = async (taskId: string, direction: "up" | "down") => {
@@ -285,6 +302,24 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     key={task.id}
                     className="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border group hover:border-primary/40 transition-all shadow-2xs gap-2"
                   >
+                    {editingTask?.id === task.id ? (
+                      <Input
+                        autoFocus
+                        aria-label={`Título da tarefa ${task.title}`}
+                        value={editingTask.title}
+                        onChange={(e) => setEditingTask({ id: task.id, title: e.target.value })}
+                        onBlur={() => commitTaskTitle(task)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitTaskTitle(task);
+                          } else if (e.key === "Escape") {
+                            setEditingTask(null);
+                          }
+                        }}
+                        className="h-7 text-xs flex-1 min-w-0"
+                      />
+                    ) : (
                     <button
                       type="button"
                       onClick={() => toggleTask(currentCard.id, task.id)}
@@ -317,6 +352,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                         </div>
                       </div>
                     </button>
+                    )}
 
                     {canEditTasks && (
                       <div className="flex items-center gap-1 shrink-0">
@@ -330,7 +366,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                             title="Atribuir responsável"
                             aria-label={`Responsável pela tarefa ${task.title}`}
                           >
-                            <option value="0">Sem resp.</option>
+                            <option value="0">Sem responsável</option>
                             {teamMembers.map(m => (
                               <option key={m.id} value={m.id}>{m.name.split(" ")[0]}</option>
                             ))}
@@ -338,12 +374,35 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                         )}
                         <input
                           type="date"
+                          key={`${task.id}-${task.dueDate || ""}`}
                           aria-label={`Prazo da tarefa ${task.title}`}
-                          value={task.dueDate || ""}
-                          onChange={(e) => updateCardTaskDetails(currentCard.id, task.id, { dueDate: e.target.value })}
+                          defaultValue={task.dueDate || ""}
+                          onBlur={(e) => commitTaskDueDate(task, e.target.value)}
                           className="h-6 rounded text-[10px] bg-muted/40 border border-border text-foreground px-1"
-                          title="Prazo da tarefa (limpe o campo para remover)"
+                          title="Prazo da tarefa (salvo ao sair do campo)"
                         />
+                        {task.dueDate && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => updateCardTaskDetails(currentCard.id, task.id, { dueDate: "" })}
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-md"
+                            title="Remover prazo"
+                            aria-label={`Remover prazo da tarefa ${task.title}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingTask({ id: task.id, title: task.title })}
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
+                          title="Editar título"
+                          aria-label={`Editar título da tarefa ${task.title}`}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

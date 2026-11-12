@@ -71,7 +71,7 @@ describe("Etapa 5 - Backlog Documento 04 & Esteira Avançada", () => {
       expect(alerts[1]).toMatchObject({ type: "CARD_DUE_SOON", cardTitle: "Webinar Próximo" });
     });
 
-    it("quando a rota de alertas falha, mostra o erro e não calcula alertas no cliente", async () => {
+    it("quando a rota de alertas falha, não avisa na tela e não calcula alertas no cliente", async () => {
       useAppStore.setState({
         activeTeamId: "team-1",
         board: {
@@ -90,7 +90,8 @@ describe("Etapa 5 - Backlog Documento 04 & Esteira Avançada", () => {
       });
 
       expect(useAppStore.getState().alerts).toEqual([]);
-      expect(toast.error).toHaveBeenCalledWith("Rota não encontrada.", { id: "alerts-error" });
+      // Carga em segundo plano: sem aviso na tela
+      expect(toast.error).not.toHaveBeenCalled();
     });
 
     it("renderiza o sino de notificações e exibe badge no Navbar", () => {

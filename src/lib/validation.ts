@@ -17,7 +17,7 @@ export const itemSchema = z.object({
 export const conversionSchema = z.object({
   title: z.string().min(3, "O título do projeto deve ter pelo menos 3 caracteres."),
   targetAudience: z.string().min(3, "Público-alvo insuficiente."),
-  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
+  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo de 10 caracteres)."),
   dueDate: z.string().optional(),
 });
 
@@ -25,7 +25,7 @@ export const conversionSchema = z.object({
 export const projectUpdateSchema = z.object({
   title: z.string().min(3, "O título do projeto deve ter pelo menos 3 caracteres."),
   targetAudience: z.string().min(3, "Público-alvo insuficiente."),
-  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo 10 chars)."),
+  pedagogicalObjective: z.string().min(10, "Objetivo pedagógico deve ser detalhado (mínimo de 10 caracteres)."),
   dueDate: z.string().optional(),
 });
 

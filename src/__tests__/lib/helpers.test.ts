@@ -86,6 +86,9 @@ describe('papéis (roles.ts)', () => {
     expect(canEditProduction('ADMIN')).toBe(true);
     expect(canEditProduction('CREATOR')).toBe(true);
     expect(canEditProduction('REVIEWER')).toBe(false);
+    // Sem papel (sem equipe ativa) é somente leitura
+    expect(canEditProduction(undefined)).toBe(false);
+    expect(canEditProduction(null)).toBe(false);
   });
 
   it('decisão de revisão: Administrador e Revisor', () => {

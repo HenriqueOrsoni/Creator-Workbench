@@ -165,7 +165,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
-            <TabsList className="grid grid-cols-4 w-full bg-muted/60 p-1 rounded-lg text-xs">
+            <TabsList className={`grid ${isAdmin ? "grid-cols-4" : "grid-cols-2"} w-full bg-muted/60 p-1 rounded-lg text-xs`}>
               <TabsTrigger value="membros" className="text-xs font-semibold rounded-md">
                 Membros ({teamMembers.length})
               </TabsTrigger>
@@ -276,7 +276,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                             >
                               <option value="CREATOR">Criador</option>
                               <option value="REVIEWER">Revisor</option>
-                              <option value="ADMIN">Admin</option>
+                              <option value="ADMIN">Administrador</option>
                             </select>
 
                             <Button
@@ -321,7 +321,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                     >
                       <option value="CREATOR">Criador</option>
                       <option value="REVIEWER">Revisor</option>
-                      <option value="ADMIN">Admin</option>
+                      <option value="ADMIN">Administrador</option>
                     </select>
                   </div>
                   <Button
