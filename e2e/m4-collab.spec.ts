@@ -7,7 +7,7 @@ import { loginSession, apiTeams, serverDate, openTeamDialog, loginViaForm } from
 
 /**
  * Marco 4 (Colaboracao): alertas, gestao da equipe, convites, seguranca da conta e redirect seguro.
- * Casos do plano: FT-50 (convites), FT-51 (alertas), FT-52 (conta), FT-53 (equipe), E2E-32, E2E-34, SEC-21..23.
+ * Casos do plano: FT-50 (convites), FT-51 (alertas), FT-52 (conta), FT-53 (equipe), E2E-32, E2E-34, SEC-22..23.
  */
 
 async function setCard(token: string, cardId: number, fields: Record<string, unknown>) {
@@ -248,7 +248,7 @@ test.describe("M4 gestao da equipe (FT-53)", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-test.describe("M4 convites (FT-50, E2E-32, SEC-21)", () => {
+test.describe("M4 convites (FT-50, E2E-32, SEC-22)", () => {
   let team: string;
   let teamId: number;
 
@@ -344,7 +344,7 @@ test.describe("M4 convites (FT-50, E2E-32, SEC-21)", () => {
     await expect(page.getByRole("heading", { name: "Convite Inválido ou Expirado" })).toBeVisible();
   });
 
-  test("SEC-21: aceitar com a conta de outro e-mail mostra a mensagem 403 e nao entra na equipe", async ({ page }) => {
+  test("SEC-22: aceitar com a conta de outro e-mail mostra a mensagem 403 e nao entra na equipe", async ({ page }) => {
     const owner = await apiRegister("dono");
     const other = await apiRegister("intruso");
     const { token } = await apiLogin("ana");
@@ -401,7 +401,7 @@ test.describe("M4 convites (FT-50, E2E-32, SEC-21)", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-test.describe("M4 seguranca da conta (FT-52, SEC-22)", () => {
+test.describe("M4 seguranca da conta (FT-52, SEC-23)", () => {
   async function openAccount(page: Page, tab: "Segurança" | "E-mail" | "Perfil") {
     await page.getByRole("button", { name: "Configurações de Usuário" }).first().click();
     const dialog = page.getByRole("dialog").filter({ has: page.getByRole("tab") });
@@ -483,7 +483,7 @@ test.describe("M4 seguranca da conta (FT-52, SEC-22)", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
-test.describe("M4 redirect seguro (SEC-23)", () => {
+test.describe("M4 redirect seguro (SEC-REDIR)", () => {
   const evil = [
     "%2F.%2F%2Fevil.com",
     "%2F..%2F%2Fevil.com",
