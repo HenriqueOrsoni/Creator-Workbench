@@ -25,4 +25,4 @@ Alguns testes falham de proposito enquanto o bug correspondente existir (mensage
 - Backend extra: `STORAGE_LOCAL_DIR` (pasta temporaria) e `SUMMARY_URL=http://localhost:8001`; servico Python de resumo em `automation/` na porta 8001, sem `ANTHROPIC_API_KEY` (motor extrativo).
 - A suite faz mais de 100 logins em poucos minutos: com o limite padrao de `/api/auth` (por IP e por e-mail, 10 min) aparecem 429 espurios. Suba o backend com `APP_RATE_LIMIT_MAX_ATTEMPTS_PER_IP=100000` e `APP_RATE_LIMIT_MAX_ATTEMPTS=29` (o SEC-10 tenta 30 vezes).
 - `e2e/m2-content.spec.ts`: o teste do 503 real do resumo so roda com `SUMMARY_DOWN=1`; ele espera o servico da porta 8001 ser parado durante a execucao. Sem a variavel, fica ignorado (o 503 simulado roda sempre).
-- Testes com `[BUG]` na mensagem falham de proposito enquanto o defeito existir.
+- Os `[BUG]` da suite de M2 (abas sobrepostas e nome de arquivo comprido a 375 px) foram corrigidos e viraram specs de regressao.

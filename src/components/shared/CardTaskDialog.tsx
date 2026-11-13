@@ -258,7 +258,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border border-border shadow-lg font-sans">
+      <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-[560px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border border-border shadow-lg font-sans">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
@@ -294,28 +294,28 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               setLoadingHistory(true);
             }
           }}
-          className="w-full mt-2"
+          className="w-full min-w-0 max-w-full mt-2"
         >
           <TabsList className="flex w-full h-auto group-data-horizontal/tabs:h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-lg text-xs">
-            <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md shrink-0">
+            <TabsTrigger value="tarefas" className="h-auto text-xs font-semibold rounded-md shrink-0">
               Tarefas ({tasks.length})
             </TabsTrigger>
             {FEATURES.materials && (
-              <TabsTrigger value="materiais" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="materiais" className="h-auto text-xs font-semibold rounded-md">
                 Materiais ({cardMaterials[currentCard.id]?.length ?? currentCard.materialsCount ?? 0})
               </TabsTrigger>
             )}
             {FEATURES.summary && (
-              <TabsTrigger value="resumo" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="resumo" className="h-auto text-xs font-semibold rounded-md">
                 Resumo IA
               </TabsTrigger>
             )}
             {FEATURES.review && (
-              <TabsTrigger value="revisao" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="revisao" className="h-auto text-xs font-semibold rounded-md">
                 Revisão
               </TabsTrigger>
             )}
-            <TabsTrigger value="historico" className="text-xs font-semibold rounded-md">
+            <TabsTrigger value="historico" className="h-auto text-xs font-semibold rounded-md">
               Histórico
             </TabsTrigger>
           </TabsList>
@@ -513,7 +513,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
           {/* Aba 2: Materiais de Apoio (FE-10, FE-11, FE-12) */}
           {FEATURES.materials && (
-          <TabsContent value="materiais" className="space-y-3 pt-3">
+          <TabsContent value="materiais" className="min-w-0 max-w-full space-y-3 pt-3">
             {canEditTasks && (
               <div className="border border-dashed border-border rounded-xl p-4 text-center bg-muted/20 hover:bg-muted/30 transition-colors">
                 <input
@@ -547,7 +547,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               </div>
             )}
 
-            <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
+            <div className="min-w-0 max-w-full space-y-1.5 max-h-[220px] overflow-y-auto">
               {materials.length === 0 ? (
                 <div className="py-6 text-center text-xs text-muted-foreground">
                   Nenhum arquivo anexado a este projeto ainda.
@@ -556,12 +556,12 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 materials.map((mat) => (
                   <div
                     key={mat.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border shadow-2xs"
+                    className="flex min-w-0 items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border shadow-2xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Paperclip className="w-4 h-4 text-primary shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{mat.fileName}</p>
+                        <p className="text-xs font-medium text-foreground truncate" title={mat.fileName}>{mat.fileName}</p>
                         <p className="text-[10px] text-muted-foreground">
                           {Math.round(mat.sizeBytes / 1024)} KB • Por {mat.uploadedBy?.name || "Membro"}
                         </p>

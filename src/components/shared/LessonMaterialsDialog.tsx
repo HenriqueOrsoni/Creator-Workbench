@@ -77,7 +77,7 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border-border shadow-lg">
+      <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border-border shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
             <Paperclip className="w-5 h-5 text-primary" />
@@ -88,8 +88,8 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          <div className="space-y-1.5">
+        <div className="min-w-0 space-y-4 mt-2">
+          <div className="min-w-0 space-y-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Vinculados ({linked.length})
             </span>
@@ -98,13 +98,13 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
                 Nenhum material vinculado a esta aula.
               </p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="min-w-0 space-y-1.5">
                 {linked.map((m) => (
                   <li
                     key={m.id}
-                    className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border"
+                    className="flex min-w-0 items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border"
                   >
-                    <span className="text-xs font-medium text-foreground truncate min-w-0">{m.fileName}</span>
+                    <span className="text-xs font-medium text-foreground truncate min-w-0" title={m.fileName}>{m.fileName}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
                         type="button"

@@ -73,13 +73,17 @@ test.describe("M2 card dialog layout", () => {
         tops.add(Math.round(b.y));
         expect.soft(b.x + b.width, `aba ${name} fora da tela`).toBeLessThanOrEqual(376);
         expect.soft(b.x, `aba ${name} fora da tela (esq.)`).toBeGreaterThanOrEqual(0);
-        const listBox = (await dialog.getByRole("tablist").boundingBox())!;
-        const panel = dialog.getByRole("tabpanel");
-        await expect(panel).toBeVisible();
-        const p = (await panel.boundingBox())!;
-        expect.soft(listBox.y + listBox.height, `[BUG] aba ${name}: a lista de abas (base) passa do topo do painel (2a linha de abas cobre o conteudo)`).toBeLessThanOrEqual(p.y + 0.5);
+        await expect(dialog.getByRole("tabpanel")).toBeVisible();
+        // medidas na mesma passada, para que uma mudanca de layout entre leituras nao gere falso erro
+        const m = await dialog.evaluate((el, label) => {
+          const list = el.querySelector('[role="tablist"]')!.getBoundingClientRect();
+          const panel = el.querySelector('[role="tabpanel"]:not([hidden])')!.getBoundingClientRect();
+          const tabs = [...el.querySelectorAll('[role="tab"]')].find((t) => (t.textContent ?? "").trim().startsWith(label))!.getBoundingClientRect();
+          return { listBottom: list.bottom, panelTop: panel.top, tabBottom: tabs.bottom };
+        }, name);
+        expect.soft(m.listBottom, `aba ${name}: a lista de abas (base) nao passa do topo do painel (2a linha de abas cobre o conteudo)`).toBeLessThanOrEqual(m.panelTop + 0.5);
         // a ultima linha de abas tambem cabe na lista
-        expect.soft(b.y + b.height, `[BUG] aba ${name} vaza da lista (a 2a linha fica fora da caixa da lista)`).toBeLessThanOrEqual(listBox.y + listBox.height + 0.5);
+        expect.soft(m.tabBottom, `aba ${name} nao vaza da lista (a 2a linha fica fora da caixa da lista)`).toBeLessThanOrEqual(m.listBottom + 0.5);
         if (i === 4) await page.screenshot({ path: `${SHOTS}/m2-mobile-${theme}-abas-${name}.png` });
       }
       expect(tops.size, "as abas deveriam quebrar em mais de uma linha a 375 px").toBeGreaterThan(1);
@@ -264,10 +268,10 @@ test.describe("M2 materiais: nome longo no celular", () => {
     const box = (await dialog.boundingBox())!;
     const dl = (await dialog.getByRole("button", { name: `Baixar ${longName}` }).boundingBox())!;
     const del = (await dialog.getByRole("button", { name: `Excluir ${longName}` }).boundingBox())!;
-    expect.soft(dl.x + dl.width, "[BUG] botao Baixar fora da tela").toBeLessThanOrEqual(376);
-    expect.soft(del.x + del.width, "[BUG] botao Excluir fora da tela").toBeLessThanOrEqual(376);
+    expect.soft(dl.x + dl.width, "botao Baixar dentro da tela").toBeLessThanOrEqual(376);
+    expect.soft(del.x + del.width, "botao Excluir dentro da tela").toBeLessThanOrEqual(376);
     const overflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth);
-    expect.soft(overflow, "[BUG] o dialogo do card rola na horizontal").toBeLessThanOrEqual(1);
+    expect.soft(overflow, "o dialogo do card nao rola na horizontal").toBeLessThanOrEqual(1);
     expect.soft(box.x + box.width).toBeLessThanOrEqual(376);
   });
 });
