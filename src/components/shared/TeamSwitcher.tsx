@@ -20,6 +20,7 @@ import { FEATURES } from "@/lib/features";
 import { PLAN_LABELS } from "@/lib/plans";
 
 import { TeamMembersDialog } from "./TeamMembersDialog";
+import { useCloseOnPlanRequest } from "@/lib/plan-nav";
 
 export function TeamSwitcher() {
   const { teams, activeTeam, activeTeamId, fetchTeams, setActiveTeamId, createTeam } = useAppStore();
@@ -28,6 +29,11 @@ export function TeamSwitcher() {
   const [openMembers, setOpenMembers] = React.useState(false);
   const [newTeamName, setNewTeamName] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  useCloseOnPlanRequest(() => {
+    setOpenCreate(false);
+    setOpenSelect(false);
+    setOpenMembers(false);
+  });
 
   React.useEffect(() => {
     fetchTeams();

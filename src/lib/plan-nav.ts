@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { toast } from "sonner";
 
 const OPEN_PLAN_EVENT = "cw:open-plan";
@@ -13,6 +14,15 @@ export function onPlanPageRequest(handler: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(OPEN_PLAN_EVENT, handler);
   return () => window.removeEventListener(OPEN_PLAN_EVENT, handler);
+}
+
+/** Diálogos abertos se fecham quando o toast "Ver planos" pede a aba Plano. */
+export function useCloseOnPlanRequest(close: () => void) {
+  const ref = React.useRef(close);
+  React.useEffect(() => {
+    ref.current = close;
+  });
+  React.useEffect(() => onPlanPageRequest(() => ref.current()), []);
 }
 
 /**

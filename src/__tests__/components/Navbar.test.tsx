@@ -63,7 +63,7 @@ describe('TF-08 - Navbar Component Tests', () => {
     useAppStore.setState({ resetStore: mockResetStore });
 
     render(<Navbar />);
-    const menuBtn = screen.getByRole('button', { name: '' });
+    const menuBtn = screen.getByRole('button', { name: 'Abrir menu' });
     fireEvent.click(menuBtn);
 
     const logoutBtn = screen.getByRole('button', { name: /encerrar sessão/i });

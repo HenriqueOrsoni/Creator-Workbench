@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { canEditProduction, canReviewCards } from "@/lib/roles";
 import { formatLocalDate, formatDateTime } from "@/lib/dates";
 import { FEATURES } from "@/lib/features";
+import { useCloseOnPlanRequest } from "@/lib/plan-nav";
 import { reviewLabel } from "@/lib/review";
 
 interface CardTaskDialogProps {
@@ -39,6 +40,7 @@ interface CardTaskDialogProps {
 }
 
 export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps) {
+  useCloseOnPlanRequest(() => onOpenChange(false));
   const {
     createTask,
     toggleTask,
