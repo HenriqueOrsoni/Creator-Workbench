@@ -53,7 +53,7 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     render(<CardTaskDialog card={card} open={true} onOpenChange={() => {}} />);
 
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-      'Tarefas (0)', 'Materiais (0)', 'Resumo IA', 'Revisão', 'Histórico',
+      'Tarefas (0)', 'Materiais (0)', 'Resumo IA', 'Revisão', 'Desempenho', 'Histórico',
     ]);
     expect(api).not.toHaveBeenCalled();
   });
