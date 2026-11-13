@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Download, Link2, Paperclip, Unlink } from "lucide-react";
+import { Download, Link2, Paperclip, Unlink, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppStore } from "@/store/useAppStore";
 import { canEditProduction } from "@/lib/roles";
+import { isPreviewable, materialMeta } from "@/lib/materials";
 
 interface LessonMaterialsDialogProps {
   courseId: string;
@@ -33,6 +34,7 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
     cardMaterials,
     fetchCardMaterials,
     downloadMaterial,
+    previewMaterial,
     linkMaterialToLesson,
     unlinkMaterialFromLesson,
   } = useAppStore();
@@ -77,7 +79,7 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border-border shadow-lg">
+      <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border-border shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
             <Paperclip className="w-5 h-5 text-primary" />
@@ -88,8 +90,8 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          <div className="space-y-1.5">
+        <div className="min-w-0 space-y-4 mt-2">
+          <div className="min-w-0 space-y-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Vinculados ({linked.length})
             </span>
@@ -98,14 +100,30 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
                 Nenhum material vinculado a esta aula.
               </p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="min-w-0 space-y-1.5">
                 {linked.map((m) => (
                   <li
                     key={m.id}
-                    className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border"
+                    className="flex min-w-0 items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border"
                   >
-                    <span className="text-xs font-medium text-foreground truncate min-w-0">{m.fileName}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate" title={m.fileName}>{m.fileName}</p>
+                      <p className="text-[10px] text-muted-foreground break-words" data-testid="material-meta">{materialMeta(m)}</p>
+                    </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {isPreviewable(m) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => previewMaterial(m)}
+                          aria-label={`Visualizar ${m.fileName}`}
+                          title="Visualizar"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

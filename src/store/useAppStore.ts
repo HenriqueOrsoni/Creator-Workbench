@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { OklchColor } from "@/lib/color-utils";
-import { apiRequest, apiDownload, registerApiHooks } from "@/lib/api";
+import { apiRequest, apiDownload, apiOpenInline, registerApiHooks } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 
@@ -601,9 +601,10 @@ interface AppState {
   cardMaterials: Record<string, MaterialItem[]>;
   /** ignoreNotFound: projeto excluído devolve lista vazia, sem aviso. */
   fetchCardMaterials: (cardId: string, opts?: { ignoreNotFound?: boolean }) => Promise<MaterialItem[]>;
-  uploadMaterial: (cardId: string, file: File) => Promise<MaterialItem | null>;
+  uploadMaterial: (cardId: string, file: File, onProgress?: (percent: number) => void) => Promise<MaterialItem | null>;
   deleteMaterial: (materialId: string, cardId: string) => Promise<boolean>;
   downloadMaterial: (material: MaterialItem) => Promise<boolean>;
+  previewMaterial: (material: MaterialItem) => Promise<boolean>;
   linkMaterialToLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
   unlinkMaterialFromLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
 
@@ -1695,7 +1696,7 @@ export const useAppStore = create<AppState>()(
         return get().cardMaterials[cardId] || [];
       },
 
-      uploadMaterial: async (cardId, file) => {
+      uploadMaterial: async (cardId, file, onProgress) => {
         const teamId = get().activeTeamId;
         if (!teamId) return null;
 
@@ -1722,7 +1723,7 @@ export const useAppStore = create<AppState>()(
         formData.append("file", file);
 
         try {
-          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/materials`, formData);
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/materials`, formData, onProgress ? { onUploadProgress: onProgress } : undefined);
           if (!raw) return null;
           const mapped = mapMaterial(raw, cardId);
           // A lista do servidor vem do mais novo para o mais antigo
@@ -1772,6 +1773,20 @@ export const useAppStore = create<AppState>()(
           return true;
         } catch (error) {
           notifyError(error, "Erro ao baixar o material");
+          return false;
+        }
+      },
+
+      previewMaterial: async (material) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          // GET ...?inline=true com o token no cabeçalho; se o navegador bloquear a aba, cai no download
+          await apiOpenInline(`/api/v1/teams/${teamId}/materials/${material.id}/download`, material.fileName);
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao abrir o material");
           return false;
         }
       },
