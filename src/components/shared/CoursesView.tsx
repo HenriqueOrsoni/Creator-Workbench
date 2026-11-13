@@ -4,7 +4,7 @@ import React from "react";
 import {
   GraduationCap, Plus, Trash2, Video, FileText, HelpCircle,
   BookOpen, Link2, Download, Pencil, CheckCircle2, AlertCircle,
-  FileSpreadsheet, Globe, ChevronRight, Layers, ChevronUp, ChevronDown
+  FileSpreadsheet, Globe, ChevronRight, Layers, ChevronUp, ChevronDown, Paperclip
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppStore, type PublicationCheckProblem } from "@/store/useAppStore";
 import { FEATURES } from "@/lib/features";
+import { LessonMaterialsDialog } from "./LessonMaterialsDialog";
 import { canEditProduction } from "@/lib/roles";
 import { toast } from "sonner";
 
@@ -88,6 +89,7 @@ export function CoursesView() {
   const [lessonToDelete, setLessonToDelete] = React.useState<{ moduleId: string; lessonId: string; title: string } | null>(null);
 
   const [loading, setLoading] = React.useState(false);
+  const [materialsLesson, setMaterialsLesson] = React.useState<{ moduleId: string; lessonId: string } | null>(null);
 
   React.useEffect(() => {
     fetchCourses();
@@ -593,6 +595,17 @@ export function CoursesView() {
                                         <span>Projeto: {linkedProject.title}</span>
                                       </div>
                                     )}
+                                    {FEATURES.materials && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setMaterialsLesson({ moduleId: module.id, lessonId: lesson.id })}
+                                        className="mt-0.5 text-[10px] font-semibold text-muted-foreground hover:text-primary flex items-center gap-1"
+                                        aria-label={`Materiais da aula ${lesson.title}`}
+                                      >
+                                        <Paperclip className="w-2.5 h-2.5 shrink-0" />
+                                        Materiais ({lesson.materials?.length ?? 0})
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                                 {canEditCourses && (
@@ -669,6 +682,15 @@ export function CoursesView() {
           )}
         </div>
       </div>
+
+      {FEATURES.materials && materialsLesson && activeCourse && (
+        <LessonMaterialsDialog
+          courseId={activeCourse.id}
+          moduleId={materialsLesson.moduleId}
+          lessonId={materialsLesson.lessonId}
+          onClose={() => setMaterialsLesson(null)}
+        />
+      )}
 
       {/* Dialog Criar Curso */}
       <Dialog open={openCreateCourse} onOpenChange={setOpenCreateCourse}>

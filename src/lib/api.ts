@@ -168,6 +168,23 @@ async function performRequest(method: string, path: string, body?: unknown) {
   return response.json();
 }
 
+/** Nome do arquivo do cabeçalho Content-Disposition (filename* tem prioridade sobre filename). */
+export function fileNameFromDisposition(disposition?: string | null): string | null {
+  if (!disposition) return null;
+  const star = /filename\*\s*=\s*[\w-]*'[^']*'([^;]+)/i.exec(disposition);
+  if (star) {
+    const raw = star[1].trim().replace(/^"|"$/g, "");
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  const plain = /filename\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;]+))/i.exec(disposition);
+  if (plain) return (plain[1] ?? plain[2]).trim();
+  return null;
+}
+
 /**
  * Baixa um arquivo com o token no cabeçalho (fetch + blob) e dispara o download no navegador.
  * Um link simples (<a href>) não envia o token, por isso não serve para rotas protegidas.
@@ -181,16 +198,7 @@ export async function apiDownload(path: string, fallbackFileName: string): Promi
   await throwIfError(response, path);
 
   const blob = await response.blob();
-  let fileName = fallbackFileName;
-  const disposition = response.headers?.get?.("Content-Disposition");
-  const match = disposition ? /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition) : null;
-  if (match) {
-    try {
-      fileName = decodeURIComponent(match[1]);
-    } catch {
-      fileName = match[1];
-    }
-  }
+  const fileName = fileNameFromDisposition(response.headers?.get?.("Content-Disposition")) ?? fallbackFileName;
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

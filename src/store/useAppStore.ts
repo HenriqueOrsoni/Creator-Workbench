@@ -77,6 +77,8 @@ export interface ProjectCard {
   /** Momento em que o card entrou na coluna atual. */
   columnSince?: string;
   reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
+  /** Quantidade de arquivos anexados ao card. */
+  materialsCount?: number;
   materials?: MaterialItem[];
   createdAt: string;
   updatedAt?: string;
@@ -168,7 +170,7 @@ export interface CardReview {
   cardId: string;
   decision: "APPROVED" | "CHANGES_REQUESTED";
   comment?: string;
-  reviewer?: { userId: string; name: string };
+  reviewer?: { userId: string; name: string } | null;
   createdAt: string;
 }
 
@@ -232,6 +234,7 @@ export interface ApiCardDto {
   votedByMe?: boolean;
   columnSince?: string | null;
   reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
+  materialsCount?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -402,8 +405,32 @@ function mapCard(c: ApiCardDto, column?: { id: string; name: string }): ProjectC
     votedByMe: c.votedByMe,
     columnSince: c.columnSince || undefined,
     reviewStatus: c.reviewStatus,
+    materialsCount: typeof c.materialsCount === "number" ? c.materialsCount : 0,
     createdAt: c.createdAt || "",
     updatedAt: c.updatedAt
+  };
+}
+
+function mapReview(r: { id: string | number; cardId?: string | number; decision: CardReview["decision"]; comment?: string | null; reviewer?: { userId: string | number; name: string } | null; createdAt: string }, fallbackCardId: string): CardReview {
+  return {
+    id: String(r.id),
+    cardId: r.cardId !== undefined ? String(r.cardId) : fallbackCardId,
+    decision: r.decision,
+    comment: r.comment || "",
+    reviewer: r.reviewer ? { userId: String(r.reviewer.userId ?? ""), name: r.reviewer.name || "" } : null,
+    createdAt: r.createdAt
+  };
+}
+
+/** Ajusta a contagem de materiais do card no quadro (sem nova ida ao servidor). */
+function withMaterialsCount(board: AppState["board"], cardId: string, count: number): AppState["board"] {
+  if (!board) return board;
+  return {
+    ...board,
+    columns: board.columns.map(col => ({
+      ...col,
+      cards: col.cards.map(c => (c.id === cardId ? { ...c, materialsCount: count } : c))
+    }))
   };
 }
 
@@ -562,6 +589,8 @@ interface AppState {
   // Alertas, revisão, materiais e resumo (rotas do contrato final)
   alerts: AlertItem[];
   fetchAlerts: () => Promise<void>;
+  cardReviews: Record<string, CardReview[]>;
+  fetchCardReviews: (cardId: string) => Promise<CardReview[]>;
   submitCardReview: (
     cardId: string,
     decision: "APPROVED" | "CHANGES_REQUESTED",
@@ -613,6 +642,7 @@ const EMPTY_SESSION_STATE = {
   activeCourse: null as CourseDetail | null,
   alerts: [] as AlertItem[],
   cardMaterials: {} as Record<string, MaterialItem[]>,
+  cardReviews: {} as Record<string, CardReview[]>,
   cardSummaries: {} as Record<string, ProjectSummary>,
   teamInvites: [] as TeamInvite[],
   teamTags: [] as TeamTag[],
@@ -1589,6 +1619,23 @@ export const useAppStore = create<AppState>()(
       },
 
       // --- Revisão ---
+      fetchCardReviews: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return get().cardReviews[cardId] || [];
+
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/reviews`);
+          if (Array.isArray(raw)) {
+            const mapped = raw.map(r => mapReview(r, cardId));
+            set(state => ({ cardReviews: { ...state.cardReviews, [cardId]: mapped } }));
+            return mapped;
+          }
+        } catch (error) {
+          notifyError(error, "Erro ao carregar as revisões");
+        }
+        return get().cardReviews[cardId] || [];
+      },
+
       submitCardReview: async (cardId, decision, comment) => {
         const teamId = get().activeTeamId;
         if (!teamId) return false;
@@ -1596,7 +1643,7 @@ export const useAppStore = create<AppState>()(
         try {
           await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/reviews`, { decision, comment });
           toast.success(decision === "APPROVED" ? "Projeto aprovado!" : "Revisão enviada com observações!");
-          await get().fetchBoard();
+          await Promise.all([get().fetchBoard(), get().fetchCardReviews(cardId)]);
           return true;
         } catch (error) {
           notifyError(error, "Erro ao registrar a revisão");
@@ -1613,7 +1660,10 @@ export const useAppStore = create<AppState>()(
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/materials`);
           if (Array.isArray(raw)) {
             const mapped = raw.map((m: ApiMaterialDto) => mapMaterial(m, cardId));
-            set(state => ({ cardMaterials: { ...state.cardMaterials, [cardId]: mapped } }));
+            set(state => ({
+              cardMaterials: { ...state.cardMaterials, [cardId]: mapped },
+              board: withMaterialsCount(state.board, cardId, mapped.length)
+            }));
             return mapped;
           }
         } catch (error) {
@@ -1634,6 +1684,11 @@ export const useAppStore = create<AppState>()(
           return null;
         }
 
+        if (file.size === 0) {
+          toast.error("O arquivo está vazio.");
+          return null;
+        }
+
         const maxBytes = 20 * 1024 * 1024;
         if (file.size > maxBytes) {
           toast.error("O arquivo excede o limite de 20 MB.");
@@ -1647,12 +1702,14 @@ export const useAppStore = create<AppState>()(
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/materials`, formData);
           if (!raw) return null;
           const mapped = mapMaterial(raw, cardId);
-          set(state => ({
-            cardMaterials: {
-              ...state.cardMaterials,
-              [cardId]: [...(state.cardMaterials[cardId] || []), mapped]
-            }
-          }));
+          // A lista do servidor vem do mais novo para o mais antigo
+          set(state => {
+            const next = [mapped, ...(state.cardMaterials[cardId] || [])];
+            return {
+              cardMaterials: { ...state.cardMaterials, [cardId]: next },
+              board: withMaterialsCount(state.board, cardId, next.length)
+            };
+          });
           toast.success("Material enviado com sucesso!");
           return mapped;
         } catch (error) {
@@ -1667,12 +1724,13 @@ export const useAppStore = create<AppState>()(
 
         try {
           await apiRequest("DELETE", `/api/v1/teams/${teamId}/materials/${materialId}`);
-          set(state => ({
-            cardMaterials: {
-              ...state.cardMaterials,
-              [cardId]: (state.cardMaterials[cardId] || []).filter(m => m.id !== materialId)
-            }
-          }));
+          set(state => {
+            const next = (state.cardMaterials[cardId] || []).filter(m => m.id !== materialId);
+            return {
+              cardMaterials: { ...state.cardMaterials, [cardId]: next },
+              board: withMaterialsCount(state.board, cardId, next.length)
+            };
+          });
           toast.success("Material removido!");
           return true;
         } catch (error) {

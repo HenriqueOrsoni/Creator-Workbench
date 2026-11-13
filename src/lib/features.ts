@@ -5,11 +5,11 @@
  */
 export const FEATURES = {
   /** Aba Materiais do card e vínculo de material com aula. */
-  materials: false,
+  materials: true,
   /** Aba Resumo IA do card. */
-  summary: false,
+  summary: true,
   /** Aba Revisão do card (decisão do revisor). */
-  review: false,
+  review: true,
   /** Convites de equipe (aba e ações). */
   invites: false,
   /** Publicar/despublicar curso e verificação de publicação. */

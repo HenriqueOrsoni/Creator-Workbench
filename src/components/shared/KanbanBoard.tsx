@@ -13,8 +13,10 @@ import {
   ListChecks,
   Plus,
   Calendar,
-  Clock
+  Clock,
+  Paperclip
 } from "lucide-react";
+import { FEATURES } from "@/lib/features";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -336,6 +338,37 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                     >
                                       {item.rawCard.tag}
                                     </span>
+                                  </div>
+                                )}
+
+                                {((FEATURES.review && item.rawCard.reviewStatus && item.rawCard.reviewStatus !== "NONE") ||
+                                  (FEATURES.materials && (item.rawCard.materialsCount ?? 0) > 0)) && (
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {FEATURES.review && item.rawCard.reviewStatus === "APPROVED" && (
+                                      <span
+                                        className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600"
+                                        title="Revisão"
+                                      >
+                                        Aprovado
+                                      </span>
+                                    )}
+                                    {FEATURES.review && item.rawCard.reviewStatus === "CHANGES_REQUESTED" && (
+                                      <span
+                                        className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600"
+                                        title="Revisão"
+                                      >
+                                        Alterações solicitadas
+                                      </span>
+                                    )}
+                                    {FEATURES.materials && (item.rawCard.materialsCount ?? 0) > 0 && (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                                        title="Materiais anexados"
+                                      >
+                                        <Paperclip size={11} className="shrink-0" />
+                                        {item.rawCard.materialsCount} {item.rawCard.materialsCount === 1 ? "material" : "materiais"}
+                                      </span>
+                                    )}
                                   </div>
                                 )}
 
