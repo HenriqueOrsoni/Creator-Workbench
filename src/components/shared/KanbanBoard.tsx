@@ -17,6 +17,7 @@ import {
   Paperclip
 } from "lucide-react";
 import { FEATURES } from "@/lib/features";
+import { toast } from "sonner";
 import { reviewLabel } from "@/lib/review";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -58,7 +59,9 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     reorderColumns,
     activeTeam,
     selectedProjectId,
-    setSelectedProjectId
+    setSelectedProjectId,
+    cardToOpenId,
+    setCardToOpenId
   } = useAppStore();
 
   // Papéis: só o Administrador configura colunas; Revisor é somente leitura
@@ -160,6 +163,18 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
     const ok = await deleteColumn(editingColumn.id, columnTargetId || undefined);
     if (ok) setEditingColumn(null);
   };
+
+  // Pedido do painel de alertas: abre o card quando o quadro estiver carregado
+  React.useEffect(() => {
+    if (!cardToOpenId || !board) return;
+    const found = board.columns.flatMap((c) => c.cards).find((c) => c.id === cardToOpenId);
+    setCardToOpenId(null);
+    if (found) {
+      setSelectedCardForTasks(found);
+    } else {
+      toast.error("Não encontramos este card no quadro.");
+    }
+  }, [cardToOpenId, board, setCardToOpenId]);
 
   const openTaskChecklist = (card: BoardCardItem) => {
     setSelectedCardForTasks(card.rawCard);
