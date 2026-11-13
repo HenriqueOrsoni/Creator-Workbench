@@ -98,8 +98,7 @@ test.describe("Seguranca no navegador", () => {
     expect(r.headers()["x-frame-options"]).toBeTruthy();
   });
 
-  test("SEC-10 (BE-44, aberto no backend): tentativas excessivas de login deveriam receber 429", async () => {
-    test.fail(true, "BE-44: ainda nao ha limite de tentativas em /api/auth (esperado falhar ate ser implementado)");
+  test("SEC-10 (BE-44): tentativas excessivas de login recebem 429", async () => {
     let got429 = false;
     for (let i = 0; i < 30 && !got429; i++) {
       const r = await api(null, "POST", "/api/auth/login", { email: "limite.e2e@creatorworkbench.test", password: "errada" });
