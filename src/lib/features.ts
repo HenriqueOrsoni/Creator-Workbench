@@ -24,6 +24,8 @@ export const FEATURES = {
   accountSecurity: false,
   /** Sino e painel de alertas. */
   alerts: false,
+  /** Aba Plano, banners e selo do plano. */
+  plans: true,
 } as const;
 
 export type FeatureName = keyof typeof FEATURES;

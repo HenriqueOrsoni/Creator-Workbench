@@ -47,7 +47,7 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     expect(FEATURES.materials).toBe(true);
     expect(FEATURES.summary).toBe(true);
     expect(FEATURES.review).toBe(true);
-    const off = Object.entries(FEATURES).filter(([k]) => !['materials', 'summary', 'review'].includes(k));
+    const off = Object.entries(FEATURES).filter(([k]) => !['materials', 'summary', 'review', 'plans'].includes(k));
     expect(off.length).toBeGreaterThan(0);
     expect(off.every(([, v]) => v === false)).toBe(true);
   });

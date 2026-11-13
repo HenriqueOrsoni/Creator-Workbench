@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAutomaticSummary } from "@/lib/plans";
 import { sanitizeHtml } from "@/lib/sanitize";
 import React from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -61,7 +62,8 @@ interface BackendScriptVersion {
 }
 
 export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
-  const { exportScript, activeTeam, items, setSelectedProjectId, generateCardSummary } = useAppStore();
+  const { exportScript, activeTeam, items, setSelectedProjectId, generateCardSummary, teamPlan } = useAppStore();
+  const summaryAvailable = hasAutomaticSummary(teamPlan);
   const canEditRole = canEditProduction(activeTeam?.role);
   // Se o roteiro não carregou, não deixa editar (um salvamento apagaria o roteiro real)
   const [loadFailed, setLoadFailed] = React.useState(false);
@@ -389,6 +391,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             <Download size={13} /> Exportar .MD
           </Button>
 
+          {summaryAvailable ? (
           <Button
             size="sm"
             variant="ghost"
@@ -398,6 +401,11 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
           >
             <Sparkles size={13} className="text-primary" /> Resumo IA
           </Button>
+          ) : (
+            <span data-testid="summary-plan-gate" className="text-xs text-muted-foreground px-2" title="Resumo IA">
+              Resumo IA: disponível nos planos Pro e Agência
+            </span>
+          )}
 
           <Button
             size="sm"

@@ -22,6 +22,10 @@ import { Navbar } from "../components/shared/Navbar";
 import { StatsCard } from "../components/shared/StatsCard";
 import { KanbanBoard } from "../components/shared/KanbanBoard";
 import { Button } from "../components/ui/button";
+import { PlanBanner } from "../components/shared/PlanBanner";
+import { PlanView } from "../components/shared/PlanView";
+import { FEATURES } from "../lib/features";
+import { onPlanPageRequest } from "../lib/plan-nav";
 
 export default function UnifiedPage() {
   const { items: projects, ideas, courses, fetchTeams, selectedProjectId, activeTeam } = useAppStore();
@@ -33,6 +37,12 @@ export default function UnifiedPage() {
     fetchTeams();
   }, [fetchTeams]);
 
+  // Toast de limite do plano ("Ver planos") abre a aba Plano
+  React.useEffect(() => {
+    if (!FEATURES.plans) return;
+    return onPlanPageRequest(() => setActiveTab("plan"));
+  }, []);
+
   const activeProject = projects.find(p => p.id === selectedProjectId) ?? projects[0];
 
   return (
@@ -40,6 +50,7 @@ export default function UnifiedPage() {
       <Navbar activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
 
       <main id="main-content" className="pt-20 sm:pt-24 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto">
+        {FEATURES.plans && <PlanBanner onOpenPlan={() => setActiveTab("plan")} />}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* HEADER & CONTROLS (BF-03) */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 border-b border-border pb-6">
@@ -109,6 +120,14 @@ export default function UnifiedPage() {
               >
                 Estúdio de Escrita
               </TabsTrigger>
+              {FEATURES.plans && (
+                <TabsTrigger
+                  value="plan"
+                  className="rounded-md px-3.5 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all"
+                >
+                  Plano
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -143,6 +162,11 @@ export default function UnifiedPage() {
               </div>
             )}
           </TabsContent>
+          {FEATURES.plans && (
+            <TabsContent value="plan" className="mt-0 outline-none">
+              <PlanView />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
