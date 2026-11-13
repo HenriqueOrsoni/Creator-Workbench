@@ -76,7 +76,7 @@ export function TeamSwitcher() {
             <Users className="w-3.5 h-3.5 text-primary" />
             <span className="min-w-[48px] max-w-[80px] sm:max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
             {FEATURES.plans && activeTeam?.plan && (
-              // Hidden from md to xl: there the header's Ideação/Produção/Cursos buttons sit next to the pill and the badges overlapped them
+              // Oculto de md a xl: nessas larguras os botões Ideação/Produção/Cursos ficam ao lado e os selos se sobrepunham (plano e papel continuam no diálogo da equipe)
               <Badge variant="outline" data-testid="team-plan-badge" className="md:hidden xl:inline-flex text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
                 {PLAN_LABELS[activeTeam.plan] ?? activeTeam.plan}
               </Badge>
