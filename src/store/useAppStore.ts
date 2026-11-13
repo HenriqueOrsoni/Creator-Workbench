@@ -21,6 +21,8 @@ export interface Team {
   role: TeamRoleName;
   membersCount: number;
   createdAt: string;
+  /** Equipe pessoal (não pode ser excluída). Só vem quando o servidor informa. */
+  personal?: boolean;
 }
 
 export interface TaskAssignee {
@@ -591,6 +593,9 @@ interface AppState {
   // Alertas, revisão, materiais e resumo (rotas do contrato final)
   alerts: AlertItem[];
   fetchAlerts: () => Promise<void>;
+  /** Card pedido pelo painel de alertas; o quadro abre o diálogo dele e limpa o valor. */
+  cardToOpenId: string | null;
+  setCardToOpenId: (cardId: string | null) => void;
   cardReviews: Record<string, CardReview[]>;
   fetchCardReviews: (cardId: string) => Promise<CardReview[]>;
   submitCardReview: (
@@ -645,6 +650,7 @@ const EMPTY_SESSION_STATE = {
   courses: [] as Course[],
   activeCourse: null as CourseDetail | null,
   alerts: [] as AlertItem[],
+  cardToOpenId: null as string | null,
   cardMaterials: {} as Record<string, MaterialItem[]>,
   cardReviews: {} as Record<string, CardReview[]>,
   cardSummaries: {} as Record<string, ProjectSummary>,
@@ -655,6 +661,7 @@ const EMPTY_SESSION_STATE = {
 // Pedido de equipes em andamento (evita buscas repetidas na carga da página)
 let teamsInFlight: Promise<void> | null = null;
 let alertsInFlight = false;
+let alertsRerun = false;
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -726,7 +733,8 @@ export const useAppStore = create<AppState>()(
                 name: t.name,
                 role: t.role,
                 membersCount: t.membersCount,
-                createdAt: t.createdAt
+                createdAt: t.createdAt,
+                ...(typeof t.personal === "boolean" ? { personal: t.personal } : {})
               }));
 
               let activeId = get().activeTeamId;
@@ -764,6 +772,8 @@ export const useAppStore = create<AppState>()(
           activeCourse: null,
           teamTags: [],
           teamMembers: [],
+          alerts: [],
+          teamInvites: [],
           selectedProjectId: null,
           ideaFilters: DEFAULT_IDEA_FILTERS
         });
@@ -891,6 +901,8 @@ export const useAppStore = create<AppState>()(
               items,
               selectedProjectId: selectedStillExists ? selected : (items[0]?.id ?? null)
             });
+            // Prazos de cards e tarefas mudam com as edições do quadro: atualiza os alertas junto
+            void get().fetchAlerts();
           }
         } catch (error) {
           notifyError(error, "Erro ao carregar o quadro");
@@ -1617,12 +1629,17 @@ export const useAppStore = create<AppState>()(
         // Sem backend de alertas ainda: não chama a rota enquanto a flag estiver desligada
         if (!FEATURES.alerts) return;
         const teamId = get().activeTeamId;
-        if (!teamId || alertsInFlight) return;
+        if (!teamId) return;
+        if (alertsInFlight) {
+          // Já há uma busca em andamento: repete uma vez ao terminar para não perder a edição mais recente
+          alertsRerun = true;
+          return;
+        }
         alertsInFlight = true;
 
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/alerts`);
-          if (Array.isArray(raw)) {
+          if (Array.isArray(raw) && get().activeTeamId === teamId) {
             set({
               alerts: raw.map(a => ({
                 type: a.type,
@@ -1640,8 +1657,13 @@ export const useAppStore = create<AppState>()(
           console.error("Erro ao carregar os alertas:", error);
         } finally {
           alertsInFlight = false;
+          if (alertsRerun) {
+            alertsRerun = false;
+            void get().fetchAlerts();
+          }
         }
       },
+      setCardToOpenId: (cardId) => set({ cardToOpenId: cardId }),
 
       // --- Revisão ---
       fetchCardReviews: async (cardId) => {
@@ -1871,7 +1893,8 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/invites`);
-          if (Array.isArray(raw)) {
+          // Resposta tardia de uma equipe que não é mais a ativa: descarta
+          if (Array.isArray(raw) && get().activeTeamId === teamId) {
             set({
               teamInvites: raw.map(i => ({
                 id: String(i.id),
@@ -1926,11 +1949,12 @@ export const useAppStore = create<AppState>()(
         if (!teamId) return false;
 
         try {
-          await apiRequest("PATCH", `/api/v1/teams/${teamId}`, { name });
+          const raw = await apiRequest("PATCH", `/api/v1/teams/${teamId}`, { name });
+          const newName: string = raw?.name || name;
           set(state => ({
-            teams: state.teams.map(t => t.id === teamId ? { ...t, name } : t),
-            activeTeam: state.activeTeam?.id === teamId ? { ...state.activeTeam, name } : state.activeTeam,
-            board: state.board ? { ...state.board, teamName: name } : null
+            teams: state.teams.map(t => t.id === teamId ? { ...t, name: newName } : t),
+            activeTeam: state.activeTeam?.id === teamId ? { ...state.activeTeam, name: newName } : state.activeTeam,
+            board: state.board ? { ...state.board, teamName: newName } : null
           }));
           toast.success("Equipe renomeada com sucesso!");
           return true;

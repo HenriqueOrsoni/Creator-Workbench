@@ -67,6 +67,17 @@ describe('?redirect= do login', () => {
     expect(getSafeRedirect('?redirect=%2F%5Cmau.com')).toBe('/');
   });
 
+  it('rejeita tab, quebra de linha e barras que o navegador transforma em //host', () => {
+    const bad = ['%2F%09%2Fevil.com', '%2F%0A%2Fevil.com', '%2F%0D%2Fevil.com', '%2F%2Fevil.com', '%2F%5Cevil.com', 'https%3A%2F%2Fevil.com', '%5C%5Cevil.com', '%09%2Fevil.com', '%2F.%2F%2Fevil.com', '%2F%252e%2F%2Fevil.com', '%2Fa%2F..%2F%2Fevil.com', '%2F%2e%2F%2Fevil.com'];
+    for (const b of bad) {
+      expect(getSafeRedirect(`?redirect=${b}`)).toBe('/');
+    }
+  });
+
+  it('devolve caminho, busca e hash do mesmo site', () => {
+    expect(getSafeRedirect('?redirect=%2Fconvite%3Ftoken%3Da%252Fb%23x')).toBe('/convite?token=a%2Fb#x');
+  });
+
   it('buildLoginUrl codifica a página de origem', () => {
     expect(buildLoginUrl('/')).toBe('/login');
     expect(buildLoginUrl('/cursos', '?aba=1')).toBe('/login?redirect=%2Fcursos%3Faba%3D1');
