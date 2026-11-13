@@ -23,7 +23,13 @@ import { useAppStore, type PublicationCheckProblem } from "@/store/useAppStore";
 import { FEATURES } from "@/lib/features";
 import { LessonMaterialsDialog } from "./LessonMaterialsDialog";
 import { canEditProduction } from "@/lib/roles";
-import { toast } from "sonner";
+
+function formatPublishedDate(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return ` em ${date.toLocaleDateString("pt-BR")}`;
+}
 
 export function CoursesView() {
   const {
@@ -45,6 +51,7 @@ export function CoursesView() {
     publishCourse,
     unpublishCourse,
     exportCourseCsv,
+    exportCourseJson,
     reorderCourseModules,
     reorderCourseLessons,
     activeTeam,
@@ -64,6 +71,8 @@ export function CoursesView() {
   const [lessonTitle, setLessonTitle] = React.useState("");
   const [lessonType, setLessonType] = React.useState<"VIDEO" | "TEXT" | "QUIZ">("VIDEO");
   const [linkedProjectId, setLinkedProjectId] = React.useState<string>("");
+  const [lessonDescription, setLessonDescription] = React.useState("");
+  const [lessonContentUrl, setLessonContentUrl] = React.useState("");
 
   // Estados para Edição (FE-55 / FE-21)
   const [editingCourse, setEditingCourse] = React.useState<{ id: string; title: string; description: string } | null>(null);
@@ -122,7 +131,7 @@ export function CoursesView() {
     if (!editingCourse || !editingCourse.title.trim()) return;
 
     setLoading(true);
-    const saved = await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
+    const saved = await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim());
     setLoading(false);
     // Só fecha quando o servidor aceitou; em caso de erro a mensagem já foi exibida
     if (saved) setEditingCourse(null);
@@ -144,9 +153,9 @@ export function CoursesView() {
     if (!activeCourse || !editingModule || !editingModule.title.trim()) return;
 
     setLoading(true);
-    await updateCourseModule(activeCourse.id, editingModule.id, editingModule.title.trim());
+    const saved = await updateCourseModule(activeCourse.id, editingModule.id, editingModule.title.trim());
     setLoading(false);
-    setEditingModule(null);
+    if (saved) setEditingModule(null);
   };
 
   const handleCreateLesson = async (e: React.FormEvent) => {
@@ -154,16 +163,21 @@ export function CoursesView() {
     if (!activeCourse || !selectedModuleId || !lessonTitle.trim()) return;
 
     setLoading(true);
-    await createCourseLesson(
+    const created = await createCourseLesson(
       activeCourse.id,
       selectedModuleId,
       lessonTitle.trim(),
       lessonType,
-      linkedProjectId || undefined
+      linkedProjectId || undefined,
+      { description: lessonDescription, contentUrl: lessonContentUrl }
     );
     setLoading(false);
+    // Só fecha quando o servidor aceitou; em caso de erro a mensagem já foi exibida
+    if (!created) return;
     setLessonTitle("");
     setLinkedProjectId("");
+    setLessonDescription("");
+    setLessonContentUrl("");
     setOpenCreateLesson(false);
   };
 
@@ -254,42 +268,6 @@ export function CoursesView() {
     setLessonToDelete(null);
   };
 
-  const handleExportCourseStructure = () => {
-    if (!activeCourse) return;
-    const exportData = {
-      courseId: activeCourse.id,
-      title: activeCourse.title,
-      description: activeCourse.description || "",
-      createdAt: activeCourse.createdAt,
-      modulesCount: activeCourse.modules.length,
-      modules: activeCourse.modules.map(m => ({
-        id: m.id,
-        title: m.title,
-        sortOrder: m.sortOrder,
-        lessonsCount: m.lessons.length,
-        lessons: m.lessons.map(l => ({
-          id: l.id,
-          title: l.title,
-          type: l.type,
-          published: l.published,
-          projectId: l.projectId
-        }))
-      }))
-    };
-    const jsonStr = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const safeTitle = activeCourse.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    a.download = `curso-${safeTitle}-estrutura.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success("Estrutura do curso exportada em JSON!");
-  };
-
   const getLessonIcon = (type: string) => {
     switch (type) {
       case "TEXT":
@@ -376,17 +354,17 @@ export function CoursesView() {
               </p>
             </div>
           ) : (
-            <Card className="p-6 rounded-xl bg-card border-border shadow-xs space-y-6">
+            <Card className="p-4 sm:p-6 rounded-xl bg-card border-border shadow-xs space-y-6">
               {/* Header do Curso Ativo */}
-              <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex flex-col lg:flex-row items-start justify-between gap-4 pb-6 border-b border-border">
+                <div className="min-w-0 w-full lg:w-auto">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
                       Curso Ativo
                     </Badge>
                     {FEATURES.coursePublish && (activeCourse.status === "PUBLISHED" ? (
-                      <Badge className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                        <Globe className="w-3 h-3 mr-1" /> Publicado
+                      <Badge className="text-[10px] font-semibold tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                        <Globe className="w-3 h-3 mr-1" /> Publicado{formatPublishedDate(activeCourse.publishedAt)}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-border">
@@ -394,40 +372,72 @@ export function CoursesView() {
                       </Badge>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-foreground font-heading">
-                      {activeCourse.title}
-                    </h3>
-                    {canEditCourses && FEATURES.courseEdit && (
-<Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingCourse({
-                          id: activeCourse.id,
-                          title: activeCourse.title,
-                          description: activeCourse.description || ""
-                        })}
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
-                        title="Editar curso"
-                        aria-label="Editar curso"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-)}
-                  </div>
-                  {activeCourse.description && (
-                    <p className="text-xs text-muted-foreground mt-1 max-w-xl leading-relaxed">
-                      {activeCourse.description}
-                    </p>
+                  {editingCourse && editingCourse.id === activeCourse.id ? (
+                    <form onSubmit={handleEditCourse} className="space-y-2 max-w-xl" aria-label="Editar curso">
+                      <label htmlFor="edit-course-title" className="sr-only">Título do curso</label>
+                      <Input
+                        id="edit-course-title"
+                        required
+                        autoFocus
+                        value={editingCourse.title}
+                        onChange={(e) => setEditingCourse(prev => prev ? { ...prev, title: e.target.value } : null)}
+                        className="rounded-lg h-10 text-sm border-border"
+                      />
+                      <label htmlFor="edit-course-desc" className="sr-only">Descrição do curso</label>
+                      <Textarea
+                        id="edit-course-desc"
+                        placeholder="Descrição do curso"
+                        value={editingCourse.description}
+                        onChange={(e) => setEditingCourse(prev => prev ? { ...prev, description: e.target.value } : null)}
+                        className="rounded-lg text-sm min-h-[80px] border-border"
+                      />
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" disabled={loading || !editingCourse.title.trim()} className="rounded-lg text-xs font-semibold">
+                          {loading ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setEditingCourse(null)} className="rounded-lg text-xs font-semibold">
+                          Cancelar
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-foreground font-heading break-words">
+                          {activeCourse.title}
+                        </h3>
+                        {canEditCourses && FEATURES.courseEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingCourse({
+                              id: activeCourse.id,
+                              title: activeCourse.title,
+                              description: activeCourse.description || ""
+                            })}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                            title="Editar curso"
+                            aria-label="Editar curso"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                      {activeCourse.description && (
+                        <p className="text-xs text-muted-foreground mt-1 max-w-xl leading-relaxed">
+                          {activeCourse.description}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="outline"
-                    onClick={handleExportCourseStructure}
+                    onClick={() => exportCourseJson(activeCourse.id)}
                     className="rounded-lg h-9 px-3 text-xs font-medium gap-1.5 border-border"
-                    title="Exportar estrutura em JSON (FE-23)"
+                    title="Exportar estrutura em JSON"
                   >
                     <Download className="w-3.5 h-3.5" /> JSON
                   </Button>
@@ -494,38 +504,60 @@ export function CoursesView() {
                       key={module.id}
                       className="p-4 rounded-lg bg-muted/30 border border-border space-y-3"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
                           <BookOpen className="w-4 h-4 text-primary" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                            {module.title}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            ({module.lessons.length} {module.lessons.length === 1 ? "aula" : "aulas"})
-                          </span>
-                          {canEditCourses && FEATURES.courseEdit && (
-<Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setEditingModule({ id: module.id, title: module.title })}
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
-                              title="Renomear módulo"
-                              aria-label={`Renomear módulo ${module.title}`}
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-)}
+                          {editingModule && editingModule.id === module.id ? (
+                            <form onSubmit={handleEditModule} className="flex items-center gap-1.5 flex-wrap" aria-label="Renomear módulo">
+                              <label htmlFor="edit-module-title" className="sr-only">Nome do módulo</label>
+                              <Input
+                                id="edit-module-title"
+                                required
+                                autoFocus
+                                value={editingModule.title}
+                                onChange={(e) => setEditingModule(prev => prev ? { ...prev, title: e.target.value } : null)}
+                                className="rounded-md h-8 text-xs border-border w-56 max-w-full"
+                              />
+                              <Button type="submit" size="sm" disabled={loading || !editingModule.title.trim()} className="h-8 rounded-md text-xs font-semibold">
+                                Salvar
+                              </Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => setEditingModule(null)} className="h-8 rounded-md text-xs font-semibold">
+                                Cancelar
+                              </Button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="text-xs font-bold uppercase tracking-wider text-foreground break-words">
+                                {module.title}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-medium">
+                                ({module.lessons.length} {module.lessons.length === 1 ? "aula" : "aulas"})
+                              </span>
+                              {canEditCourses && FEATURES.courseEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingModule({ id: module.id, title: module.title })}
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md"
+                                  title="Renomear módulo"
+                                  aria-label={`Renomear módulo ${module.title}`}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </>
+                          )}
                         </div>
 
                         {canEditCourses && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             {FEATURES.courseEdit && (
 <Button
                               variant="ghost"
                               size="icon"
                               disabled={moduleIndex === 0}
                               onClick={() => handleMoveModule(moduleIndex, "up")}
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                               title="Mover módulo para cima"
                               aria-label="Mover módulo para cima"
                             >
@@ -538,7 +570,7 @@ export function CoursesView() {
                               size="icon"
                               disabled={moduleIndex === activeCourse.modules.length - 1}
                               onClick={() => handleMoveModule(moduleIndex, "down")}
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                               title="Mover módulo para baixo"
                               aria-label="Mover módulo para baixo"
                             >
@@ -616,7 +648,7 @@ export function CoursesView() {
                                       size="icon"
                                       disabled={lessonIndex === 0}
                                       onClick={() => handleMoveLesson(module.id, lessonIndex, "up")}
-                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                                       title="Mover aula para cima"
                                       aria-label="Mover aula para cima"
                                     >
@@ -629,7 +661,7 @@ export function CoursesView() {
                                       size="icon"
                                       disabled={lessonIndex === module.lessons.length - 1}
                                       onClick={() => handleMoveLesson(module.id, lessonIndex, "down")}
-                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
+                                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                                       title="Mover aula para baixo"
                                       aria-label="Mover aula para baixo"
                                     >
@@ -751,63 +783,6 @@ export function CoursesView() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Editar Curso (FE-55) */}
-      <Dialog open={Boolean(editingCourse)} onOpenChange={(open) => !open && setEditingCourse(null)}>
-        <DialogContent className="sm:max-w-[440px] rounded-xl p-6 bg-card border-border shadow-lg">
-          <form onSubmit={handleEditCourse}>
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
-                <Pencil className="w-5 h-5 text-primary" />
-                Editar Curso
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Atualize o título e a descrição deste curso.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 my-5">
-              <div>
-                <label htmlFor="edit-course-title" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Título do Curso *
-                </label>
-                <Input
-                  id="edit-course-title"
-                  required
-                  value={editingCourse?.title || ""}
-                  onChange={(e) => setEditingCourse(prev => prev ? { ...prev, title: e.target.value } : null)}
-                  className="rounded-lg h-10 text-sm border-border"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="edit-course-desc" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Descrição do Curso
-                </label>
-                <Textarea
-                  id="edit-course-desc"
-                  value={editingCourse?.description || ""}
-                  onChange={(e) => setEditingCourse(prev => prev ? { ...prev, description: e.target.value } : null)}
-                  className="rounded-lg text-sm min-h-[90px] border-border"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setEditingCourse(null)} className="rounded-lg text-xs font-semibold">
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !editingCourse?.title.trim()}
-                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
-              >
-                {loading ? "Salvando..." : "Salvar Alterações"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* Dialog Criar Módulo */}
       <Dialog open={openCreateModule} onOpenChange={setOpenCreateModule}>
         <DialogContent className="sm:max-w-[400px] rounded-xl p-6 bg-card border-border shadow-lg">
@@ -848,51 +823,6 @@ export function CoursesView() {
                 className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
               >
                 {loading ? "Criando..." : "Salvar Módulo"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Renomear Módulo (FE-55) */}
-      <Dialog open={Boolean(editingModule)} onOpenChange={(open) => !open && setEditingModule(null)}>
-        <DialogContent className="sm:max-w-[400px] rounded-xl p-6 bg-card border-border shadow-lg">
-          <form onSubmit={handleEditModule}>
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold flex items-center gap-2 font-heading text-foreground">
-                <Pencil className="w-5 h-5 text-primary" />
-                Renomear Módulo
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Altere o nome deste módulo temático.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 my-5">
-              <div>
-                <label htmlFor="edit-module-title" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Nome do Módulo *
-                </label>
-                <Input
-                  id="edit-module-title"
-                  required
-                  value={editingModule?.title || ""}
-                  onChange={(e) => setEditingModule(prev => prev ? { ...prev, title: e.target.value } : null)}
-                  className="rounded-lg h-10 text-sm border-border"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setEditingModule(null)} className="rounded-lg text-xs font-semibold">
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !editingModule?.title.trim()}
-                className="rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
-              >
-                {loading ? "Salvando..." : "Salvar Alterações"}
               </Button>
             </DialogFooter>
           </form>
@@ -964,27 +894,27 @@ export function CoursesView() {
               </div>
 
               <div>
-                <label htmlFor="edit-lesson-content-url" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <label htmlFor="lesson-content-url-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Link do conteúdo (http ou https)
                 </label>
                 <Input
-                  id="edit-lesson-content-url"
+                  id="lesson-content-url-input"
                   type="url"
                   placeholder="https://www.youtube.com/watch?v=..."
-                  value={editingLesson?.contentUrl || ""}
-                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, contentUrl: e.target.value } : null)}
+                  value={lessonContentUrl}
+                  onChange={(e) => setLessonContentUrl(e.target.value)}
                   className="h-10 rounded-lg text-xs"
                 />
               </div>
 
               <div>
-                <label htmlFor="edit-lesson-description" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <label htmlFor="lesson-description-input" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                   Descrição da aula
                 </label>
                 <Textarea
-                  id="edit-lesson-description"
-                  value={editingLesson?.description || ""}
-                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  id="lesson-description-input"
+                  value={lessonDescription}
+                  onChange={(e) => setLessonDescription(e.target.value)}
                   className="rounded-lg text-xs min-h-[70px]"
                 />
               </div>
@@ -1087,6 +1017,32 @@ export function CoursesView() {
                     <HelpCircle className="w-3.5 h-3.5" /> Quiz
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="edit-lesson-content-url" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Link do conteúdo (http ou https)
+                </label>
+                <Input
+                  id="edit-lesson-content-url"
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={editingLesson?.contentUrl || ""}
+                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, contentUrl: e.target.value } : null)}
+                  className="h-10 rounded-lg text-xs"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="edit-lesson-description" className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Descrição da aula
+                </label>
+                <Textarea
+                  id="edit-lesson-description"
+                  value={editingLesson?.description || ""}
+                  onChange={(e) => setEditingLesson(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="rounded-lg text-xs min-h-[70px]"
+                />
               </div>
 
               {allProjects.length > 0 && (

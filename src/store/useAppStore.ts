@@ -571,7 +571,7 @@ interface AppState {
   createCourseModule: (courseId: string, title: string) => Promise<void>;
   updateCourseModule: (courseId: string, moduleId: string, title: string) => Promise<boolean>;
   deleteCourseModule: (courseId: string, moduleId: string) => Promise<void>;
-  createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string) => Promise<void>;
+  createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string, extra?: { description?: string; contentUrl?: string }) => Promise<boolean>;
   updateCourseLesson: (courseId: string, moduleId: string, lessonId: string, data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ"; published?: boolean; projectId?: number; description?: string; contentUrl?: string }) => Promise<boolean>;
   deleteCourseLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
@@ -580,6 +580,7 @@ interface AppState {
   publishCourse: (courseId: string) => Promise<boolean>;
   unpublishCourse: (courseId: string) => Promise<boolean>;
   exportCourseCsv: (courseId: string) => Promise<boolean>;
+  exportCourseJson: (courseId: string) => Promise<boolean>;
 
   // Estúdio de roteiro (exportação e versões)
   exportScript: (cardId: string) => Promise<ScriptExportData | null>;
@@ -1395,20 +1396,25 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      createCourseLesson: async (courseId, moduleId, title, type = "VIDEO", projectId) => {
+      createCourseLesson: async (courseId, moduleId, title, type = "VIDEO", projectId, extra) => {
         const teamId = get().activeTeamId;
-        if (!teamId) return;
+        if (!teamId) return false;
 
         try {
-          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons`, {
+          const body: Record<string, unknown> = {
             title,
             type,
             projectId: projectId ? Number(projectId) : undefined
-          });
+          };
+          if (extra?.description?.trim()) body.description = extra.description.trim();
+          if (extra?.contentUrl?.trim()) body.contentUrl = extra.contentUrl.trim();
+          await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/modules/${moduleId}/lessons`, body);
           toast.success("Aula adicionada!");
           await get().fetchCourseDetails(courseId);
+          return true;
         } catch (error) {
           notifyError(error, "Erro ao adicionar aula");
+          return false;
         }
       },
 
@@ -1533,6 +1539,20 @@ export const useAppStore = create<AppState>()(
         try {
           await apiDownload(`/api/v1/teams/${teamId}/courses/${courseId}/export?format=csv`, `curso-${courseId}.csv`);
           toast.success("Estrutura do curso exportada em CSV com sucesso!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao exportar o curso");
+          return false;
+        }
+      },
+
+      exportCourseJson: async (courseId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+
+        try {
+          await apiDownload(`/api/v1/teams/${teamId}/courses/${courseId}/export?format=json`, `curso-${courseId}.json`);
+          toast.success("Estrutura do curso exportada em JSON com sucesso!");
           return true;
         } catch (error) {
           notifyError(error, "Erro ao exportar o curso");

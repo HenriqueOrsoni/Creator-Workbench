@@ -517,6 +517,51 @@ describe('Store Zustand: dados vêm sempre da API', () => {
       expect(await useAppStore.getState().exportCourseCsv('5')).toBe(false);
       expect(toast.error).toHaveBeenCalledWith('Exportação indisponível.');
     });
+
+    it('exportCourseJson baixa de GET .../export?format=json; com erro mostra a mensagem', async () => {
+      download.mockResolvedValueOnce(undefined);
+      expect(await useAppStore.getState().exportCourseJson('5')).toBe(true);
+      expect(download).toHaveBeenCalledWith(`${T}/courses/5/export?format=json`, 'curso-5.json');
+
+      download.mockRejectedValueOnce(new Error('Exportação indisponível.'));
+      expect(await useAppStore.getState().exportCourseJson('5')).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Exportação indisponível.');
+    });
+
+    it('createCourseLesson envia description e contentUrl e devolve true; erro devolve false com a mensagem do servidor', async () => {
+      mockRoutes({
+        [`POST ${T}/courses/5/modules/51/lessons`]: { id: 70, title: 'Aula' },
+        [`GET ${T}/courses/5`]: { id: 5, teamId: 10, title: 'C', modules: [] },
+      });
+      expect(await useAppStore.getState().createCourseLesson('5', '51', 'Aula', 'VIDEO', undefined, {
+        description: ' Resumo ', contentUrl: 'https://exemplo.com/v',
+      })).toBe(true);
+      expect(api).toHaveBeenCalledWith('POST', `${T}/courses/5/modules/51/lessons`, expect.objectContaining({
+        title: 'Aula', description: 'Resumo', contentUrl: 'https://exemplo.com/v',
+      }));
+
+      mockRoutes({ [`POST ${T}/courses/5/modules/51/lessons`]: new Error('O link deve começar com http:// ou https://.') });
+      expect(await useAppStore.getState().createCourseLesson('5', '51', 'Aula', 'VIDEO', undefined, { contentUrl: 'ftp://x' })).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('O link deve começar com http:// ou https://.');
+    });
+
+    it('updateCourse (PATCH) e updateCourseModule: sucesso devolve true; erro devolve false com a mensagem', async () => {
+      mockRoutes({
+        [`PATCH ${T}/courses/5`]: { id: 5 },
+        [`GET ${T}/courses`]: [],
+        [`PATCH ${T}/courses/5/modules/51`]: { id: 51 },
+        [`GET ${T}/courses/5`]: { id: 5, teamId: 10, title: 'C', modules: [] },
+      });
+      expect(await useAppStore.getState().updateCourse('5', 'Novo', '')).toBe(true);
+      expect(api).toHaveBeenCalledWith('PATCH', `${T}/courses/5`, { title: 'Novo', description: '' });
+      expect(await useAppStore.getState().updateCourseModule('5', '51', 'Mod')).toBe(true);
+
+      mockRoutes({ [`PATCH ${T}/courses/5`]: new Error('Sem permissão.'), [`PATCH ${T}/courses/5/modules/51`]: new Error('Título inválido.') });
+      expect(await useAppStore.getState().updateCourse('5', 'Novo', '')).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Sem permissão.');
+      expect(await useAppStore.getState().updateCourseModule('5', '51', 'Mod')).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Título inválido.');
+    });
   });
 
   describe('Materiais, resumo, revisão, alertas e convites (sem sucesso falso)', () => {
