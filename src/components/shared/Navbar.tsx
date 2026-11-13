@@ -10,7 +10,7 @@ import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
 import { TeamSwitcher } from "./TeamSwitcher";
 import { useAppStore } from "@/store/useAppStore";
-import { deleteCookie, clearPersistedTeam } from "@/lib/api";
+import { logout } from "@/lib/session";
 import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
 import { formatLocalDate } from "@/lib/dates";
@@ -58,16 +58,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const overdueCount = alerts.filter(a => a.type === "CARD_OVERDUE" || a.type === "TASK_OVERDUE").length;
   const totalAlerts = alerts.length;
 
-  const handleLogout = () => {
-    // Limpa a equipe ativa guardada antes de qualquer nova busca (outro usuário pode entrar em seguida)
-    resetStore();
-    clearPersistedTeam();
-    deleteCookie("creator_auth_token");
-    deleteCookie("creator_user_id");
-    if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
-      window.location.href = "/login";
-    }
-  };
+  const handleLogout = () => logout();
 
   return (
     <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-40 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">

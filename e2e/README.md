@@ -52,3 +52,11 @@ para **Agencia** logo depois de cria-las, **pela rota do administrador do sistem
 - Specs: `m4-collab.spec.ts` (alertas, equipe, convites, conta, redirect) e `m5-plans.spec.ts` (plano, teste, 402, aviso, selo, Resumo IA).
   Os `test.fail` do QA M4/M5 (BF-M4-01, -02, -04 e BF-M5-01, -02) viraram specs normais depois das correcoes (branch v3/fe-qa45-fixes).
 - Backend extra: `APP_ADMIN_EMAILS` (acima); frontend com as flags ligadas (padrao).
+
+## Membros da equipe nos specs (decisao 22 do backend)
+
+`POST /api/v1/teams/{t}/members` nao adiciona mais ninguem: cria um **convite** (200 com InviteResponse; so o aceite cria a participacao).
+Por isso o harness cria a participacao **direto no banco** com `sqlAddMember(teamId, email, papel)` (`e2e/support/helpers.ts`; o `seed.mjs` faz o mesmo
+com `INSERT INTO team_members`). Escolha: SQL em vez de "convidar e aceitar pela API", porque e mais rapido e nao depende do e-mail capturado.
+O fluxo real de convite e aceite continua coberto por `m4-collab.spec.ts` (usa o sink de e-mail). Precisa de `MYSQL_BIN` e `MYSQL_PWD`.
+Na tela existe so uma forma de adicionar pessoas: a aba **Convites** da gestao da equipe.

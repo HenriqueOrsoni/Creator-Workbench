@@ -78,7 +78,7 @@ describe('QA M4: /convite com outra conta conectada', () => {
     cookie.mockImplementation((name: string) => (name === 'creator_user_id' ? '5' : 'tok'));
   });
 
-  it('mostra a conta conectada e, se for outra, oferece sair e bloqueia o aceite', async () => {
+  it('mostra a conta conectada e, se for outra, oferece sair; o aceite continua habilitado (o servidor decide) e o token do convite fica na sessão', async () => {
     api.mockImplementation((_m: string, path: string) =>
       Promise.resolve(path.startsWith('/api/v1/users/') ? { id: 5, email: 'outra@x.com' } : invite));
     render(<ConviteContent />);
@@ -86,6 +86,7 @@ describe('QA M4: /convite com outra conta conectada', () => {
     expect(screen.getByText(/não é a conta conectada/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /aceitar convite/i })).toBeEnabled();
     await userEvent.click(screen.getByRole('button', { name: /sair e entrar com outra conta/i }));
+    expect(window.sessionStorage.getItem('creator_invite_token')).toBe('tok-1');
     expect(apiModule.deleteCookie).toHaveBeenCalledWith('creator_auth_token');
     expect(apiModule.deleteCookie).toHaveBeenCalledWith('creator_user_id');
   });

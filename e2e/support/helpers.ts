@@ -1,4 +1,5 @@
 import { expect, type Page, type Locator } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 
 export const API = process.env.API_URL ?? "http://localhost:8080";
 export const APP = process.env.APP_URL ?? "http://localhost:3000";
@@ -192,6 +193,18 @@ export async function apiSetPlan(teamId: number | string, plan: "GRATUITO" | "SO
  * A equipe e movida para AGENCIA logo depois de criada (sem limites; e libera o dono a criar outras equipes).
  * Use `plan: "GRATUITO"` para ficar no plano de entrada e testar os limites.
  */
+/**
+ * Cria a participacao de um usuario na equipe direto no banco de testes (db_tcc_e2e).
+ * Desde a decisao 22 do backend, `POST /teams/{t}/members` so envia um convite (nao cria membro);
+ * por isso o harness insere a linha em team_members. Precisa de MYSQL_BIN e MYSQL_PWD, como o seed.
+ */
+export function sqlAddMember(teamId: number, email: string, role: "ADMIN" | "CREATOR" | "REVIEWER") {
+  const db = process.env.E2E_DB ?? "db_tcc_e2e";
+  if (db === "db_tcc") throw new Error("Recusado: nunca em db_tcc.");
+  const statement = `INSERT INTO team_members (team_id, user_id, role, joined_at) SELECT ${Number(teamId)}, u.id, '${role}', UTC_TIMESTAMP() FROM users u WHERE u.email = '${email.replace(/'/g, "")}' AND NOT EXISTS (SELECT 1 FROM team_members m WHERE m.team_id = ${Number(teamId)} AND m.user_id = u.id);`;
+  execFileSync(process.env.MYSQL_BIN ?? "mysql", ["-uroot", db], { input: statement, env: process.env });
+}
+
 export async function apiCreateTeam(name: string, owner: UserKey = "ana", plan: "GRATUITO" | "SOLO" | "PRO" | "AGENCIA" = "AGENCIA") {
   const { token } = await apiLogin(owner);
   const r = await api(token, "POST", "/api/v1/teams", { name });
@@ -201,8 +214,8 @@ export async function apiCreateTeam(name: string, owner: UserKey = "ana", plan: 
     teamCache.set(`${owner}:${name}`, r.body.id);
     return r.body.id as number;
   }
-  await api(token, "POST", `/api/v1/teams/${r.body.id}/members`, { email: USERS.caio.email, role: "CREATOR" });
-  await api(token, "POST", `/api/v1/teams/${r.body.id}/members`, { email: USERS.rui.email, role: "REVIEWER" });
+  sqlAddMember(r.body.id, USERS.caio.email, "CREATOR");
+  sqlAddMember(r.body.id, USERS.rui.email, "REVIEWER");
   teamCache.set(`${owner}:${name}`, r.body.id);
   return r.body.id as number;
 }

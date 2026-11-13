@@ -50,7 +50,9 @@ await setPlan(beta.id, "AGENCIA");
 async function ensureMember(token, teamId, email, role) {
   const members = await call("GET", `/api/v1/teams/${teamId}/members`, token);
   if (members.some((m) => (m.email ?? "").toLowerCase() === email)) return;
-  await call("POST", `/api/v1/teams/${teamId}/members`, token, { email, role });
+  // POST /members agora so cria convite (decisao 22): a participacao e inserida direto no banco de testes
+  const stmt = `INSERT INTO team_members (team_id, user_id, role, joined_at) SELECT ${Number(teamId)}, u.id, '${role}', UTC_TIMESTAMP() FROM users u WHERE u.email = '${email}';`;
+  execFileSync(MYSQL, ["-uroot", DB], { input: stmt, env: process.env });
 }
 await ensureMember(ana, alfa.id, E("caio.criador"), "CREATOR");
 await ensureMember(ana, alfa.id, E("rui.revisor"), "REVIEWER");

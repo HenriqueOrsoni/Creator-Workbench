@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   loginAs, uniq, expectToast, toast, apiCreateTeam, apiCreateProject, apiSetPlan, apiLogin, teamIdOf, api, USERS, SHOTS, boardCard, openTab,
-  inboxCard, apiCreateIdea,
+  inboxCard, apiCreateIdea, sqlAddMember,
 } from "./support/helpers";
 import { apiRegister, sql } from "./support/mail";
 import { loginSession, apiTeams, openTeamDialog } from "./support/session";
@@ -41,8 +41,8 @@ test.describe("M5 pagina do plano (FT-54)", () => {
     team = uniq("M5 Acima do limite");
     teamId = (await api(owner.token, "POST", "/api/v1/teams", { name: team })).body.id;
     await apiSetPlan(teamId, "AGENCIA");
-    await api(owner.token, "POST", `/api/v1/teams/${teamId}/members`, { email: USERS.caio.email, role: "CREATOR" });
-    await api(owner.token, "POST", `/api/v1/teams/${teamId}/members`, { email: USERS.rui.email, role: "REVIEWER" });
+    sqlAddMember(teamId, USERS.caio.email, "CREATOR");
+    sqlAddMember(teamId, USERS.rui.email, "REVIEWER");
     for (let i = 1; i <= 3; i++) {
       const idea = await api(owner.token, "POST", `/api/v1/teams/${teamId}/ideas`, { title: uniq(`Projeto ${i}`), description: "d" });
       const c = await api(owner.token, "POST", `/api/v1/teams/${teamId}/cards/${idea.body.id}/convert`, { targetAudience: "Estudantes", pedagogicalObjective: "Aprender os fundamentos do tema" });
@@ -146,6 +146,7 @@ test.describe("M5 pagina do plano (FT-54)", () => {
     const inv = await api(token, "POST", `/api/v1/teams/${teamId}/invites`, { email: `limite.${Date.now().toString(36)}.e2e@creatorworkbench.test`, role: "CREATOR" });
     expect(inv.status).toBe(402);
     expect(inv.body.message).toMatch(/plano/i);
+    // POST /members agora tambem so cria convite (decisao 22): sem vaga no plano continua 402
     const add = await api(token, "POST", `/api/v1/teams/${teamId}/members`, { email: USERS.bia.email, role: "CREATOR" });
     expect(add.status).toBe(402);
     expect(((await api(token, "GET", `/api/v1/teams/${teamId}/members`)).body as any[]).length).toBe(before);

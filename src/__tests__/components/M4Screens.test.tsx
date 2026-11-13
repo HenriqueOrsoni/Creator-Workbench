@@ -236,9 +236,10 @@ describe('M4: segurança da conta', () => {
     const cur = screen.getByPlaceholderText(/senha atual/i);
     fireEvent.change(cur, { target: { value: 'antiga1' } });
     fireEvent.change(screen.getByPlaceholderText(/nova senha/i), { target: { value: 'nova123' } });
-    api.mockResolvedValueOnce(null);
+    api.mockResolvedValueOnce({ token: 'jwt-novo' });
     await userEvent.click(screen.getByRole('button', { name: /alterar senha/i }));
     await waitFor(() => expect(api).toHaveBeenCalledWith('PUT', '/api/v1/users/123/password', { currentPassword: 'antiga1', newPassword: 'nova123' }));
+    await waitFor(() => expect(apiModule.setCookie).toHaveBeenCalledWith('creator_auth_token', 'jwt-novo', 86400));
     await waitFor(() => expect(toast.success).toHaveBeenCalled());
     expect(cur).toHaveValue('');
   });
@@ -248,9 +249,11 @@ describe('M4: segurança da conta', () => {
     fireEvent.change(screen.getByPlaceholderText(/senha atual/i), { target: { value: 'errada' } });
     fireEvent.change(screen.getByPlaceholderText(/nova senha/i), { target: { value: 'nova123' } });
     api.mockRejectedValueOnce(err('Senha atual incorreta.', 400));
+    (apiModule.setCookie as jest.Mock).mockClear();
     await userEvent.click(screen.getByRole('button', { name: /alterar senha/i }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Senha atual incorreta.'));
     expect(toast.success).not.toHaveBeenCalled();
+    expect(apiModule.setCookie).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText(/nova senha/i)).toHaveValue('nova123');
   });
 
