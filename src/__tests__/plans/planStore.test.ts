@@ -103,6 +103,17 @@ describe('erro 402 (limite do plano)', () => {
     off();
   });
 
+  it('um 402 recarrega o plano da equipe (uso desatualizado)', async () => {
+    api.mockImplementation((method: string, path: string) =>
+      method === 'GET' && path === '/api/v1/teams/7/plan'
+        ? Promise.resolve(planDto({ usage: { members: 1, activeProjects: 3, courses: 0, storageBytes: 0 } }))
+        : Promise.reject(apiError('Limite atingido.', 402)));
+    await useAppStore.getState().createBoardCard({ title: 'Projeto' } as never);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(api).toHaveBeenCalledWith('GET', '/api/v1/teams/7/plan');
+    expect(useAppStore.getState().teamPlan?.usage.activeProjects).toBe(3);
+  });
+
   it('outros erros não ganham a ação', async () => {
     api.mockRejectedValue(apiError('Título inválido.', 400));
     await useAppStore.getState().createBoardCard({ title: 'x' } as never);

@@ -59,11 +59,20 @@ export function PlanView() {
     fetchPlans();
   }, [fetchPlans]);
 
-  React.useEffect(() => {
-    if (activeTeamId) fetchTeamPlan();
-  }, [activeTeamId, fetchTeamPlan]);
+  const [loadFailed, setLoadFailed] = React.useState(false);
 
-  const showTrial = canManagePlan(activeTeam?.role) && Boolean(teamPlan?.trialAvailable);
+  const loadPlan = React.useCallback(async () => {
+    setLoadFailed(false);
+    const result = await fetchTeamPlan();
+    if (!result) setLoadFailed(true);
+  }, [fetchTeamPlan]);
+
+  React.useEffect(() => {
+    if (activeTeamId) loadPlan();
+  }, [activeTeamId, loadPlan]);
+
+  const showTrial =
+    canManagePlan(activeTeam?.role) && teamPlan?.trialAvailable === true && teamPlan.plan === "GRATUITO";
 
   const handleTrial = async (plan: TrialPlan) => {
     setStarting(plan);
@@ -102,6 +111,13 @@ export function PlanView() {
               Resumo automático: {teamPlan.limits.automaticSummary ? "disponível" : "indisponível neste plano"}.
             </p>
           </>
+        ) : loadFailed ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs text-destructive">Não foi possível carregar o plano da equipe.</p>
+            <Button size="sm" variant="outline" className="text-xs rounded-lg" onClick={loadPlan}>
+              Tentar novamente
+            </Button>
+          </div>
         ) : (
           <p className="text-xs text-muted-foreground">Carregando plano...</p>
         )}

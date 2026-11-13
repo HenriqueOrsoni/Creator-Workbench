@@ -134,7 +134,12 @@ export function trialDaysLeft(plan: Pick<TeamPlan, "source" | "expiresAt">, now:
   if (plan.source !== "TRIAL" || !plan.expiresAt) return null;
   const end = new Date(plan.expiresAt).getTime();
   if (Number.isNaN(end)) return null;
-  return Math.ceil((end - now.getTime()) / 86_400_000);
+  // Compara dias do calendário local: o teste que acaba hoje à noite é "hoje", não "amanhã"
+  const startOf = (t: number) => {
+    const d = new Date(t);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  return Math.round((startOf(end) - startOf(now.getTime())) / 86_400_000);
 }
 
 export function trialEndsSoon(plan: Pick<TeamPlan, "source" | "expiresAt">, now: Date = new Date()): boolean {

@@ -368,6 +368,8 @@ function statusOf(error: unknown): number | undefined {
 
 function notifyError(error: unknown, fallback: string) {
   toastApiError(error, fallback);
+  // Limite do plano: o uso mudou ou está desatualizado. GET do plano nunca devolve 402, então não há laço.
+  if (statusOf(error) === 402) void useAppStore.getState().fetchTeamPlan();
 }
 
 function mapTask(t: ApiTaskDto): CardTask {
@@ -1882,7 +1884,7 @@ export const useAppStore = create<AppState>()(
           if (get().activeTeamId === teamId) set({ teamPlan: plan });
           return plan;
         } catch (error) {
-          notifyError(error, "Erro ao carregar o plano da equipe");
+          toastApiError(error, "Erro ao carregar o plano da equipe"); // sem refetch: evita laço em 402
           return null;
         }
       },

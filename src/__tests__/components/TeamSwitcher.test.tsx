@@ -72,4 +72,11 @@ describe('Fase 2 - TeamSwitcher Component', () => {
 
     expect(mockSetActiveTeamId).toHaveBeenCalledWith('2');
   });
+
+  it('mostra o selo com o nome do plano da equipe ativa', () => {
+    const base = useAppStore.getState().activeTeam!;
+    useAppStore.setState({ activeTeam: { ...base, plan: 'PRO' } });
+    render(<TeamSwitcher />);
+    expect(screen.getByTestId('team-plan-badge')).toHaveTextContent('Pro');
+  });
 });

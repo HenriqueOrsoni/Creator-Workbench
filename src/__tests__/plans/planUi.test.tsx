@@ -4,7 +4,7 @@ import { useAppStore, ProjectCard } from '@/store/useAppStore';
 import { PlanView } from '@/components/shared/PlanView';
 import { PlanBanner } from '@/components/shared/PlanBanner';
 import { CardTaskDialog } from '@/components/shared/CardTaskDialog';
-import { mapTeamPlan, planSourceLabel, trialEndsSoon } from '@/lib/plans';
+import { mapTeamPlan, planSourceLabel, trialEndsSoon, trialDaysLeft } from '@/lib/plans';
 import { canManagePlan } from '@/lib/roles';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
@@ -57,6 +57,22 @@ describe('botão "Testar por 14 dias"', () => {
     expect(canManagePlan(role)).toBe(false);
   });
 
+  it('ADMIN de equipe em plano pago não vê o botão mesmo com trialAvailable', () => {
+    setup('ADMIN', { plan: 'SOLO', planName: 'Solo', source: 'MANUAL', trialAvailable: true });
+    render(<PlanView />);
+    expect(screen.queryByRole('button', { name: 'Testar por 14 dias' })).not.toBeInTheDocument();
+  });
+
+  it('falha ao carregar o plano mostra erro e "Tentar novamente"', async () => {
+    setup('ADMIN');
+    const fetchTeamPlan = jest.fn().mockResolvedValue(null);
+    useAppStore.setState({ teamPlan: null, fetchTeamPlan });
+    render(<PlanView />);
+    expect(await screen.findByText(/Não foi possível carregar o plano/)).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' })); });
+    expect(fetchTeamPlan).toHaveBeenCalledTimes(2);
+  });
+
   it('clicar chama startTrial com o plano da linha', async () => {
     setup('ADMIN');
     const startTrial = jest.fn().mockResolvedValue(true);
@@ -106,6 +122,17 @@ describe('uso e limites', () => {
   it('textos de origem', () => {
     expect(planSourceLabel({ source: 'FREE', expiresAt: null })).toBe('Gratuito');
     expect(planSourceLabel({ source: 'MANUAL', expiresAt: '2026-12-31T12:00:00Z' })).toMatch(/^Ativado pelo administrador até /);
+  });
+});
+
+describe('dias do teste (calendário local)', () => {
+  const now = new Date(2026, 10, 13, 15, 0, 0);
+  const at = (d: Date) => ({ source: 'TRIAL' as const, expiresAt: d.toISOString() });
+  it('hoje, amanhã e em 3 dias', () => {
+    expect(trialDaysLeft(at(new Date(2026, 10, 13, 23, 0, 0)), now)).toBe(0);
+    expect(trialDaysLeft(at(new Date(2026, 10, 14, 1, 0, 0)), now)).toBe(1);
+    expect(trialDaysLeft(at(new Date(2026, 10, 16, 8, 0, 0)), now)).toBe(3);
+    expect(trialEndsSoon(at(new Date(2026, 10, 17, 8, 0, 0)), now)).toBe(false);
   });
 });
 

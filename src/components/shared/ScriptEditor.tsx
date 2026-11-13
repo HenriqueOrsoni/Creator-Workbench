@@ -402,9 +402,16 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
             <Sparkles size={13} className="text-primary" /> Resumo IA
           </Button>
           ) : (
-            <span data-testid="summary-plan-gate" className="text-xs text-muted-foreground px-2" title="Resumo IA">
-              Resumo IA: disponível nos planos Pro e Agência
-            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled
+              data-testid="summary-plan-gate"
+              title="Disponível nos planos Pro e Agência"
+              className="h-8 text-xs text-muted-foreground font-medium rounded-lg gap-1.5"
+            >
+              <Sparkles size={13} /> Resumo IA
+            </Button>
           )}
 
           <Button
