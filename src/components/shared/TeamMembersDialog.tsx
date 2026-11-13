@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Users, UserPlus, Trash2, Mail, Send, AlertTriangle } from "lucide-react";
+import { Users, Trash2, Send, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,6 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
     activeTeam,
     teamMembers,
     fetchTeamMembers,
-    addTeamMember,
     updateTeamMemberRole,
     removeTeamMember,
     teamInvites,
@@ -42,9 +41,6 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
   } = useAppStore();
 
   const [activeTab, setActiveTab] = useState("membros");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"ADMIN" | "CREATOR" | "REVIEWER">("CREATOR");
-  const [loading, setLoading] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
 
   // Gestão de Equipe (FE-26)
@@ -68,19 +64,6 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
   }, [open, activeTeam, fetchTeamMembers, fetchTeamInvites]);
 
   const isAdmin = canManageTeam(activeTeam?.role);
-
-  const handleAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    setLoading(true);
-    const success = await addTeamMember(email.trim(), role);
-    setLoading(false);
-    if (success) {
-      setEmail("");
-      setRole("CREATOR");
-    }
-  };
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,45 +172,10 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
 
             {/* Aba 1: Membros */}
             <TabsContent value="membros" className="space-y-3 pt-2">
-              {/* Formulário de Adicionar Membro (Visível para Admins) */}
-              {isAdmin && (
-                <form onSubmit={handleAddMember} className="p-3.5 rounded-lg bg-muted/30 border border-border space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground">
-                    <UserPlus className="w-3.5 h-3.5 text-primary" />
-                    Adicionar Colaborador Já Cadastrado
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div className="sm:col-span-2 relative">
-                      <Mail className="w-3.5 h-3.5 absolute left-3 top-3 text-muted-foreground" />
-                      <Input
-                        id="member-email-input"
-                        type="email"
-                        required
-                        placeholder="e-mail do colaborador"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="rounded-lg h-9 pl-9 text-xs border-border bg-background"
-                      />
-                    </div>
-                    <select
-                      id="member-role-select"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value as "ADMIN" | "CREATOR" | "REVIEWER")}
-                      className="h-9 rounded-lg px-2 text-xs bg-background border border-border text-foreground font-medium"
-                    >
-                      <option value="CREATOR">Criador</option>
-                      <option value="REVIEWER">Revisor</option>
-                      <option value="ADMIN">Administrador</option>
-                    </select>
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={loading || !email.trim()}
-                    className="w-full h-8 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 shadow-xs"
-                  >
-                    {loading ? "Adicionando..." : "Adicionar Membro"}
-                  </Button>
-                </form>
+              {isAdmin && FEATURES.invites && (
+                <p className="text-[11px] text-muted-foreground">
+                  Para adicionar pessoas, envie um convite pela aba Convites. O membro entra na equipe quando aceitar.
+                </p>
               )}
 
               {/* Lista de Membros */}

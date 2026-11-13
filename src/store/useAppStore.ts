@@ -526,7 +526,6 @@ interface AppState {
   setActiveTeamId: (teamId: string) => Promise<void>;
   createTeam: (name: string) => Promise<Team | null>;
   fetchTeamMembers: (teamId?: string) => Promise<void>;
-  addTeamMember: (email: string, role: TeamRoleName) => Promise<boolean>;
   updateTeamMemberRole: (memberId: string, role: TeamRoleName) => Promise<boolean>;
   removeTeamMember: (memberId: string) => Promise<boolean>;
 
@@ -849,22 +848,6 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           // Carga em segundo plano: sem aviso na tela, a lista fica vazia
           console.error("Erro ao carregar membros da equipe:", error);
-        }
-      },
-
-      addTeamMember: async (email, role) => {
-        const teamId = get().activeTeamId;
-        if (!teamId) return false;
-
-        try {
-          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/members`, { email, role });
-          if (!raw) return false;
-          toast.success("Membro adicionado à equipe com sucesso!");
-          await get().fetchTeamMembers(teamId);
-          return true;
-        } catch (error) {
-          notifyError(error, "Erro ao adicionar membro");
-          return false;
         }
       },
 
@@ -1999,7 +1982,7 @@ export const useAppStore = create<AppState>()(
         try {
           const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/invites`, { email, role });
           if (!raw) return false;
-          toast.success(`Convite enviado para ${email}!`);
+          toast.success(`Convite enviado para ${email}.`);
           await get().fetchTeamInvites();
           return true;
         } catch (error) {

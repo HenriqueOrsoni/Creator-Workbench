@@ -6,7 +6,8 @@ import { Zap, CheckCircle2, AlertCircle, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { apiRequest, getCookie, deleteCookie, clearPersistedTeam } from "@/lib/api";
+import { apiRequest, getCookie } from "@/lib/api";
+import { logout } from "@/lib/session";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -41,7 +42,6 @@ export function ConviteContent() {
   const setActiveTeamId = useAppStore((state) => state.setActiveTeamId);
 
   const isLoggedIn = Boolean(getCookie("creator_auth_token"));
-  const resetStore = useAppStore((state) => state.resetStore);
   // Conta que está conectada agora (pode não ser a do convite)
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
@@ -66,15 +66,7 @@ export function ConviteContent() {
   );
 
   // Sai da conta atual e volta para entrar com a conta do convite (o token fica na sessão da aba)
-  const handleSwitchAccount = () => {
-    resetStore();
-    clearPersistedTeam();
-    deleteCookie("creator_auth_token");
-    deleteCookie("creator_user_id");
-    if (process.env.NODE_ENV !== "test") {
-      window.location.href = `/login?redirect=${encodeURIComponent("/convite")}`;
-    }
-  };
+  const handleSwitchAccount = () => logout("/convite");
 
   useEffect(() => {
     let found = queryToken;

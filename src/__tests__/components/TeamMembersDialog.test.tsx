@@ -5,7 +5,8 @@ import { useAppStore, TeamMember } from '@/store/useAppStore';
 
 describe('Fase 3 - TeamMembersDialog Component', () => {
   const mockFetchTeamMembers = jest.fn();
-  const mockAddTeamMember = jest.fn().mockResolvedValue(true);
+  const mockCreateTeamInvite = jest.fn().mockResolvedValue(true);
+  const mockFetchTeamInvites = jest.fn();
   const mockUpdateTeamMemberRole = jest.fn().mockResolvedValue(true);
   const mockRemoveTeamMember = jest.fn().mockResolvedValue(true);
 
@@ -40,7 +41,9 @@ describe('Fase 3 - TeamMembersDialog Component', () => {
       },
       teamMembers: mockMembers,
       fetchTeamMembers: mockFetchTeamMembers,
-      addTeamMember: mockAddTeamMember,
+      createTeamInvite: mockCreateTeamInvite,
+      fetchTeamInvites: mockFetchTeamInvites,
+      teamInvites: [],
       updateTeamMemberRole: mockUpdateTeamMemberRole,
       removeTeamMember: mockRemoveTeamMember,
     });
@@ -55,17 +58,18 @@ describe('Fase 3 - TeamMembersDialog Component', () => {
     expect(screen.getAllByText('Criador')[0]).toBeInTheDocument();
   });
 
-  it('permite que administradores convidem novo membro via formulário', async () => {
+  it('há uma única forma de adicionar pessoas: o convite por e-mail (sem formulário de adicionar membro)', async () => {
     render(<TeamMembersDialog open={true} onOpenChange={jest.fn()} />);
 
-    const emailInput = screen.getByPlaceholderText(/e-mail do colaborador/i);
-    fireEvent.change(emailInput, { target: { value: 'novo@colaborador.com' } });
+    expect(screen.queryByPlaceholderText(/e-mail do colaborador/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /adicionar membro/i })).not.toBeInTheDocument();
 
-    const submitBtn = screen.getByRole('button', { name: /adicionar membro/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('tab', { name: /convites/i }));
+    fireEvent.change(screen.getByPlaceholderText(/e-mail do convidado/i), { target: { value: 'novo@colaborador.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /enviar convite por e-mail/i }));
 
     await waitFor(() => {
-      expect(mockAddTeamMember).toHaveBeenCalledWith('novo@colaborador.com', 'CREATOR');
+      expect(mockCreateTeamInvite).toHaveBeenCalledWith('novo@colaborador.com', 'CREATOR');
     });
   });
 });

@@ -25,7 +25,7 @@ import {
 import { Input } from "../ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { User, Mail, ShieldAlert, Key, Settings2, CheckCircle2 } from "lucide-react";
-import { apiRequest, getCookie, deleteCookie } from "@/lib/api";
+import { apiRequest, getCookie, setCookie, deleteCookie } from "@/lib/api";
 import { toast } from "sonner";
 import { FEATURES } from "@/lib/features";
 
@@ -139,10 +139,16 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
 
     setIsChangingPassword(true);
     try {
-      await apiRequest("PUT", `/api/v1/users/${userId}/password`, {
+      const res = await apiRequest("PUT", `/api/v1/users/${userId}/password`, {
         currentPassword,
         newPassword
       });
+      // A troca de senha encerra as outras sessões; o servidor devolve o token novo desta
+      if (res && typeof res.token === "string" && res.token) {
+        setCookie("creator_auth_token", res.token, 86400);
+        // Same lifetime as the new token, as login does, so both cookies expire together
+        setCookie("creator_user_id", String(userId), 86400);
+      }
       toast.success("Senha alterada com sucesso!");
       setCurrentPassword("");
       setNewPassword("");
