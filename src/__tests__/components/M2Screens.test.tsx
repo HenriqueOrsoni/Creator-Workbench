@@ -15,7 +15,6 @@ jest.mock('@/lib/api', () => ({
   registerApiHooks: jest.fn(),
 }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
-jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 
 import { toast } from 'sonner';
 

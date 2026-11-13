@@ -7,7 +7,6 @@ import { withRedirect } from '@/lib/redirect';
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('@/lib/api', () => ({ apiRequest: jest.fn(), setCookie: jest.fn(), getCookie: jest.fn() }));
 jest.mock('@/components/shared/ThemeToggle', () => ({ ThemeToggle: () => null }));
-jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 jest.mock('@/components/shared/PasswordRecoveryDialog', () => ({ PasswordRecoveryDialog: () => null }));
 
 const back = encodeURIComponent('/convite?token=abc');

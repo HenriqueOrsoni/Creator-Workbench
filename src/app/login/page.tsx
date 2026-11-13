@@ -6,7 +6,6 @@ import { Zap, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../components/shared/ThemeToggle";
-import { ThemeColorPicker } from "../../components/shared/ThemeColorPicker";
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -85,7 +84,6 @@ export default function LoginPage() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <ThemeColorPicker />
         </div>
       </header>
 

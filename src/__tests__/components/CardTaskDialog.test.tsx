@@ -200,6 +200,9 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
 
     it('Enter seguido de blur salva uma única vez; Esc seguido de blur não salva', async () => {
       render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+      // O Radix devolve o foco ao diálogo num timer logo após abrir; se isso acontecer com o campo
+      // já em edição, o blur fecha a edição. Deixa o foco inicial assentar antes de interagir.
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
       fireEvent.click(await screen.findByLabelText('Editar título da tarefa Gravar tela'));
       let input = await screen.findByLabelText('Título da tarefa Gravar tela');

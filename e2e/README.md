@@ -26,6 +26,7 @@ Alguns testes falham de proposito enquanto o bug correspondente existir (mensage
 - A suite faz mais de 100 logins em poucos minutos: com o limite padrao de `/api/auth` (por IP e por e-mail, 10 min) aparecem 429 espurios. Suba o backend com `APP_RATE_LIMIT_MAX_ATTEMPTS_PER_IP=100000` e `APP_RATE_LIMIT_MAX_ATTEMPTS=29` (o SEC-10 tenta 30 vezes).
 - `e2e/m2-content.spec.ts`: o teste do 503 real do resumo so roda com `SUMMARY_DOWN=1`; ele espera o servico da porta 8001 ser parado durante a execucao. Sem a variavel, fica ignorado (o 503 simulado roda sempre).
 - Os `[BUG]` da suite de M2 (abas sobrepostas e nome de arquivo comprido a 375 px) foram corrigidos e viraram specs de regressao.
+- Os `[BUG]` da suite de M3 (dialogos transparentes no tema claro e titulo da aula cortado a 375 px) foram corrigidos e viraram specs de regressao.
 
 ## Marco 5 (planos): como a suite lida com os limites
 

@@ -75,6 +75,31 @@ describe('api.ts: falha de rede, leituras repetidas e equipe guardada', () => {
     expect(gets.length).toBe(2);
   });
 
+  it('GET antigo que termina não remove a leitura mais nova da mesma chave', async () => {
+    const releases: Array<() => void> = [];
+    global.fetch = jest.fn().mockImplementation(async (_url: string, init: { method: string }) => {
+      if (init.method === 'GET') {
+        await new Promise<void>((r) => { releases.push(r); });
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    });
+    const getCalls = () => (global.fetch as jest.Mock).mock.calls.filter((c) => c[1].method === 'GET').length;
+
+    const older = apiRequest('GET', '/api/v1/teams/1/courses/5'); // leitura A, ainda pendente
+    await apiRequest('PATCH', '/api/v1/teams/1/courses/5', { title: 'Novo' }); // a escrita limpa o mapa
+    const newer = apiRequest('GET', '/api/v1/teams/1/courses/5'); // leitura B, entrada mais nova
+    await Promise.resolve();
+    expect(getCalls()).toBe(2);
+
+    releases[0](); // A termina primeiro
+    await older;
+
+    const joined = apiRequest('GET', '/api/v1/teams/1/courses/5'); // deve compartilhar a B
+    expect(getCalls()).toBe(2);
+    releases[1]();
+    await Promise.all([newer, joined]);
+  });
+
   it('POSTs iguais não são unidos', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: 1 }) });
 

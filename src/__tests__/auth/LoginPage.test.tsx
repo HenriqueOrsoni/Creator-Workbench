@@ -17,9 +17,6 @@ jest.mock('@/components/shared/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }));
 
-jest.mock('@/components/shared/ThemeColorPicker', () => ({
-  ThemeColorPicker: () => <div data-testid="theme-color-picker" />,
-}));
 
 describe('4.2 Componentes de Autenticação — LoginPage (FT-07)', () => {
   const mockPush = jest.fn();

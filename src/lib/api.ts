@@ -150,8 +150,9 @@ export async function apiRequest(method: string, path: string, body?: unknown, o
     const key = `${getCookie("creator_auth_token") ?? ""}|${path}`;
     const pending = inFlightGets.get(key);
     if (pending) return pending;
-    const request = performRequest(method, path, body).finally(() => {
-      inFlightGets.delete(key);
+    const request: Promise<unknown> = performRequest(method, path, body).finally(() => {
+      // Só remove a própria entrada: uma leitura mais nova da mesma chave deve continuar valendo
+      if (inFlightGets.get(key) === request) inFlightGets.delete(key);
     });
     inFlightGets.set(key, request);
     return request;

@@ -21,7 +21,7 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
   it('renderiza o botão trigger e abre o diálogo unificado ao ser clicado', () => {
     render(<CreateIdeaDialog />);
 
-    const triggerBtn = screen.getByRole('button', { name: /nova_ideia/i });
+    const triggerBtn = screen.getByRole('button', { name: /^nova ideia$/i });
     expect(triggerBtn).toBeInTheDocument();
 
     fireEvent.click(triggerBtn);
@@ -30,7 +30,7 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
 
   it('lista só as etiquetas que vieram do servidor', () => {
     render(<CreateIdeaDialog />);
-    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^nova ideia$/i }));
 
     const options = screen.getAllByRole('option').map(o => o.textContent);
     expect(options).toEqual(['Sem etiqueta', 'Tutorial', 'Podcast']);
@@ -40,7 +40,7 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
     mockCreateInboxIdea.mockResolvedValue({ id: '9' });
     render(<CreateIdeaDialog />);
 
-    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^nova ideia$/i }));
 
     fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Série sobre Inteligência Artificial' } });
     fireEvent.change(screen.getByPlaceholderText(/anotações rápidas/i), { target: { value: 'Gravar 5 episódios detalhando arquitetura e modelos de linguagem.' } });
@@ -65,7 +65,7 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
   it('sem etiqueta escolhida envia tagId indefinido', async () => {
     mockCreateInboxIdea.mockResolvedValue({ id: '9' });
     render(<CreateIdeaDialog />);
-    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^nova ideia$/i }));
 
     fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Ideia sem etiqueta' } });
     fireEvent.submit(screen.getByRole('button', { name: /guardar na inbox/i }).closest('form')!);
@@ -78,7 +78,7 @@ describe('TF-08 - CreateIdeaDialog Component Tests (BF-01 & BF-02)', () => {
   it('quando o servidor recusa a ideia, o diálogo continua aberto com o que foi digitado', async () => {
     mockCreateInboxIdea.mockResolvedValue(null);
     render(<CreateIdeaDialog />);
-    fireEvent.click(screen.getByRole('button', { name: /nova_ideia/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^nova ideia$/i }));
 
     fireEvent.change(screen.getByPlaceholderText(/minicurso sobre algoritmos/i), { target: { value: 'Ideia que falha' } });
     fireEvent.submit(screen.getByRole('button', { name: /guardar na inbox/i }).closest('form')!);
