@@ -125,7 +125,7 @@ test.describe("M2 materiais", () => {
     await expect(dialog.getByText("Relatório pedagógico ção.txt", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("tab", { name: "Materiais (1)" })).toBeVisible();
 
-    await dialog.locator('input[type="file"]').setInputFiles({ name: "Imagem.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]) });
+    await dialog.locator('input[type="file"]').setInputFiles({ name: "Imagem.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]) });
     await expect(dialog.getByText("Imagem.png", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("tab", { name: "Materiais (2)" })).toBeVisible();
     // colunas: tipo, tamanho, quem enviou e data

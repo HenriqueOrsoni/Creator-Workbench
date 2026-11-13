@@ -329,11 +329,11 @@ export function CoursesView() {
   const getLessonIcon = (type: string) => {
     switch (type) {
       case "TEXT":
-        return <FileText className="w-3.5 h-3.5 text-sky-500" />;
+        return <FileText className="w-3.5 h-3.5 shrink-0 text-sky-500" />;
       case "QUIZ":
-        return <HelpCircle className="w-3.5 h-3.5 text-amber-500" />;
+        return <HelpCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />;
       default:
-        return <Video className="w-3.5 h-3.5 text-emerald-500" />;
+        return <Video className="w-3.5 h-3.5 shrink-0 text-emerald-500" />;
     }
   };
 
@@ -687,9 +687,9 @@ export function CoursesView() {
                             return (
                               <div
                                 key={lesson.id}
-                                className="flex items-center justify-between p-2.5 rounded-md bg-card border border-border shadow-2xs"
+                                className="flex flex-wrap items-center justify-between gap-1.5 p-2.5 rounded-md bg-card border border-border shadow-2xs"
                               >
-                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                <div className="flex items-center gap-2 min-w-[10rem] flex-1">
                                   {getLessonIcon(lesson.type)}
                                   <div className="min-w-0">
                                     <div className="text-xs font-medium truncate text-foreground">
@@ -715,7 +715,7 @@ export function CoursesView() {
                                   </div>
                                 </div>
                                 {canEditCourses && (
-                                  <div className="flex items-center gap-1 shrink-0">
+                                  <div className="flex items-center gap-1 shrink-0 ml-auto">
                                     {FEATURES.courseEdit && (
 <Button
                                       variant="ghost"
@@ -1276,11 +1276,6 @@ export function CoursesView() {
                 <div className="w-2 h-2 rounded-full bg-destructive mt-1.5 shrink-0" />
                 <div>
                   <p className="font-semibold">{prob.message}</p>
-                  {prob.titles.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {prob.titles.join(", ")}
-                    </p>
-                  )}
                 </div>
               </div>
             ))}
