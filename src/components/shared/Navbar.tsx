@@ -14,6 +14,22 @@ import { useAppStore } from "@/store/useAppStore";
 import { deleteCookie, clearPersistedTeam } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
+import { formatLocalDate } from "@/lib/dates";
+
+function plural(n: number) {
+  return `${n} ${n === 1 ? "dia" : "dias"}`;
+}
+
+export function overdueLabel(daysLeft: number) {
+  const n = Math.abs(daysLeft);
+  return n === 0 ? "Atrasado" : `Atrasado há ${plural(n)}`;
+}
+
+export function dueLabel(daysLeft: number) {
+  if (daysLeft <= 0) return "Vence hoje";
+  if (daysLeft === 1) return "Vence amanhã";
+  return `Vence em ${plural(daysLeft)}`;
+}
 
 interface NavbarProps {
   activeTab?: string;
@@ -23,16 +39,18 @@ interface NavbarProps {
 export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
   const activeTeam = useAppStore((state) => state.activeTeam);
-  const activeTeamId = useAppStore((state) => state.activeTeamId);
   const alerts = useAppStore((state) => state.alerts);
-  const fetchAlerts = useAppStore((state) => state.fetchAlerts);
   const canCreate = canEditProduction(activeTeam?.role);
 
-  React.useEffect(() => {
-    if (FEATURES.alerts && activeTeamId) {
-      fetchAlerts();
-    }
-  }, [activeTeamId, fetchAlerts]);
+  const setCardToOpenId = useAppStore((state) => state.setCardToOpenId);
+  const [alertsOpen, setAlertsOpen] = React.useState(false);
+
+  // Clicar no alerta leva ao quadro e abre o card (o quadro faz a abertura)
+  const openAlertCard = (cardId: string) => {
+    setCardToOpenId(cardId);
+    setAlertsOpen(false);
+    onNavigate?.("kanban");
+  };
 
   const overdueCount = alerts.filter(a => a.type === "CARD_OVERDUE" || a.type === "TASK_OVERDUE").length;
   const totalAlerts = alerts.length;
@@ -183,9 +201,8 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           />
         )}
 
-        <div className="hidden sm:flex items-center gap-1">
           {FEATURES.alerts && (
-          <Popover>
+          <Popover open={alertsOpen} onOpenChange={setAlertsOpen}>
             <PopoverTrigger render={
               <Button
                 variant="ghost"
@@ -205,7 +222,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                 )}
               </Button>
             } />
-            <PopoverContent align="end" className="w-80 p-0 rounded-xl shadow-lg border border-border bg-card">
+            <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-0 rounded-xl shadow-lg border border-border bg-card">
               <div className="p-3 border-b border-border flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5 font-heading">
                   <Bell className="w-3.5 h-3.5 text-primary" />
@@ -223,12 +240,15 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                     Nenhum prazo pendente ou em atraso.
                   </div>
                 ) : (
-                  alerts.map((alert, idx) => {
+                  alerts.map((alert) => {
                     const isOverdue = alert.type === "CARD_OVERDUE" || alert.type === "TASK_OVERDUE";
                     return (
-                      <div
-                        key={idx}
-                        className={`p-2 rounded-lg text-xs border transition-colors ${
+                      <button
+                        type="button"
+                        key={`${alert.type}-${alert.cardId}-${alert.taskId ?? "card"}`}
+                        onClick={() => openAlertCard(alert.cardId)}
+                        aria-label={`Abrir card ${alert.cardTitle}`}
+                        className={`w-full text-left p-2 rounded-lg text-xs border transition-colors cursor-pointer hover:brightness-95 ${
                           isOverdue
                             ? "bg-destructive/5 border-destructive/20 text-foreground"
                             : "bg-amber-500/5 border-amber-500/20 text-foreground"
@@ -239,10 +259,10 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                             isOverdue ? "text-destructive" : "text-amber-600 dark:text-amber-400"
                           }`}>
                             {isOverdue ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                            {isOverdue ? "Atrasado" : `Vence em ${alert.daysLeft <= 0 ? "hoje" : `${alert.daysLeft}d`}`}
+                            {isOverdue ? overdueLabel(alert.daysLeft) : dueLabel(alert.daysLeft)}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {alert.dueDate}
+                            {formatLocalDate(alert.dueDate)}
                           </span>
                         </div>
                         <p className="font-semibold text-xs truncate text-foreground">{alert.cardTitle}</p>
@@ -251,7 +271,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                             Tarefa: {alert.taskTitle}
                           </p>
                         )}
-                      </div>
+                      </button>
                     );
                   })
                 )}
@@ -259,6 +279,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
             </PopoverContent>
           </Popover>
           )}
+        <div className="hidden sm:flex items-center gap-1">
           <ThemeToggle />
           <UserSettingsDialog
             trigger={

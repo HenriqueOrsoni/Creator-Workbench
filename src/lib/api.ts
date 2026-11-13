@@ -1,5 +1,7 @@
 "use client";
 
+import { buildLoginUrl } from "./redirect";
+
 import { PREVIEW_TYPES } from "@/lib/materials";
 
 // Helpers para gerenciamento de Cookies no Navegador
@@ -67,7 +69,7 @@ export function handleUnauthorized() {
   }
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "test") {
     if (window.location.pathname !== "/login") {
-      window.location.href = "/login";
+      window.location.href = buildLoginUrl(window.location.pathname, window.location.search);
     }
   }
 }
@@ -157,7 +159,12 @@ export async function apiRequest(method: string, path: string, body?: unknown, o
   // Depois de uma escrita nenhuma leitura em andamento vale mais: a próxima vai ao servidor
   inFlightGets.clear();
   onWriteHook?.();
-  return performRequest(method, path, body, options);
+  try {
+    return await performRequest(method, path, body, options);
+  } finally {
+    // Leituras iniciadas durante a escrita também podem estar velhas: limpa de novo ao terminar
+    inFlightGets.clear();
+  }
 }
 
 function messageFromBody(text: string, fallback: string): string {

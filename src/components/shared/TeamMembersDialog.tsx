@@ -63,7 +63,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
   useEffect(() => {
     if (open && activeTeam) {
       fetchTeamMembers(activeTeam.id);
-      if (FEATURES.invites) fetchTeamInvites();
+      if (FEATURES.invites && canManageTeam(activeTeam.role)) fetchTeamInvites();
     }
   }, [open, activeTeam, fetchTeamMembers, fetchTeamInvites]);
 
@@ -170,7 +170,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
               <TabsTrigger value="membros" className="text-xs font-semibold rounded-md">
                 Membros ({teamMembers.length})
               </TabsTrigger>
-              {FEATURES.invites && (
+              {FEATURES.invites && isAdmin && (
                 <TabsTrigger value="convites" className="text-xs font-semibold rounded-md">
                   Convites ({teamInvites.length})
                 </TabsTrigger>
@@ -301,7 +301,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
             </TabsContent>
 
             {/* Aba 2: Convites Pendentes (FE-26) */}
-            {FEATURES.invites && (
+            {FEATURES.invites && isAdmin && (
             <TabsContent value="convites" className="space-y-3 pt-2">
               {isAdmin && (
                 <form onSubmit={handleSendInvite} className="p-3.5 rounded-lg bg-muted/30 border border-border space-y-2.5">
@@ -419,6 +419,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   </p>
                   <Button
                     type="button"
+                    disabled={activeTeam?.personal === true}
                     variant="destructive"
                     onClick={() => {
                       setDeleteTeamNameConfirm("");
@@ -428,6 +429,9 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   >
                     Excluir Equipe
                   </Button>
+                  {activeTeam?.personal === true && (
+                    <p className="text-[11px] text-muted-foreground">A equipe pessoal não pode ser excluída.</p>
+                  )}
                 </div>
               </TabsContent>
             )}

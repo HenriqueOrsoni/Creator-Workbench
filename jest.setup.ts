@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/react';
+
+// Em execução paralela (CI) findBy/waitFor precisam de mais tempo que o padrão de 1 s
+configure({ asyncUtilTimeout: 5000 });
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

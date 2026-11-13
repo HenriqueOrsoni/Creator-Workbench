@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
-import { getSafeRedirect } from "@/lib/redirect";
+import { getSafeRedirect, withRedirect } from "@/lib/redirect";
 import { PasswordRecoveryDialog } from "../../components/shared/PasswordRecoveryDialog";
 
 const loginSchema = z.object({
@@ -23,6 +23,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  // O ?redirect= só existe no navegador; o link para a outra tela de acesso o mantém
+  const [otherHref, setOtherHref] = useState("/registrar");
+  useEffect(() => {
+    setOtherHref(withRedirect("/registrar", window.location.search));
+  }, []);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,7 +184,7 @@ export default function LoginPage() {
             <div className="pt-5 mt-6 border-t border-border text-center">
               <p className="text-xs text-muted-foreground">
                 Não possui uma conta?{" "}
-                <a href="/registrar" className="text-primary font-semibold hover:underline">
+                <a href={otherHref} className="text-primary font-semibold hover:underline">
                   Solicitar Cadastro
                 </a>
               </p>

@@ -11,19 +11,19 @@ export const FEATURES = {
   /** Aba Revisão do card (decisão do revisor). */
   review: true,
   /** Convites de equipe (aba e ações). */
-  invites: false,
+  invites: true,
   /** Publicar/despublicar curso e verificação de publicação. */
-  coursePublish: false,
+  coursePublish: true,
   /** Exportar curso em CSV. */
-  courseCsv: false,
+  courseCsv: true,
   /** Editar curso, renomear módulo e reordenar módulos e aulas. */
-  courseEdit: false,
+  courseEdit: true,
   /** Renomear e excluir equipe. */
-  teamManage: false,
+  teamManage: true,
   /** Troca de e-mail e de senha nas configurações. */
-  accountSecurity: false,
+  accountSecurity: true,
   /** Sino e painel de alertas. */
-  alerts: false,
+  alerts: true,
   /** Aba Plano, banners e selo do plano. */
   plans: true,
 } as const;
