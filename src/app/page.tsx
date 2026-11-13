@@ -163,7 +163,7 @@ export default function UnifiedPage() {
             )}
           </TabsContent>
           {FEATURES.plans && (
-            <TabsContent value="plan" className="mt-0 outline-none">
+            <TabsContent value="plan" className="mt-0 outline-none min-w-0">
               <PlanView />
             </TabsContent>
           )}

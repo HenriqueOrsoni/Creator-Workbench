@@ -85,7 +85,7 @@ export function PlanView() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl min-w-0">
       <section className="p-4 sm:p-5 rounded-xl border border-border bg-card space-y-4" aria-labelledby="plan-current-title">
         <div className="flex flex-wrap items-center gap-2">
           <Crown className="w-4 h-4 text-primary" />
@@ -128,7 +128,7 @@ export function PlanView() {
         {plans.length === 0 ? (
           <p className="text-xs text-muted-foreground">Carregando planos...</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto max-w-full">
             <table className="w-full text-xs min-w-[640px]">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">

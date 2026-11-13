@@ -38,8 +38,14 @@ async function ensureTeam(token, name) {
   const found = teams.find((t) => t.name === name);
   return found ?? (await call("POST", "/api/v1/teams", token, { name }));
 }
+const sys = await login("admin.sistema@creatorworkbench.test");
+// Desde o M5 toda equipe nasce no Gratuito (1 usuario, 3 projetos, 1 curso, sem resumo) e so uma equipe gratuita
+// compartilhada por usuario e permitida. O seed move as equipes de teste para AGENCIA pela rota do admin do sistema.
+const setPlan = (teamId, plan) => call("PUT", `/api/v1/admin/teams/${teamId}/plan`, sys, { plan });
 const alfa = await ensureTeam(ana, "Estúdio Alfa");
+await setPlan(alfa.id, "AGENCIA");
 const beta = await ensureTeam(bia, "Estúdio Beta");
+await setPlan(beta.id, "AGENCIA");
 
 async function ensureMember(token, teamId, email, role) {
   const members = await call("GET", `/api/v1/teams/${teamId}/members`, token);

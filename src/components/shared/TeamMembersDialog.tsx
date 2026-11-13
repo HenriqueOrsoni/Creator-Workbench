@@ -154,18 +154,18 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[560px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+        <DialogContent className="sm:max-w-[560px] min-w-0 max-w-[calc(100%-2rem)] overflow-x-hidden rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
           <DialogHeader className="pb-3 border-b border-border">
-            <DialogTitle className="text-xl font-bold flex items-center gap-2 font-heading text-foreground">
-              <Users className="w-5 h-5 text-primary" />
-              Gestão da Equipe • {activeTeam?.name}
+            <DialogTitle className="text-xl font-bold flex items-start gap-2 font-heading text-foreground min-w-0 break-words">
+              <Users className="w-5 h-5 text-primary shrink-0 mt-1" />
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">Gestão da Equipe • {activeTeam?.name}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               Gerencie colaboradores, convites por e-mail e configurações de estúdio.
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-0 mt-2">
             <TabsList className="flex w-full justify-start overflow-x-auto bg-muted/60 p-1 rounded-lg text-xs">
               <TabsTrigger value="membros" className="text-xs font-semibold rounded-md">
                 Membros ({teamMembers.length})
@@ -392,12 +392,12 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   <span className="text-xs font-semibold text-foreground block">
                     Renomear Equipe
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Input
                       value={newTeamName}
                       onChange={(e) => setCustomTeamName(e.target.value)}
                       placeholder="Nome da Equipe"
-                      className="h-9 text-xs rounded-lg flex-1 border-border bg-background"
+                      className="h-9 text-xs rounded-lg flex-1 min-w-0 basis-40 border-border bg-background"
                     />
                     <Button
                       type="submit"

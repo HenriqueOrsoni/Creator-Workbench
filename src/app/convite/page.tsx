@@ -6,7 +6,7 @@ import { Zap, CheckCircle2, AlertCircle, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { apiRequest, getCookie } from "@/lib/api";
+import { apiRequest, getCookie, deleteCookie, clearPersistedTeam } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -41,6 +41,40 @@ export function ConviteContent() {
   const setActiveTeamId = useAppStore((state) => state.setActiveTeamId);
 
   const isLoggedIn = Boolean(getCookie("creator_auth_token"));
+  const resetStore = useAppStore((state) => state.resetStore);
+  // Conta que está conectada agora (pode não ser a do convite)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const userId = getCookie("creator_user_id");
+    if (!isLoggedIn || !userId || !invite) return;
+    let cancelled = false;
+    apiRequest("GET", `/api/v1/users/${userId}`)
+      .then((u) => {
+        if (!cancelled && u && typeof u.email === "string") setCurrentEmail(u.email);
+      })
+      .catch(() => {
+        // Sem o e-mail atual a tela mostra só o botão de aceitar; o servidor confere o e-mail
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, invite]);
+
+  const emailMismatch = Boolean(
+    invite && currentEmail && currentEmail.trim().toLowerCase() !== invite.email.trim().toLowerCase(),
+  );
+
+  // Sai da conta atual e volta para entrar com a conta do convite (o token fica na sessão da aba)
+  const handleSwitchAccount = () => {
+    resetStore();
+    clearPersistedTeam();
+    deleteCookie("creator_auth_token");
+    deleteCookie("creator_user_id");
+    if (process.env.NODE_ENV !== "test") {
+      window.location.href = `/login?redirect=${encodeURIComponent("/convite")}`;
+    }
+  };
 
   useEffect(() => {
     let found = queryToken;
@@ -172,7 +206,7 @@ export function ConviteContent() {
         <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Equipe:</span>
-            <span className="font-bold text-foreground font-heading min-w-0 break-all text-right">{invite.teamName}</span>
+            <span className="font-bold text-foreground font-heading min-w-0 break-words [overflow-wrap:anywhere] text-right">{invite.teamName}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Papel:</span>
@@ -182,12 +216,25 @@ export function ConviteContent() {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Destinatário:</span>
-            <span className="font-medium text-foreground min-w-0 break-all text-right">{invite.email}</span>
+            <span className="font-medium text-foreground min-w-0 break-words [overflow-wrap:anywhere] text-right">{invite.email}</span>
           </div>
         </div>
 
         {isLoggedIn ? (
           <div className="space-y-3">
+            {currentEmail && (
+              <p className="text-xs text-center text-muted-foreground min-w-0 break-words [overflow-wrap:anywhere]">
+                Você está conectado como <strong className="text-foreground">{currentEmail}</strong>.
+              </p>
+            )}
+            {emailMismatch && (
+              <div role="alert" className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive space-y-2.5 text-center">
+                <p>Este convite é para <strong>{invite.email}</strong>, que não é a conta conectada.</p>
+                <Button type="button" variant="outline" onClick={handleSwitchAccount} className="w-full h-9 rounded-lg text-xs font-semibold">
+                  Sair e entrar com outra conta
+                </Button>
+              </div>
+            )}
             <Button
               onClick={handleAcceptInvite}
               disabled={accepting}
@@ -200,7 +247,9 @@ export function ConviteContent() {
               <p role="alert" className="text-xs text-center text-destructive font-medium">{acceptError}</p>
             )}
             <p className="text-[11px] text-center text-muted-foreground">
-              Você já está autenticado e o acesso será liberado imediatamente.
+              {emailMismatch
+                ? "O servidor só aceita o convite para a conta que o recebeu."
+                : "Ao aceitar, você passa a fazer parte da equipe e ela é aberta em seguida."}
             </p>
           </div>
         ) : (

@@ -39,6 +39,10 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
   const activeTeam = useAppStore((state) => state.activeTeam);
   const alerts = useAppStore((state) => state.alerts);
+  const alertsError = useAppStore((state) => state.alertsError);
+  const fetchAlerts = useAppStore((state) => state.fetchAlerts);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
   const canCreate = canEditProduction(activeTeam?.role);
 
   const setCardToOpenId = useAppStore((state) => state.setCardToOpenId);
@@ -68,9 +72,9 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   return (
     <nav className="fixed top-0 left-0 w-full h-16 border-b border-border bg-background/90 backdrop-blur-md z-40 flex items-center justify-between px-4 sm:px-8 font-sans transition-colors">
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <Sheet>
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger render={
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground md:hidden">
+            <Button variant="ghost" size="icon" aria-label="Abrir menu" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground md:hidden">
               <Menu className="w-5 h-5" />
             </Button>
           } />
@@ -111,13 +115,17 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
               >
                 <GraduationCap size={15} className="mr-3 text-primary" /> Cursos & Módulos
               </Button>
-              <UserSettingsDialog
-                trigger={
-                  <Button variant="ghost" className="w-full justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg">
-                    <Settings2 size={15} className="mr-3 text-primary" /> Configurações
-                  </Button>
-                }
-              />
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  // O menu lateral fecha antes do diálogo abrir (o diálogo fica fora do menu)
+                  setMenuOpen(false);
+                  setSettingsOpen(true);
+                }}
+                className="w-full justify-start text-xs font-semibold tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted h-10 rounded-lg"
+              >
+                <Settings2 size={15} className="mr-3 text-primary" /> Configurações
+              </Button>
             </div>
             <div className="pt-4 border-t border-border">
               <div className="flex items-center justify-between px-2 mb-4">
@@ -234,7 +242,14 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                 )}
               </div>
               <div className="max-h-72 overflow-y-auto p-2 space-y-1.5">
-                {totalAlerts === 0 ? (
+                {alertsError && totalAlerts === 0 ? (
+                  <div role="alert" className="py-6 text-center text-xs text-muted-foreground space-y-2">
+                    <p>Não foi possível carregar os alertas.</p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void fetchAlerts()} className="h-7 text-[11px]">
+                      Tentar de novo
+                    </Button>
+                  </div>
+                ) : totalAlerts === 0 ? (
                   <div className="py-6 text-center text-xs text-muted-foreground">
                     Nenhum prazo pendente ou em atraso.
                   </div>
@@ -304,6 +319,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           </Button>
         </div>
 
+        <UserSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     </nav>
   );

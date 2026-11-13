@@ -600,6 +600,8 @@ interface AppState {
 
   // Alertas, revisão, materiais e resumo (rotas do contrato final)
   alerts: AlertItem[];
+  /** A última busca de alertas falhou (o painel não deve dizer que não há prazos). */
+  alertsError: boolean;
   fetchAlerts: () => Promise<void>;
   /** Card pedido pelo painel de alertas; o quadro abre o diálogo dele e limpa o valor. */
   cardToOpenId: string | null;
@@ -665,6 +667,7 @@ const EMPTY_SESSION_STATE = {
   courses: [] as Course[],
   activeCourse: null as CourseDetail | null,
   alerts: [] as AlertItem[],
+  alertsError: false,
   cardToOpenId: null as string | null,
   cardMaterials: {} as Record<string, MaterialItem[]>,
   cardReviews: {} as Record<string, CardReview[]>,
@@ -794,6 +797,7 @@ export const useAppStore = create<AppState>()(
           teamMembers: [],
           teamPlan: null,
           alerts: [],
+          alertsError: false,
           teamInvites: [],
           selectedProjectId: null,
           ideaFilters: DEFAULT_IDEA_FILTERS
@@ -1665,6 +1669,7 @@ export const useAppStore = create<AppState>()(
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/alerts`);
           if (Array.isArray(raw) && get().activeTeamId === teamId) {
             set({
+              alertsError: false,
               alerts: raw.map(a => ({
                 type: a.type,
                 cardId: String(a.cardId),
@@ -1677,8 +1682,9 @@ export const useAppStore = create<AppState>()(
             });
           }
         } catch (error) {
-          // Carga em segundo plano (a cada troca de equipe): sem aviso na tela
+          // Carga em segundo plano: sem toast; o painel do sino mostra o erro e o botão de tentar de novo
           console.error("Erro ao carregar os alertas:", error);
+          if (get().activeTeamId === teamId) set({ alertsError: true });
         } finally {
           alertsInFlight = false;
           if (alertsRerun) {

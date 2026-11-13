@@ -1,5 +1,6 @@
 "use client";
 
+import { useCloseOnPlanRequest } from "@/lib/plan-nav";
 import React from "react";
 import { 
   Dialog, 
@@ -34,6 +35,7 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
       setInternalOpen(val);
     }
   }, [isControlled, onOpenChange]);
+  useCloseOnPlanRequest(() => setOpen(false));
 
   const { createInboxIdea, teamTags } = useAppStore();
   const [loading, setLoading] = React.useState(false);
