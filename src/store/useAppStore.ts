@@ -578,7 +578,8 @@ interface AppState {
   deleteCourseLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
   reorderCourseLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<boolean>;
-  checkCoursePublication: (courseId: string) => Promise<PublicationCheckResult | null>;
+  /** silent: falha sem toast (verificação automática do aviso de curso publicado). */
+  checkCoursePublication: (courseId: string, options?: { silent?: boolean }) => Promise<PublicationCheckResult | null>;
   /** true = publicado; "invalid" = o servidor recusou com 400 (há problemas a mostrar); false = outro erro. */
   publishCourse: (courseId: string) => Promise<boolean | "invalid">;
   unpublishCourse: (courseId: string) => Promise<boolean>;
@@ -1494,7 +1495,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      checkCoursePublication: async (courseId) => {
+      checkCoursePublication: async (courseId, options) => {
         const teamId = get().activeTeamId;
         if (!teamId) return null;
 
@@ -1511,7 +1512,7 @@ export const useAppStore = create<AppState>()(
             })) : []
           };
         } catch (error) {
-          notifyError(error, "Erro ao verificar a publicação do curso");
+          if (!options?.silent) notifyError(error, "Erro ao verificar a publicação do curso");
           return null;
         }
       },
