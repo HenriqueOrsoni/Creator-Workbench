@@ -22,6 +22,8 @@ export function getSafeRedirect(search: string, fallback = "/"): string {
     return fallback;
   }
   if (url.origin !== origin) return fallback;
+  // Segmentos "." e ".." são normalizados pelo parser e podem virar "//host"
+  if (url.pathname.startsWith("//") || url.pathname.includes("\\")) return fallback;
   if (url.pathname === "/login" || url.pathname === "/registrar") return fallback;
   return `${url.pathname}${url.search}${url.hash}`;
 }

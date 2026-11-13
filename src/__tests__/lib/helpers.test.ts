@@ -68,7 +68,7 @@ describe('?redirect= do login', () => {
   });
 
   it('rejeita tab, quebra de linha e barras que o navegador transforma em //host', () => {
-    const bad = ['%2F%09%2Fevil.com', '%2F%0A%2Fevil.com', '%2F%0D%2Fevil.com', '%2F%2Fevil.com', '%2F%5Cevil.com', 'https%3A%2F%2Fevil.com', '%5C%5Cevil.com', '%09%2Fevil.com'];
+    const bad = ['%2F%09%2Fevil.com', '%2F%0A%2Fevil.com', '%2F%0D%2Fevil.com', '%2F%2Fevil.com', '%2F%5Cevil.com', 'https%3A%2F%2Fevil.com', '%5C%5Cevil.com', '%09%2Fevil.com', '%2F.%2F%2Fevil.com', '%2F%252e%2F%2Fevil.com', '%2Fa%2F..%2F%2Fevil.com', '%2F%2e%2F%2Fevil.com'];
     for (const b of bad) {
       expect(getSafeRedirect(`?redirect=${b}`)).toBe('/');
     }

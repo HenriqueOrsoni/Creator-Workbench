@@ -329,7 +329,7 @@ describe('M4: página /convite', () => {
     render(<ConviteContent />);
     expect(await screen.findByText('Equipe Beta')).toBeInTheDocument();
     expect(screen.getByText('Revisor')).toBeInTheDocument();
-    const back = encodeURIComponent('/convite?token=tok-1');
+    const back = encodeURIComponent('/convite');
     expect(screen.getByRole('link', { name: /entrar na minha conta/i })).toHaveAttribute('href', `/login?redirect=${back}`);
     expect(screen.getByRole('link', { name: /criar uma nova conta/i })).toHaveAttribute('href', `/registrar?redirect=${back}`);
     expect(screen.queryByRole('button', { name: /aceitar/i })).not.toBeInTheDocument();
@@ -370,7 +370,7 @@ describe('M4: página /convite', () => {
     render(<ConviteContent />);
     await screen.findByText('Equipe Beta');
     expect(api).toHaveBeenCalledWith('GET', '/api/auth/invites/..%2F..%2Fx%3Fa%3D1');
-    const inner = encodeURIComponent('/convite?token=' + encodeURIComponent('../../x?a=1'));
+    const inner = encodeURIComponent('/convite');
     expect(screen.getByRole('link', { name: /entrar na minha conta/i })).toHaveAttribute('href', `/login?redirect=${inner}`);
   });
 
@@ -390,9 +390,10 @@ describe('M4: página /convite', () => {
     spy.mockRestore();
   });
 
-  it('convite inválido leva ao login com o texto certo', async () => {
+  it('convite inválido leva ao login com o texto certo e apaga o token guardado', async () => {
     api.mockRejectedValueOnce(err('Convite expirado.', 404));
     render(<ConviteContent />);
+    await waitFor(() => expect(window.sessionStorage.getItem('creator_invite_token')).toBeNull());
     expect(await screen.findByRole('link', { name: /ir para o login/i })).toHaveAttribute('href', '/login');
   });
 });
