@@ -771,6 +771,7 @@ export const useAppStore = create<AppState>()(
           teamTags: [],
           teamMembers: [],
           alerts: [],
+          teamInvites: [],
           selectedProjectId: null,
           ideaFilters: DEFAULT_IDEA_FILTERS
         });
@@ -1869,7 +1870,8 @@ export const useAppStore = create<AppState>()(
 
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/invites`);
-          if (Array.isArray(raw)) {
+          // Resposta tardia de uma equipe que não é mais a ativa: descarta
+          if (Array.isArray(raw) && get().activeTeamId === teamId) {
             set({
               teamInvites: raw.map(i => ({
                 id: String(i.id),

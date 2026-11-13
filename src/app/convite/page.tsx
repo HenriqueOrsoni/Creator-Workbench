@@ -11,6 +11,9 @@ import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 import Link from "next/link";
 import { FEATURES } from "@/lib/features";
+import { formatRole } from "@/lib/roles";
+
+const TOKEN_KEY = "creator_invite_token";
 
 interface InviteData {
   teamName: string;
@@ -23,7 +26,10 @@ interface InviteData {
 export function ConviteContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get("token");
+  const queryToken = searchParams.get("token");
+  // O token sai da barra de endereço (histórico, Referer) e fica só na sessão da aba
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenRead, setTokenRead] = useState(false);
 
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,8 +43,24 @@ export function ConviteContent() {
   const isLoggedIn = Boolean(getCookie("creator_auth_token"));
 
   useEffect(() => {
+    let found = queryToken;
+    try {
+      if (queryToken) {
+        window.sessionStorage.setItem(TOKEN_KEY, queryToken);
+      } else {
+        found = window.sessionStorage.getItem(TOKEN_KEY);
+      }
+    } catch {
+      // Sem sessionStorage: o token da URL ainda vale nesta carga
+    }
+    if (queryToken) window.history.replaceState(null, "", "/convite");
+    if (found) setToken(found);
+    setTokenRead(true);
+  }, [queryToken]);
+
+  useEffect(() => {
     // Convites ainda não têm backend: não chama as rotas de convite
-    if (!FEATURES.invites) return;
+    if (!FEATURES.invites || !tokenRead) return;
     if (!token) {
       setError("Token de convite não informado.");
       setLoading(false);
@@ -47,7 +69,7 @@ export function ConviteContent() {
 
     const loadInvite = async () => {
       try {
-        const data = await apiRequest("GET", `/api/auth/invites/${token}`);
+        const data = await apiRequest("GET", `/api/auth/invites/${encodeURIComponent(token)}`);
         if (data) {
           setInvite(data);
         }
@@ -59,38 +81,26 @@ export function ConviteContent() {
     };
 
     loadInvite();
-  }, [token]);
+  }, [token, tokenRead]);
 
   const handleAcceptInvite = async () => {
     if (!token) return;
     setAccepting(true);
     setAcceptError(null);
     try {
-      const acceptedTeam = await apiRequest("POST", `/api/v1/invites/${token}/accept`);
+      const acceptedTeam = await apiRequest("POST", `/api/v1/invites/${encodeURIComponent(token)}/accept`);
       toast.success(`Você agora faz parte da equipe ${acceptedTeam?.name || "nova"}!`);
       await fetchTeams();
       if (acceptedTeam?.id) {
         await setActiveTeamId(acceptedTeam.id.toString());
       }
-      router.push("/");
+      try { window.sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignora */ }
+      router.replace("/");
     } catch (err) {
       const message = (err as Error).message || "Erro ao aceitar convite.";
       setAcceptError(message);
       toast.error(message);
       setAccepting(false);
-    }
-  };
-
-  const getRoleLabel = (r: string) => {
-    switch (r) {
-      case "ADMIN":
-        return "Administrador";
-      case "CREATOR":
-        return "Criador";
-      case "REVIEWER":
-        return "Revisor";
-      default:
-        return r;
     }
   };
 
@@ -134,7 +144,7 @@ export function ConviteContent() {
           <div className="pt-2">
             <Link href="/login">
               <Button className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground h-10 shadow-xs">
-                Ir para a Página Inicial
+                Ir para o login
               </Button>
             </Link>
           </div>
@@ -161,17 +171,17 @@ export function ConviteContent() {
         <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Equipe:</span>
-            <span className="font-bold text-foreground font-heading">{invite.teamName}</span>
+            <span className="font-bold text-foreground font-heading min-w-0 break-all text-right">{invite.teamName}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Papel:</span>
             <Badge variant="outline" className="text-[10px] font-semibold uppercase bg-primary/10 text-primary border-primary/20">
-              {getRoleLabel(invite.role)}
+              {formatRole(invite.role)}
             </Badge>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Destinatário:</span>
-            <span className="font-medium text-foreground">{invite.email}</span>
+            <span className="font-medium text-foreground min-w-0 break-all text-right">{invite.email}</span>
           </div>
         </div>
 
@@ -197,12 +207,12 @@ export function ConviteContent() {
             <p className="text-xs text-center text-muted-foreground mb-1">
               Faça login com a conta <strong>{invite.email}</strong> para aceitar o convite:
             </p>
-            <Link href={`/login?redirect=${encodeURIComponent(`/convite?token=${token}`)}`} className="block">
+            <Link href={`/login?redirect=${encodeURIComponent(`/convite?token=${encodeURIComponent(token ?? "")}`)}`} className="block">
               <Button className="w-full h-10 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary hover:bg-primary-hover text-primary-foreground gap-2 shadow-xs">
                 <LogIn className="w-4 h-4" /> Entrar na Minha Conta
               </Button>
             </Link>
-            <Link href={`/registrar?redirect=${encodeURIComponent(`/convite?token=${token}`)}`} className="block">
+            <Link href={`/registrar?redirect=${encodeURIComponent(`/convite?token=${encodeURIComponent(token ?? "")}`)}`} className="block">
               <Button variant="outline" className="w-full h-10 rounded-lg text-xs font-semibold uppercase tracking-wider gap-2 border-border">
                 <UserPlus className="w-4 h-4" /> Criar uma Nova Conta
               </Button>

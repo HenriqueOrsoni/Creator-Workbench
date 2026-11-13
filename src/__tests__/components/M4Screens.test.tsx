@@ -19,11 +19,11 @@ jest.mock('@/lib/api', () => ({
   clearPersistedTeam: jest.fn(),
 }));
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
-const mockPush = jest.fn();
+const mockReplace = jest.fn();
 let mockToken: string | null = 'tok-1';
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => mockToken }),
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
 }));
 jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 jest.mock('@/components/shared/ThemeToggle', () => ({ ThemeToggle: () => null }));
@@ -56,18 +56,25 @@ describe('M4: sino de alertas', () => {
 
   it.each(['ADMIN', 'CREATOR', 'REVIEWER'] as const)('papel %s vê o sino com a lista de alertas', async (role) => {
     useAppStore.setState({ activeTeam: team(role), activeTeamId: '7' });
-    api.mockResolvedValue(alertsDto);
+    // Os alertas chegam junto com o quadro (fetchBoard), sem busca própria da barra
+    api.mockImplementation((_m: string, path: string) =>
+      Promise.resolve(path.endsWith('/board') ? { teamId: 7, teamName: 'Equipe Alfa', columns: [] } : alertsDto));
     render(<Navbar />);
+    await useAppStore.getState().fetchBoard();
     await waitFor(() => expect(screen.getByTestId('alerts-badge')).toBeInTheDocument());
     await userEvent.click(screen.getByLabelText(/alertas de prazos/i));
     expect(screen.getByText('Alertas de Prazos (2)')).toBeInTheDocument();
     expect(screen.getByText('Projeto Atrasado')).toBeInTheDocument();
-    expect(screen.getByText(/Vence em 2d/)).toBeInTheDocument();
+    expect(screen.getByText('Atrasado há 4 dias')).toBeInTheDocument();
+    expect(screen.getByText('Vence em 2 dias')).toBeInTheDocument();
+    expect(screen.getByText('01/11/2026')).toBeInTheDocument();
   });
 
   it('clicar no alerta navega para o quadro e pede a abertura do card', async () => {
-    useAppStore.setState({ activeTeam: team('ADMIN'), activeTeamId: '7' });
-    api.mockResolvedValue(alertsDto);
+    useAppStore.setState({
+      activeTeam: team('ADMIN'), activeTeamId: '7',
+      alerts: alertsDto.map((a) => ({ ...a, cardId: String(a.cardId), taskId: a.taskId === null ? null : String(a.taskId) })) as never,
+    });
     const onNavigate = jest.fn();
     render(<Navbar onNavigate={onNavigate} />);
     await waitFor(() => expect(screen.getByTestId('alerts-badge')).toBeInTheDocument());
@@ -79,9 +86,7 @@ describe('M4: sino de alertas', () => {
 
   it('sem alertas mostra a mensagem de vazio e não mostra o ponto de aviso', async () => {
     useAppStore.setState({ activeTeam: team('CREATOR'), activeTeamId: '7' });
-    api.mockResolvedValue([]);
     render(<Navbar />);
-    await waitFor(() => expect(api).toHaveBeenCalledWith('GET', '/api/v1/teams/7/alerts'));
     await userEvent.click(screen.getByLabelText(/alertas de prazos/i));
     expect(screen.getByText(/nenhum prazo pendente/i)).toBeInTheDocument();
     expect(screen.queryByTestId('alerts-badge')).not.toBeInTheDocument();
@@ -131,16 +136,15 @@ describe('M4: gestão da equipe e convites (papéis)', () => {
     expect(screen.getByPlaceholderText(/e-mail do convidado/i)).toBeInTheDocument();
   });
 
-  it.each(['CREATOR', 'REVIEWER'] as const)('%s não vê Configurações, nem formulário de convite, nem cancelar', async (role) => {
+  it.each(['CREATOR', 'REVIEWER'] as const)('%s não vê Configurações nem Convites e a lista de convites não é buscada', async (role) => {
     const dto = { id: 3, email: 'a@b.com', role: 'CREATOR', status: 'PENDING', createdAt: 'c', expiresAt: '2026-11-20T00:00:00Z' };
     useAppStore.setState({ activeTeam: team(role), activeTeamId: '7' });
     api.mockResolvedValue([dto]);
     render(<TeamMembersDialog open onOpenChange={jest.fn()} />);
     expect(screen.queryByRole('tab', { name: /configurações/i })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: /convites/i }));
-    await waitFor(() => expect(screen.getByText('a@b.com')).toBeInTheDocument());
-    expect(screen.queryByPlaceholderText(/e-mail do convidado/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /cancelar convite/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /convites/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('a@b.com')).not.toBeInTheDocument();
+    expect(api.mock.calls.some((c) => String(c[1]).includes('/invites'))).toBe(false);
   });
 
   it('o convite é enviado com e-mail e papel e o 402 do plano aparece como erro', async () => {
@@ -302,6 +306,7 @@ describe('M4: página /convite', () => {
     jest.clearAllMocks();
     useAppStore.getState().resetStore();
     mockToken = 'tok-1';
+    window.sessionStorage.clear();
     cookie.mockReturnValue(undefined);
   });
 
@@ -341,7 +346,7 @@ describe('M4: página /convite', () => {
     });
     render(<ConviteContent />);
     await userEvent.click(await screen.findByRole('button', { name: /aceitar convite/i }));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/'));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
     expect(api).toHaveBeenCalledWith('POST', '/api/v1/invites/tok-1/accept');
     expect(useAppStore.getState().activeTeamId).toBe('9');
   });
@@ -354,8 +359,40 @@ describe('M4: página /convite', () => {
     await userEvent.click(await screen.findByRole('button', { name: /aceitar convite/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Este convite é para outro e-mail.');
     expect(toast.error).toHaveBeenCalledWith('Este convite é para outro e-mail.');
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
     expect(useAppStore.getState().activeTeamId).toBeNull();
     expect(screen.getByRole('button', { name: /aceitar convite/i })).toBeEnabled();
+  });
+
+  it('token com ../ continua sendo um único segmento da rota e do link de volta', async () => {
+    mockToken = '../../x?a=1';
+    api.mockResolvedValueOnce(invite);
+    render(<ConviteContent />);
+    await screen.findByText('Equipe Beta');
+    expect(api).toHaveBeenCalledWith('GET', '/api/auth/invites/..%2F..%2Fx%3Fa%3D1');
+    const inner = encodeURIComponent('/convite?token=' + encodeURIComponent('../../x?a=1'));
+    expect(screen.getByRole('link', { name: /entrar na minha conta/i })).toHaveAttribute('href', `/login?redirect=${inner}`);
+  });
+
+  it('guarda o token na sessão e tira da barra de endereço; recarregar sem o token ainda funciona', async () => {
+    const spy = jest.spyOn(window.history, 'replaceState');
+    api.mockResolvedValue(invite);
+    const first = render(<ConviteContent />);
+    await screen.findByText('Equipe Beta');
+    expect(window.sessionStorage.getItem('creator_invite_token')).toBe('tok-1');
+    expect(spy).toHaveBeenCalledWith(null, '', '/convite');
+    first.unmount();
+    mockToken = null;
+    api.mockClear();
+    render(<ConviteContent />);
+    await screen.findByText('Equipe Beta');
+    expect(api).toHaveBeenCalledWith('GET', '/api/auth/invites/tok-1');
+    spy.mockRestore();
+  });
+
+  it('convite inválido leva ao login com o texto certo', async () => {
+    api.mockRejectedValueOnce(err('Convite expirado.', 404));
+    render(<ConviteContent />);
+    expect(await screen.findByRole('link', { name: /ir para o login/i })).toHaveAttribute('href', '/login');
   });
 });

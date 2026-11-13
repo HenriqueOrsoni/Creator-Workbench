@@ -13,6 +13,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
 import { toast } from "sonner";
+import { getSafeRedirect } from "@/lib/redirect";
 
 const step1Schema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -98,7 +99,7 @@ export default function RegisterPage() {
           setCookie("creator_user_id", response.userId.toString(), 86400);
         }
         toast.success("Cadastro realizado com sucesso!");
-        router.push("/");
+        router.push(getSafeRedirect(window.location.search));
       } else {
         throw new Error("Token não retornado pelo servidor.");
       }

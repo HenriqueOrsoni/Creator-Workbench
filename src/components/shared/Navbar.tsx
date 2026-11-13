@@ -14,6 +14,22 @@ import { useAppStore } from "@/store/useAppStore";
 import { deleteCookie, clearPersistedTeam } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
+import { formatLocalDate } from "@/lib/dates";
+
+function plural(n: number) {
+  return `${n} ${n === 1 ? "dia" : "dias"}`;
+}
+
+export function overdueLabel(daysLeft: number) {
+  const n = Math.abs(daysLeft);
+  return n === 0 ? "Atrasado" : `Atrasado há ${plural(n)}`;
+}
+
+export function dueLabel(daysLeft: number) {
+  if (daysLeft <= 0) return "Vence hoje";
+  if (daysLeft === 1) return "Vence amanhã";
+  return `Vence em ${plural(daysLeft)}`;
+}
 
 interface NavbarProps {
   activeTab?: string;
@@ -23,16 +39,8 @@ interface NavbarProps {
 export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
   const resetStore = useAppStore((state) => state.resetStore);
   const activeTeam = useAppStore((state) => state.activeTeam);
-  const activeTeamId = useAppStore((state) => state.activeTeamId);
   const alerts = useAppStore((state) => state.alerts);
-  const fetchAlerts = useAppStore((state) => state.fetchAlerts);
   const canCreate = canEditProduction(activeTeam?.role);
-
-  React.useEffect(() => {
-    if (FEATURES.alerts && activeTeamId) {
-      fetchAlerts();
-    }
-  }, [activeTeamId, fetchAlerts]);
 
   const setCardToOpenId = useAppStore((state) => state.setCardToOpenId);
   const [alertsOpen, setAlertsOpen] = React.useState(false);
@@ -232,12 +240,12 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                     Nenhum prazo pendente ou em atraso.
                   </div>
                 ) : (
-                  alerts.map((alert, idx) => {
+                  alerts.map((alert) => {
                     const isOverdue = alert.type === "CARD_OVERDUE" || alert.type === "TASK_OVERDUE";
                     return (
                       <button
                         type="button"
-                        key={idx}
+                        key={`${alert.type}-${alert.cardId}-${alert.taskId ?? "card"}`}
                         onClick={() => openAlertCard(alert.cardId)}
                         aria-label={`Abrir card ${alert.cardTitle}`}
                         className={`w-full text-left p-2 rounded-lg text-xs border transition-colors cursor-pointer hover:brightness-95 ${
@@ -251,10 +259,10 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                             isOverdue ? "text-destructive" : "text-amber-600 dark:text-amber-400"
                           }`}>
                             {isOverdue ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                            {isOverdue ? "Atrasado" : `Vence em ${alert.daysLeft <= 0 ? "hoje" : `${alert.daysLeft}d`}`}
+                            {isOverdue ? overdueLabel(alert.daysLeft) : dueLabel(alert.daysLeft)}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {alert.dueDate}
+                            {formatLocalDate(alert.dueDate)}
                           </span>
                         </div>
                         <p className="font-semibold text-xs truncate text-foreground">{alert.cardTitle}</p>

@@ -99,11 +99,11 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     expect(screen.getByRole('button', { name: /json/i })).toBeInTheDocument();
   });
 
-  it('Navbar mostra o sino de alertas e busca /alerts da equipe ativa', async () => {
+  it('Navbar mostra o sino de alertas (a busca vem do carregamento do quadro, não da barra)', () => {
     render(<Navbar />);
 
     expect(screen.getByLabelText(/alertas de prazos/i)).toBeInTheDocument();
-    await waitFor(() => expect(api).toHaveBeenCalledWith('GET', '/api/v1/teams/10/alerts'));
+    expect(api).not.toHaveBeenCalled();
   });
 
   it('CoursesView esconde editar curso, renomear módulo e reordenar módulos e aulas', () => {

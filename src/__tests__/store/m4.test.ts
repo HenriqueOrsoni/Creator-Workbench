@@ -82,6 +82,38 @@ describe('Store M4: alertas', () => {
   });
 });
 
+describe('Store M4: respostas tardias', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useAppStore.getState().resetStore();
+    useAppStore.setState({ teams: [team('7', 'E'), team('8', 'F')], activeTeam: team('7', 'E'), activeTeamId: '7' });
+  });
+
+  it('alertas da equipe anterior que chegam depois da troca são descartados', async () => {
+    let release: (v: unknown) => void = () => {};
+    api.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    const pending = useAppStore.getState().fetchAlerts();
+    useAppStore.setState({ activeTeam: team('8', 'F'), activeTeamId: '8', alerts: [] });
+    release([{ type: 'CARD_OVERDUE', cardId: 1, cardTitle: 'Velho', dueDate: '2026-11-01', daysLeft: -1 }]);
+    await pending;
+    expect(useAppStore.getState().alerts).toEqual([]);
+  });
+
+  it('convites da equipe anterior que chegam depois da troca são descartados e a troca limpa a lista', async () => {
+    let release: (v: unknown) => void = () => {};
+    api.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    const pending = useAppStore.getState().fetchTeamInvites();
+    api.mockImplementation((_m: string, path: string) =>
+      Promise.resolve(path.endsWith('/board') ? { teamId: 8, teamName: 'F', columns: [] } : []));
+    useAppStore.setState({ teamInvites: [{ id: '1', email: 'x@y.com', role: 'CREATOR', status: 'PENDING', createdAt: 'c', expiresAt: 'e' }] });
+    await useAppStore.getState().setActiveTeamId('8');
+    expect(useAppStore.getState().teamInvites).toEqual([]);
+    release([{ id: 5, email: 'old@x.com', role: 'CREATOR', status: 'PENDING', createdAt: 'c', expiresAt: 'e' }]);
+    await pending;
+    expect(useAppStore.getState().teamInvites).toEqual([]);
+  });
+});
+
 describe('Store M4: convites', () => {
   beforeEach(() => {
     jest.clearAllMocks();
