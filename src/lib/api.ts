@@ -1,5 +1,7 @@
 "use client";
 
+import { PREVIEW_TYPES } from "@/lib/materials";
+
 // Helpers para gerenciamento de Cookies no Navegador
 export function getCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -282,6 +284,12 @@ export async function apiDownload(path: string, fallbackFileName: string): Promi
  */
 export async function apiOpenInline(path: string, fallbackFileName: string): Promise<"opened" | "downloaded"> {
   const { blob, fileName } = await fetchBlob(`${path}${path.includes("?") ? "&" : "?"}inline=true`, fallbackFileName);
+  // Segunda verificação: um blob: roda na origem do app, então só tipos de prévia seguros são abertos
+  const blobType = (blob.type || "").split(";")[0].trim().toLowerCase();
+  if (!PREVIEW_TYPES.includes(blobType)) {
+    saveBlob(blob, fileName);
+    return "downloaded";
+  }
   const url = URL.createObjectURL(blob);
   // Sem a opção "noopener" no window.open (ela faz o retorno ser sempre null e esconderia o bloqueio de pop-up)
   const opened = window.open(url, "_blank");

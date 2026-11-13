@@ -98,7 +98,7 @@ describe('api.ts: abrir no navegador (?inline=true)', () => {
     (URL as unknown as { createObjectURL: unknown }).createObjectURL = jest.fn(() => 'blob:abc');
     (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = jest.fn();
     global.fetch = jest.fn().mockResolvedValue({
-      ok: true, status: 200, blob: async () => new Blob(['x']), headers: { get: () => null },
+      ok: true, status: 200, blob: async () => new Blob(['x'], { type: 'application/pdf' }), headers: { get: () => null },
     });
   });
   afterEach(() => { global.fetch = originalFetch; window.open = originalOpen; jest.useRealTimers(); });
@@ -114,6 +114,17 @@ describe('api.ts: abrir no navegador (?inline=true)', () => {
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     jest.advanceTimersByTime(60_000);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:abc');
+  });
+
+  it('tipo fora da lista de prévia (ex.: text/html) baixa em vez de abrir', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200, blob: async () => new Blob(['<p>x</p>'], { type: 'text/html; charset=utf-8' }), headers: { get: () => null },
+    });
+    window.open = jest.fn() as unknown as typeof window.open;
+    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await expect(apiOpenInline('/api/v1/teams/7/materials/1/download', 'a.html')).resolves.toBe('downloaded');
+    expect(window.open).not.toHaveBeenCalled();
+    click.mockRestore();
   });
 
   it('pop-up bloqueado cai no download', async () => {

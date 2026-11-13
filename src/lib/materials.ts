@@ -1,6 +1,6 @@
 import type { MaterialItem } from "@/store/useAppStore";
 
-const PREVIEW_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"];
+export const PREVIEW_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"];
 const PREVIEW_EXTENSIONS = ["pdf", "png", "jpg", "jpeg", "webp", "gif"];
 
 function extensionOf(fileName: string): string {
