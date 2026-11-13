@@ -319,6 +319,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           </Button>
         </div>
 
+        <UserSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     </nav>
   );

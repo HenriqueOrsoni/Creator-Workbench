@@ -53,6 +53,16 @@ describe('QA M4/M5: sino de alertas com falha', () => {
     expect(useAppStore.getState().alertsError).toBe(false);
   });
 
+  it('Configurações no menu lateral fecha o menu e abre o diálogo da conta', async () => {
+    api.mockResolvedValue({ id: 5, name: 'Ana', email: 'ana@x.com' });
+    cookie.mockReturnValue('5');
+    render(<Navbar />);
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
+    await userEvent.click(screen.getByRole('button', { name: /^configurações$/i }));
+    expect(await screen.findByRole('tab', { name: /segurança/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /encerrar sessão/i, hidden: false })).not.toBeInTheDocument();
+  });
+
   it('o botão do menu lateral tem nome acessível', () => {
     render(<Navbar />);
     expect(screen.getByRole('button', { name: 'Abrir menu' })).toBeInTheDocument();
@@ -74,7 +84,7 @@ describe('QA M4: /convite com outra conta conectada', () => {
     render(<ConviteContent />);
     expect(await screen.findByText('outra@x.com')).toBeInTheDocument();
     expect(screen.getByText(/não é a conta conectada/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /aceitar convite/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /aceitar convite/i })).toBeEnabled();
     await userEvent.click(screen.getByRole('button', { name: /sair e entrar com outra conta/i }));
     expect(apiModule.deleteCookie).toHaveBeenCalledWith('creator_auth_token');
     expect(apiModule.deleteCookie).toHaveBeenCalledWith('creator_user_id');

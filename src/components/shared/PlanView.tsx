@@ -128,7 +128,7 @@ export function PlanView() {
         {plans.length === 0 ? (
           <p className="text-xs text-muted-foreground">Carregando planos...</p>
         ) : (
-          <div className="overflow-x-auto max-w-full">
+          <div className="relative overflow-x-auto max-w-full">
             <table className="w-full text-xs min-w-[640px]">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">

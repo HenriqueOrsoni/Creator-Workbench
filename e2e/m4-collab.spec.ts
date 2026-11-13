@@ -112,8 +112,8 @@ test.describe("M4 alertas (sino)", () => {
     await expect(page.getByText("Alertas de Prazos (0)")).toBeVisible();
   });
 
-  // Bug confirmado (BF-M4-01): enquanto existir, o teste "falha de proposito" (test.fail), como o SEC-10 do M1.
-  test.fail("falha em GET /alerts nao parece sucesso: nao afirma 'Nenhum prazo' quando a requisicao falhou", async ({ page }) => {
+  // Regressao do BF-M4-01 (corrigido): falha em GET /alerts nao pode parecer sucesso.
+  test("falha em GET /alerts nao parece sucesso: nao afirma 'Nenhum prazo' quando a requisicao falhou", async ({ page }) => {
     await page.route("**/alerts", (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Erro interno de teste." }) }));
     await loginAs(page, "ana", team);
     await (await bell(page)).click();
@@ -523,9 +523,8 @@ test.describe("M4 telas novas em 375 px e tema escuro (UX)", () => {
 
   for (const theme of ["light", "dark"] as const) {
     for (const longName of [false, true]) {
-      // Bug confirmado (BF-M4-02): a 375 px o conteudo do dialogo da equipe passa da borda (scrollWidth 374 > 341), mesmo com nome curto;
-      // com nome comprido o titulo e "Salvar Nome" ficam cortados. test.fail enquanto existir.
-      test.fail(`UX: dialogo da equipe a 375 px com nome ${longName ? "comprido" : "curto"} (${theme})`, async ({ page }) => {
+      // Regressao do BF-M4-02 (corrigido): a 375 px o dialogo da equipe nao passa da borda, nem com nome comprido.
+      test(`UX: dialogo da equipe a 375 px com nome ${longName ? "comprido" : "curto"} (${theme})`, async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         await page.emulateMedia({ colorScheme: theme });
         await page.addInitScript((t) => window.localStorage.setItem("studio-theme", t), theme);
@@ -543,8 +542,8 @@ test.describe("M4 telas novas em 375 px e tema escuro (UX)", () => {
       });
     }
 
-    // Bug confirmado no tema claro (BF-M4-04): o dialogo da conta fica sem fundo (rgba(0,0,0,0)) e o texto do menu lateral aparece atras.
-    (theme === "light" ? test.fail : test)(`UX: dialogo da conta (Seguranca e E-mail) a 375 px aberto pelo menu lateral (${theme})`, async ({ page }) => {
+    // Regressao do BF-M4-04 (corrigido): dialogo da conta com fundo no tema claro e menu lateral fechado atras.
+    test(`UX: dialogo da conta (Seguranca e E-mail) a 375 px aberto pelo menu lateral (${theme})`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await page.emulateMedia({ colorScheme: theme });
       await page.addInitScript((t) => window.localStorage.setItem("studio-theme", t), theme);

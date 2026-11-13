@@ -50,5 +50,5 @@ para **Agencia** logo depois de cria-las, **pela rota do administrador do sistem
   `waitMail`, `codeFrom` e `inviteTokenFrom` leem o codigo de 6 digitos e o token do link `/convite?token=`.
 - `sql()` (mesmo arquivo) executa SQL no `db_tcc_e2e` (precisa de `MYSQL_BIN` e `MYSQL_PWD`); so e usado para antecipar o fim de um teste de 14 dias.
 - Specs: `m4-collab.spec.ts` (alertas, equipe, convites, conta, redirect) e `m5-plans.spec.ts` (plano, teste, 402, aviso, selo, Resumo IA).
-  Testes marcados com `test.fail` documentam bug confirmado (ficam verdes enquanto o bug existir; quando for corrigido o Playwright avisa).
+  Os `test.fail` do QA M4/M5 (BF-M4-01, -02, -04 e BF-M5-01, -02) viraram specs normais depois das correcoes (branch v3/fe-qa45-fixes).
 - Backend extra: `APP_ADMIN_EMAILS` (acima); frontend com as flags ligadas (padrao).

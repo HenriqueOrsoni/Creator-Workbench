@@ -258,8 +258,8 @@ test.describe("M5 limites na interface", () => {
     await expect(page.getByRole("tab", { name: "Plano", includeHidden: true })).toHaveAttribute("aria-selected", "true");
   });
 
-  // Bug confirmado (BF-M5-01): o dialogo "Criar Nova Equipe" continua aberto por cima da aba Plano. test.fail enquanto existir.
-  test.fail("E2E-33: 'Ver planos' do toast da segunda equipe deixa a pagina do Plano acessivel (sem o dialogo de criacao por cima)", async ({ page }) => {
+  // Regressao do BF-M5-01 (corrigido): "Ver planos" fecha o dialogo de criar equipe.
+  test("E2E-33: 'Ver planos' do toast da segunda equipe deixa a pagina do Plano acessivel (sem o dialogo de criacao por cima)", async ({ page }) => {
     const o = await freeTeamOwner("segundadlg");
     await loginSession(page, o, o.teamId);
     await page.getByTestId("team-plan-badge").click();
@@ -314,8 +314,8 @@ test.describe("M5 limites na interface", () => {
 // ---------------------------------------------------------------------------------------------------------------------
 test.describe("M5 aparencia (375 px e tema escuro)", () => {
   for (const theme of ["light", "dark"] as const) {
-    // Bug confirmado (BF-M5-02): a pagina rola na horizontal (scrollWidth 549 em 375 px) por causa da tabela de comparacao.
-    test.fail(`UX: aba Plano a 375 px sem rolagem horizontal da pagina, tabela rola dentro do cartao (${theme})`, async ({ page }) => {
+    // Regressao do BF-M5-02 (corrigido): a tabela de comparacao rola dentro do cartao, nao na pagina.
+    test(`UX: aba Plano a 375 px sem rolagem horizontal da pagina, tabela rola dentro do cartao (${theme})`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await page.emulateMedia({ colorScheme: theme });
       await page.addInitScript((t) => window.localStorage.setItem("studio-theme", t), theme);

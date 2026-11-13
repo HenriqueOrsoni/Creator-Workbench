@@ -237,7 +237,7 @@ export function ConviteContent() {
             )}
             <Button
               onClick={handleAcceptInvite}
-              disabled={accepting || emailMismatch}
+              disabled={accepting}
               className="w-full h-11 rounded-lg text-xs font-semibold uppercase tracking-wider bg-primary hover:bg-primary-hover text-primary-foreground gap-2 shadow-xs transition-colors"
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -248,7 +248,7 @@ export function ConviteContent() {
             )}
             <p className="text-[11px] text-center text-muted-foreground">
               {emailMismatch
-                ? "Para aceitar, entre com a conta que recebeu o convite."
+                ? "O servidor só aceita o convite para a conta que o recebeu."
                 : "Ao aceitar, você passa a fazer parte da equipe e ela é aberta em seguida."}
             </p>
           </div>
