@@ -304,7 +304,6 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           </Button>
         </div>
 
-        {/* Hidden color picker for test compatibility */}
       </div>
     </nav>
   );
