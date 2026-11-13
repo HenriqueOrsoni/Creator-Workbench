@@ -95,6 +95,7 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
     const mockReorder = jest.fn();
     const mockHistory = jest.fn();
     const mockDownload = jest.fn();
+    const mockPreview = jest.fn();
 
     function seed(role: 'ADMIN' | 'CREATOR' | 'REVIEWER') {
       useAppStore.setState({
@@ -106,9 +107,13 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
         reorderCardTasks: mockReorder,
         fetchCardHistory: mockHistory,
         downloadMaterial: mockDownload,
+        previewMaterial: mockPreview,
         fetchCardMaterials: jest.fn().mockResolvedValue([]),
         cardMaterials: {
-          '10': [{ id: '77', cardId: '10', fileName: 'apostila.pdf', contentType: 'application/pdf', sizeBytes: 2048, createdAt: 'x' }],
+          '10': [
+            { id: '77', cardId: '10', fileName: 'apostila.pdf', contentType: 'application/pdf', sizeBytes: 2048, createdAt: '2026-11-12T15:00:00Z', uploadedBy: { userId: '4', name: 'Ana Souza' } },
+            { id: '78', cardId: '10', fileName: 'planilha.xlsx', contentType: 'application/vnd.ms-excel', sizeBytes: 3 * 1024 * 1024, createdAt: '2026-11-11T15:00:00Z' },
+          ],
         },
       });
     }
@@ -276,6 +281,24 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
         fireEvent.click(button);
       });
       expect(mockDownload).toHaveBeenCalledWith(expect.objectContaining({ id: '77', fileName: 'apostila.pdf' }));
+    });
+
+    it('lista mostra tipo, tamanho, quem enviou e a data; Visualizar só aparece para PDF e imagens', async () => {
+      render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
+      await act(async () => {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: /Materiais/ }));
+        fireEvent.click(screen.getByRole('tab', { name: /Materiais/ }));
+      });
+      expect(screen.getByText('PDF • 2 KB • Por Ana Souza • 12/11/2026')).toBeInTheDocument();
+      expect(screen.getByText('XLSX • 3,0 MB • Por Membro • 11/11/2026')).toBeInTheDocument();
+      expect(screen.getByLabelText('Visualizar apostila.pdf')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Visualizar planilha.xlsx')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Baixar planilha.xlsx')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByLabelText('Visualizar apostila.pdf'));
+      });
+      expect(mockPreview).toHaveBeenCalledWith(expect.objectContaining({ id: '77' }));
     });
 
     it('BF-07: Revisor não edita, move, exclui nem adiciona tarefas, mas pode marcar tarefas e decidir a revisão', async () => {

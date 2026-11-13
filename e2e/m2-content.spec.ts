@@ -103,7 +103,7 @@ test.describe("M2 materiais", () => {
     cardId = (await apiCreateProject(title, "ana", team)).id;
   });
 
-  test("FE-10/11: Admin envia (barra indeterminada), lista, chip 'N materiais' no quadro, baixa com acento e exclui com confirmacao", async ({ page }) => {
+  test("FE-10/11: Admin envia (progresso real), lista, chip 'N materiais' no quadro, baixa com acento e exclui com confirmacao", async ({ page }) => {
     const problems = collectProblems(page);
     await loginAs(page, "ana", team);
     // atrasa a resposta para a barra de envio ficar visivel
@@ -117,7 +117,9 @@ test.describe("M2 materiais", () => {
 
     await dialog.locator('input[type="file"]').setInputFiles(file("Relatório pedagógico ção.txt"));
     await expect(dialog.getByTestId("upload-progress")).toBeVisible();
-    await expect(dialog.getByTestId("upload-progress").locator(".animate-pulse")).toBeVisible();
+    // progresso real (XHR): porcentagem visivel durante o envio e nunca 100% antes do sucesso
+    await expect(dialog.getByTestId("upload-percent")).toHaveText(/Enviando\.\.\. \d{1,2}%/);
+    await expect(dialog.getByRole("progressbar")).toBeVisible();
     await expectToast(page, "Material enviado com sucesso!");
     await expect(dialog.getByTestId("upload-progress")).toHaveCount(0);
     await expect(dialog.getByText("Relatório pedagógico ção.txt", { exact: true })).toBeVisible();
@@ -126,6 +128,16 @@ test.describe("M2 materiais", () => {
     await dialog.locator('input[type="file"]').setInputFiles({ name: "Imagem.png", mimeType: "image/png", buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]) });
     await expect(dialog.getByText("Imagem.png", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("tab", { name: "Materiais (2)" })).toBeVisible();
+    // colunas: tipo, tamanho, quem enviou e data
+    await expect(dialog.getByTestId("material-meta").first()).toHaveText(/^PNG • \d+ B • Por .+ • \d{2}\/\d{2}\/\d{4}$/);
+    await expect(dialog.getByTestId("material-meta").nth(1)).toHaveText(/^TXT • /);
+    // Visualizar so para PDF/imagem; abre numa nova aba com o token (?inline=true)
+    await expect(dialog.getByRole("button", { name: "Visualizar Relatório pedagógico ção.txt" })).toHaveCount(0);
+    const popupPromise = page.waitForEvent("popup");
+    await dialog.getByRole("button", { name: "Visualizar Imagem.png" }).click();
+    const popup = await popupPromise;
+    expect(popup.url()).toMatch(/^blob:/);
+    await popup.close();
     await page.screenshot({ path: `${SHOTS}/m2-materiais-desktop.png` });
 
     // download: nome com acento vem do filename*
@@ -207,6 +219,24 @@ test.describe("M2 materiais", () => {
     }
     expect(await dialog.getByRole("tab", { name: /^Materiais/ }).innerText()).toBe(before);
     await page.screenshot({ path: `${SHOTS}/m2-materiais-erro-servidor.png` });
+  });
+
+  test("FE-10: progresso real: com resposta 413 atrasada a porcentagem aparece e a barra some na hora, com o toast do servidor", async ({ page }) => {
+    await loginAs(page, "ana", team);
+    const dialog = await openCard(page, title);
+    await dialog.getByRole("tab", { name: /^Materiais/ }).click();
+    const handler = async (route: any) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await new Promise((r) => setTimeout(r, 700));
+      return route.fulfill({ status: 413, contentType: "application/json", body: JSON.stringify({ message: "O arquivo excede o limite de 20 MB." }) });
+    };
+    await page.route("**/materials", handler);
+    await dialog.locator('input[type="file"]').setInputFiles(file("progresso-413.txt"));
+    await expect(dialog.getByTestId("upload-percent")).toHaveText(/Enviando\.\.\. \d{1,2}%/);
+    await expectToast(page, "O arquivo excede o limite de 20 MB.");
+    await expect(dialog.getByTestId("upload-progress")).toHaveCount(0);
+    await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
+    await page.unroute("**/materials", handler);
   });
 
   test("SEC/FT: servidor real responde 413/415/400 e o upload do Criador funciona; Revisor nao tem upload nem exclusao", async ({ page }) => {

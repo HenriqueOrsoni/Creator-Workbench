@@ -4,11 +4,12 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   CheckSquare, Square, Plus, Trash2, ListChecks, Paperclip,
   Sparkles, History, CheckCircle2, ArrowUp, ArrowDown,
-  UploadCloud, Download, User, Calendar, MessageSquare, Pencil, X
+  UploadCloud, Download, User, Calendar, MessageSquare, Pencil, X, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { isPreviewable, materialMeta } from "@/lib/materials";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -50,6 +51,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     uploadMaterial,
     deleteMaterial,
     downloadMaterial,
+    previewMaterial,
     cardSummaries,
     cardReviews,
     fetchCardReviews,
@@ -86,6 +88,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   // Estados para Materiais (FE-10, FE-11)
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [materialToDelete, setMaterialToDelete] = useState<{ id: string; fileName: string } | null>(null);
   const [deletingMaterial, setDeletingMaterial] = useState(false);
   const [summaryLoadedFor, setSummaryLoadedFor] = useState<string | null>(null);
@@ -215,13 +218,15 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     // Reset input
     e.target.value = "";
 
-    // Barra indeterminada: não há progresso real e ela some assim que o servidor responde (sucesso ou erro)
+    // Progresso real do envio; a barra some assim que o servidor responde (sucesso ou erro)
+    setUploadPercent(0);
     setIsUploading(true);
     let uploaded = null;
     try {
-      uploaded = await uploadMaterial(currentCard.id, file);
+      uploaded = await uploadMaterial(currentCard.id, file, setUploadPercent);
     } finally {
       setIsUploading(false);
+      setUploadPercent(0);
     }
 
     if (uploaded) {
@@ -538,10 +543,20 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 </label>
 
                 {isUploading && (
-                  <div data-testid="upload-progress" className="mt-3 w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <div data-testid="upload-progress" className="mt-3 w-full">
                     <div
-                      className="bg-primary h-full w-full animate-pulse"
-                    />
+                      role="progressbar"
+                      aria-label="Progresso do envio"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={uploadPercent}
+                      className="w-full bg-muted rounded-full h-1.5 overflow-hidden"
+                    >
+                      <div className="bg-primary h-full transition-all" style={{ width: `${uploadPercent}%` }} />
+                    </div>
+                    <span data-testid="upload-percent" className="mt-1 block text-[10px] font-medium text-muted-foreground">
+                      Enviando... {uploadPercent}%
+                    </span>
                   </div>
                 )}
               </div>
@@ -562,12 +577,25 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                       <Paperclip className="w-4 h-4 text-primary shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-foreground truncate" title={mat.fileName}>{mat.fileName}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {Math.round(mat.sizeBytes / 1024)} KB • Por {mat.uploadedBy?.name || "Membro"}
+                        <p className="text-[10px] text-muted-foreground break-words" data-testid="material-meta">
+                          {materialMeta(mat)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {isPreviewable(mat) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => previewMaterial(mat)}
+                          className="h-7 w-7 text-muted-foreground hover:text-primary rounded-md"
+                          title="Visualizar"
+                          aria-label={`Visualizar ${mat.fileName}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

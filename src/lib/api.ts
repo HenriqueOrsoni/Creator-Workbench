@@ -136,7 +136,12 @@ function buildHeaders(withJsonContentType: boolean): Record<string, string> {
 const inFlightGets = new Map<string, Promise<unknown>>();
 
 // Função para chamadas genéricas à API
-export async function apiRequest(method: string, path: string, body?: unknown) {
+export interface ApiRequestOptions {
+  /** Progresso real do envio (0 a 100) para corpos FormData; usa XMLHttpRequest. */
+  onUploadProgress?: (percent: number) => void;
+}
+
+export async function apiRequest(method: string, path: string, body?: unknown, options?: ApiRequestOptions) {
   if (method === "GET" && body === undefined) {
     const key = `${getCookie("creator_auth_token") ?? ""}|${path}`;
     const pending = inFlightGets.get(key);
@@ -150,11 +155,64 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
   // Depois de uma escrita nenhuma leitura em andamento vale mais: a próxima vai ao servidor
   inFlightGets.clear();
   onWriteHook?.();
-  return performRequest(method, path, body);
+  return performRequest(method, path, body, options);
 }
 
-async function performRequest(method: string, path: string, body?: unknown) {
+function messageFromBody(text: string, fallback: string): string {
+  try {
+    return JSON.parse(text)?.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Envio com XMLHttpRequest para ter o progresso real; mesmos cabeçalhos e mesmo tratamento de erros do fetch. */
+function performUpload(method: string, path: string, body: FormData, onProgress: (percent: number) => void): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, `${API_BASE_URL}${path}`);
+    for (const [name, value] of Object.entries(buildHeaders(false))) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.responseType = "text";
+    xhr.upload.onprogress = (event: ProgressEvent) => {
+      if (event.lengthComputable && event.total > 0) {
+        // Nunca chega a 100% antes da resposta de sucesso
+        onProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
+      }
+    };
+    const networkError = () => reject(new ApiError(NETWORK_ERROR_MESSAGE, 0));
+    xhr.onerror = networkError;
+    xhr.onabort = networkError;
+    xhr.ontimeout = networkError;
+    xhr.onload = () => {
+      const status = xhr.status;
+      const text = typeof xhr.responseText === "string" ? xhr.responseText : "";
+      if (status >= 200 && status < 300) {
+        onProgress(100);
+        if (status === 204 || !text) return resolve(null);
+        try {
+          return resolve(JSON.parse(text));
+        } catch {
+          return resolve(null);
+        }
+      }
+      if (status === 401) {
+        handleUnauthorized();
+        return reject(new ApiError("Sessão expirada. Redirecionando...", 401));
+      }
+      const fallback = status === 403 ? "Acesso negado para esta operação." : "Ocorreu um erro na requisição.";
+      reject(new ApiError(messageFromBody(text, fallback), status));
+    };
+    xhr.send(body);
+  });
+}
+
+async function performRequest(method: string, path: string, body?: unknown, options?: ApiRequestOptions) {
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  if (isFormData && options?.onUploadProgress) {
+    return performUpload(method, path, body as FormData, options.onUploadProgress);
+  }
 
   const response = await safeFetch(`${API_BASE_URL}${path}`, {
     method,
@@ -189,7 +247,7 @@ export function fileNameFromDisposition(disposition?: string | null): string | n
  * Baixa um arquivo com o token no cabeçalho (fetch + blob) e dispara o download no navegador.
  * Um link simples (<a href>) não envia o token, por isso não serve para rotas protegidas.
  */
-export async function apiDownload(path: string, fallbackFileName: string): Promise<void> {
+async function fetchBlob(path: string, fallbackFileName: string): Promise<{ blob: Blob; fileName: string }> {
   const response = await safeFetch(`${API_BASE_URL}${path}`, {
     method: "GET",
     headers: buildHeaders(false),
@@ -199,7 +257,10 @@ export async function apiDownload(path: string, fallbackFileName: string): Promi
 
   const blob = await response.blob();
   const fileName = fileNameFromDisposition(response.headers?.get?.("Content-Disposition")) ?? fallbackFileName;
+  return { blob, fileName };
+}
 
+function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -208,4 +269,28 @@ export async function apiDownload(path: string, fallbackFileName: string): Promi
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function apiDownload(path: string, fallbackFileName: string): Promise<void> {
+  const { blob, fileName } = await fetchBlob(path, fallbackFileName);
+  saveBlob(blob, fileName);
+}
+
+/**
+ * Abre um arquivo em outra aba (GET ...?inline=true com o token no cabeçalho, via blob).
+ * Se o navegador bloquear a nova aba, cai no download. Devolve "opened" ou "downloaded".
+ */
+export async function apiOpenInline(path: string, fallbackFileName: string): Promise<"opened" | "downloaded"> {
+  const { blob, fileName } = await fetchBlob(`${path}${path.includes("?") ? "&" : "?"}inline=true`, fallbackFileName);
+  const url = URL.createObjectURL(blob);
+  // Sem a opção "noopener" no window.open (ela faz o retorno ser sempre null e esconderia o bloqueio de pop-up)
+  const opened = window.open(url, "_blank");
+  if (opened) {
+    opened.opener = null;
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return "opened";
+  }
+  URL.revokeObjectURL(url);
+  saveBlob(blob, fileName);
+  return "downloaded";
 }

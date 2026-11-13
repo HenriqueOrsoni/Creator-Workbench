@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Download, Link2, Paperclip, Unlink } from "lucide-react";
+import { Download, Link2, Paperclip, Unlink, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppStore } from "@/store/useAppStore";
 import { canEditProduction } from "@/lib/roles";
+import { isPreviewable, materialMeta } from "@/lib/materials";
 
 interface LessonMaterialsDialogProps {
   courseId: string;
@@ -33,6 +34,7 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
     cardMaterials,
     fetchCardMaterials,
     downloadMaterial,
+    previewMaterial,
     linkMaterialToLesson,
     unlinkMaterialFromLesson,
   } = useAppStore();
@@ -104,8 +106,24 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
                     key={m.id}
                     className="flex min-w-0 items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border"
                   >
-                    <span className="text-xs font-medium text-foreground truncate min-w-0" title={m.fileName}>{m.fileName}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate" title={m.fileName}>{m.fileName}</p>
+                      <p className="text-[10px] text-muted-foreground break-words" data-testid="material-meta">{materialMeta(m)}</p>
+                    </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {isPreviewable(m) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => previewMaterial(m)}
+                          aria-label={`Visualizar ${m.fileName}`}
+                          title="Visualizar"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

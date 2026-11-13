@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 jest.mock('@/lib/api', () => ({
   apiRequest: jest.fn(),
   apiDownload: jest.fn(),
+  apiOpenInline: jest.fn(),
   getCookie: jest.fn(),
   setCookie: jest.fn(),
   deleteCookie: jest.fn(),
@@ -15,6 +16,7 @@ jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
 const api = apiModule.apiRequest as jest.Mock;
 const download = apiModule.apiDownload as jest.Mock;
+const openInline = apiModule.apiOpenInline as jest.Mock;
 const T = '/api/v1/teams/7';
 
 function apiError(message: string, status: number) {
@@ -60,6 +62,13 @@ describe('Store M2: materiais, revisão e resumo', () => {
       expect((body as FormData).get('file')).toBeInstanceOf(File);
       expect(useAppStore.getState().cardMaterials['5'].map((m) => m.id)).toEqual(['2', '1']);
       expect(toast.success).toHaveBeenCalled();
+    });
+
+    it('repassa o progresso do envio para a API (XHR) quando há callback', async () => {
+      api.mockResolvedValueOnce(matDto(2));
+      const onProgress = jest.fn();
+      await useAppStore.getState().uploadMaterial('5', file('a.pdf'), onProgress);
+      expect(api.mock.calls[0][3]).toEqual({ onUploadProgress: onProgress });
     });
 
     it('atualiza materialsCount do card no quadro', async () => {
@@ -123,6 +132,16 @@ describe('Store M2: materiais, revisão e resumo', () => {
       expect(await useAppStore.getState().deleteMaterial('1', '5')).toBe(true);
       expect(api).toHaveBeenLastCalledWith('DELETE', `${T}/materials/1`);
       expect(useAppStore.getState().cardMaterials['5']).toHaveLength(0);
+    });
+
+    it('visualizar chama apiOpenInline com a rota de download e mostra o erro do servidor se falhar', async () => {
+      const m = { id: '1', cardId: '5', fileName: 'guia.pdf', contentType: 'application/pdf', sizeBytes: 1, createdAt: 'x' };
+      openInline.mockResolvedValueOnce('opened');
+      expect(await useAppStore.getState().previewMaterial(m)).toBe(true);
+      expect(openInline).toHaveBeenCalledWith(`${T}/materials/1/download`, 'guia.pdf');
+      openInline.mockRejectedValueOnce(apiError('Material não encontrado.', 404));
+      expect(await useAppStore.getState().previewMaterial(m)).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Material não encontrado.');
     });
 
     it('baixa com apiDownload (token no cabeçalho) e mostra o erro do servidor', async () => {
