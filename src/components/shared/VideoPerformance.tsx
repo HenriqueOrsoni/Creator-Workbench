@@ -131,7 +131,7 @@ export function VideoPerformance({ cardId, videoUrl, canEdit, active }: VideoPer
         <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 space-y-0.5">
-              {stats ? (
+              {stats && latest ? (
                 <>
                   {href ? (
                     <a
@@ -171,7 +171,7 @@ export function VideoPerformance({ cardId, videoUrl, canEdit, active }: VideoPer
             </Button>
           </div>
 
-          {stats && (
+          {stats && latest && (
             <>
               <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
                 {tiles.map(t => (

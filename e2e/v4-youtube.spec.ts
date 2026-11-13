@@ -243,8 +243,8 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
     const t = page.locator('[data-sonner-toast][data-type="error"]').first();
     await expect(t).toBeVisible();
     await expect(t).toContainText(/não encontrad|nao encontrad|indispon|privad/i);
-    await expect(dialog.getByTestId("video-title")).toHaveText("");
-    for (const l of ["Visualizações", "Curtidas", "Comentários"]) await expect(dialog.getByTestId(`stat-${l}`)).toHaveText("—");
+    await expect(dialog.getByText("Ainda não há números deste vídeo. Clique em Atualizar.")).toBeVisible();
+    for (const l of ["Visualizações", "Curtidas", "Comentários"]) await expect(dialog.getByTestId(`stat-${l}`)).toHaveCount(0);
     await page.screenshot({ path: `${SHOTS}/v4-yt-not-found.png` });
   });
 
@@ -260,8 +260,9 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
     await dialog.getByRole("button", { name: "Atualizar" }).click();
     const t = page.locator('[data-sonner-toast][data-type="error"]').first();
     await expect(t).toContainText(MSG_UNAVAILABLE);
-    // nenhum numero inventado (ver FT-YT-12 sobre o estado sem leitura)
-    await expect(dialog.getByTestId("stat-Visualizações")).toHaveText("—");
+    // nenhum numero inventado: continua o aviso de "sem leitura" (FT-YT-12)
+    await expect(dialog.getByText("Ainda não há números deste vídeo. Clique em Atualizar.")).toBeVisible();
+    await expect(dialog.getByTestId("stat-Visualizações")).toHaveCount(0);
     await page.screenshot({ path: `${SHOTS}/v4-yt-quota.png` });
 
     // volta ao normal: Atualizar funciona de novo
@@ -305,7 +306,7 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
 test.describe("v4 YouTube: estado sem leitura", () => {
   // [BUG] FE: com o video vinculado e nenhum snapshot ainda, a tela mostra titulo vazio, o icone de link solto e tres "—",
   // em vez do aviso "Ainda não há números deste vídeo. Clique em Atualizar." (VideoPerformance.tsx: `stats ?` ignora latest === null).
-  test.fail("FT-YT-12 [BUG]: video vinculado sem nenhuma leitura mostra o aviso 'Ainda não há números', nao tiles vazios", async ({ page }) => {
+  test("FT-YT-12: video vinculado sem nenhuma leitura mostra o aviso 'Ainda não há números', nao tiles vazios", async ({ page }) => {
     const title = uniq("Projeto YT sem leitura");
     const card = await apiCreateProject(title, "ana", team);
     expect((await putVideo("ana", card.id, `https://youtu.be/${videoId()}`)).status).toBe(200);
