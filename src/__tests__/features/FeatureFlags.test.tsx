@@ -43,11 +43,15 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     useAppStore.setState({ activeTeam: admin, activeTeamId: '10' });
   });
 
-  it('materials, summary e review ligadas no marco 2; as demais seguem desligadas', () => {
+  it('materials, summary, review e os cursos (M3) ligados; as demais seguem desligadas', () => {
     expect(FEATURES.materials).toBe(true);
     expect(FEATURES.summary).toBe(true);
     expect(FEATURES.review).toBe(true);
-    const off = Object.entries(FEATURES).filter(([k]) => !['materials', 'summary', 'review'].includes(k));
+    expect(FEATURES.courseEdit).toBe(true);
+    expect(FEATURES.coursePublish).toBe(true);
+    expect(FEATURES.courseCsv).toBe(true);
+    const on = ['materials', 'summary', 'review', 'courseEdit', 'coursePublish', 'courseCsv'];
+    const off = Object.entries(FEATURES).filter(([k]) => !on.includes(k));
     expect(off.length).toBeGreaterThan(0);
     expect(off.every(([, v]) => v === false)).toBe(true);
   });
@@ -86,25 +90,6 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     expect(screen.queryByText(/alterar senha/i)).not.toBeInTheDocument();
   });
 
-  it('CoursesView esconde publicar, despublicar e exportar CSV (mantém JSON)', () => {
-    const course: Course = { id: '1', teamId: '10', title: 'Curso A', modulesCount: 0, createdAt: 'x' };
-    const detail: CourseDetail = { ...course, modules: [] };
-    useAppStore.setState({
-      courses: [course],
-      activeCourse: detail,
-      board: null,
-      fetchCourses: jest.fn(),
-      fetchCourseDetails: jest.fn(),
-    });
-    render(<CoursesView />);
-
-    expect(screen.getByText('Curso A', { selector: 'h3' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /publicar curso/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /despublicar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /csv/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /json/i })).toBeInTheDocument();
-  });
-
   it('Navbar não mostra o sino de alertas e não busca /alerts', async () => {
     render(<Navbar />);
 
@@ -115,29 +100,6 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
   it('fetchAlerts com a flag desligada não chama a rota', async () => {
     await useAppStore.getState().fetchAlerts();
     expect(api).not.toHaveBeenCalled();
-  });
-
-  it('CoursesView esconde editar curso, renomear módulo e reordenar módulos e aulas', () => {
-    const course: Course = { id: '1', teamId: '10', title: 'Curso A', modulesCount: 1, createdAt: 'x' };
-    const detail: CourseDetail = {
-      ...course,
-      modules: [
-        { id: 'm1', courseId: '1', title: 'Mod 1', sortOrder: 0, lessons: [
-          { id: 'l1', moduleId: 'm1', title: 'Aula 1', type: 'VIDEO', published: false, sortOrder: 0 },
-          { id: 'l2', moduleId: 'm1', title: 'Aula 2', type: 'VIDEO', published: false, sortOrder: 1 },
-        ] },
-        { id: 'm2', courseId: '1', title: 'Mod 2', sortOrder: 1, lessons: [] },
-      ],
-    };
-    useAppStore.setState({ courses: [course], activeCourse: detail, board: null, fetchCourses: jest.fn(), fetchCourseDetails: jest.fn() });
-    render(<CoursesView />);
-
-    expect(screen.queryByRole('button', { name: 'Editar curso' })).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Renomear módulo')).not.toBeInTheDocument();
-    expect(screen.queryByTitle(/Mover módulo/)).not.toBeInTheDocument();
-    expect(screen.queryByTitle(/Mover aula/)).not.toBeInTheDocument();
-    // editar aula continua (a rota existe)
-    expect(screen.getAllByRole('button', { name: /editar aula/i }).length).toBe(2);
   });
 
   it('/convite sem a flag mostra mensagem e não chama as rotas de convite', () => {

@@ -157,7 +157,12 @@ export async function apiRequest(method: string, path: string, body?: unknown, o
   // Depois de uma escrita nenhuma leitura em andamento vale mais: a próxima vai ao servidor
   inFlightGets.clear();
   onWriteHook?.();
-  return performRequest(method, path, body, options);
+  try {
+    return await performRequest(method, path, body, options);
+  } finally {
+    // Leituras iniciadas durante a escrita também podem estar velhas: limpa de novo ao terminar
+    inFlightGets.clear();
+  }
 }
 
 function messageFromBody(text: string, fallback: string): string {

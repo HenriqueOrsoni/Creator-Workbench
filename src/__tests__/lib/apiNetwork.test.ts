@@ -55,6 +55,26 @@ describe('api.ts: falha de rede, leituras repetidas e equipe guardada', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('GET iniciado durante uma escrita não é reaproveitado depois que a escrita termina', async () => {
+    let releaseWrite: () => void = () => {};
+    const writeGate = new Promise<void>((r) => { releaseWrite = r; });
+    global.fetch = jest.fn().mockImplementation(async (_url: string, init: { method: string }) => {
+      if (init.method === 'PATCH') await writeGate;
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    });
+
+    const write = apiRequest('PATCH', '/api/v1/teams/1/courses/5', { title: 'Novo' });
+    const duringWrite = apiRequest('GET', '/api/v1/teams/1/courses/5');
+    releaseWrite();
+    await write;
+    // A leitura feita durante a escrita já pode estar velha: nova leitura vai ao servidor
+    await apiRequest('GET', '/api/v1/teams/1/courses/5');
+    await duringWrite;
+
+    const gets = (global.fetch as jest.Mock).mock.calls.filter((c) => c[1].method === 'GET');
+    expect(gets.length).toBe(2);
+  });
+
   it('POSTs iguais não são unidos', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ id: 1 }) });
 
