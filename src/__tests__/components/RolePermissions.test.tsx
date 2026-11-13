@@ -37,9 +37,6 @@ jest.mock('@/lib/api', () => ({
   deleteCookie: jest.fn(),
 }));
 
-jest.mock('@/components/shared/ThemeColorPicker', () => ({
-  ThemeColorPicker: () => <div data-testid="theme-color-picker">ColorPicker</div>,
-}));
 
 jest.mock('@/components/shared/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle">ThemeToggle</div>,

@@ -21,7 +21,6 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => 'token-x' }),
   useRouter: () => ({ push: jest.fn() }),
 }));
-jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 jest.mock('@/components/shared/ThemeToggle', () => ({ ThemeToggle: () => null }));
 jest.mock('@/components/shared/CreateIdeaDialog', () => ({
   CreateIdeaDialog: ({ trigger }: { trigger: React.ReactNode }) => <div>{trigger}</div>,

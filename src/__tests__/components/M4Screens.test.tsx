@@ -25,7 +25,6 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => mockToken }),
   useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
 }));
-jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 jest.mock('@/components/shared/ThemeToggle', () => ({ ThemeToggle: () => null }));
 jest.mock('@/components/shared/CreateIdeaDialog', () => ({ CreateIdeaDialog: () => null }));
 jest.mock('@/components/shared/TeamSwitcher', () => ({ TeamSwitcher: () => null }));

@@ -5,7 +5,6 @@ import { Menu, Plus, Zap, Layout, Sparkles, Settings2, Trash2, LogOut, Graduatio
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { ThemeColorPicker } from "./ThemeColorPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateIdeaDialog } from "./CreateIdeaDialog";
 import { UserSettingsDialog } from "./UserSettingsDialog";
@@ -306,7 +305,6 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
         </div>
 
         {/* Hidden color picker for test compatibility */}
-        <ThemeColorPicker />
       </div>
     </nav>
   );
