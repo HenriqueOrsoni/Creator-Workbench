@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, ArrowRight, AlertCircle, MailCheck, UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -13,7 +13,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, setCookie } from "@/lib/api";
 import { toast } from "sonner";
-import { getSafeRedirect } from "@/lib/redirect";
+import { getSafeRedirect, withRedirect } from "@/lib/redirect";
 
 const step1Schema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -35,6 +35,11 @@ type Step1Values = z.infer<typeof step1Schema>;
 type Step2Values = z.infer<typeof step2Schema>;
 
 export default function RegisterPage() {
+  // O ?redirect= só existe no navegador; o link para a outra tela de acesso o mantém
+  const [otherHref, setOtherHref] = useState("/login");
+  useEffect(() => {
+    setOtherHref(withRedirect("/login", window.location.search));
+  }, []);
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [userData, setUserData] = useState<{ name: string; email: string }>({ name: "", email: "" });
@@ -378,7 +383,7 @@ export default function RegisterPage() {
             <div className="pt-5 mt-6 border-t border-border text-center">
               <p className="text-xs text-muted-foreground">
                 Já é operador?{" "}
-                <a href="/login" className="text-primary font-semibold hover:underline">
+                <a href={otherHref} className="text-primary font-semibold hover:underline">
                   Iniciar Sessão
                 </a>
               </p>

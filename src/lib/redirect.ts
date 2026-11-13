@@ -31,3 +31,10 @@ export function buildLoginUrl(pathname: string, search = ""): string {
   if (!pathname || pathname === "/") return "/login";
   return `/login?redirect=${encodeURIComponent(`${pathname}${search}`)}`;
 }
+
+
+/** Link para outra tela de acesso (login/registrar) mantendo o ?redirect= atual, só se for seguro. */
+export function withRedirect(path: string, search: string): string {
+  const safe = getSafeRedirect(search);
+  return safe === "/" ? path : `${path}?redirect=${encodeURIComponent(safe)}`;
+}
