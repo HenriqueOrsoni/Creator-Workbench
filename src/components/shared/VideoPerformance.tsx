@@ -21,10 +21,13 @@ function formatPublishDate(value: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("pt-BR");
 }
 
+const YOUTUBE_HOSTS = ["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"];
+
 function safeHref(url: string): string | null {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+    const okProtocol = u.protocol === "https:" || u.protocol === "http:";
+    return okProtocol && YOUTUBE_HOSTS.includes(u.hostname.toLowerCase()) ? u.toString() : null;
   } catch {
     return null;
   }
@@ -85,9 +88,13 @@ export function VideoPerformance({ cardId, videoUrl, canEdit, active }: VideoPer
   return (
     <div className="space-y-3" data-testid="video-performance">
       <div className="p-3.5 rounded-xl border border-border bg-card space-y-2">
-        <label htmlFor={`video-url-${cardId}`} className="text-xs font-semibold text-foreground">
-          Link do vídeo no YouTube
-        </label>
+        {canEdit ? (
+          <label htmlFor={`video-url-${cardId}`} className="text-xs font-semibold text-foreground">
+            Link do vídeo no YouTube
+          </label>
+        ) : (
+          <p className="text-xs font-semibold text-foreground">Link do vídeo no YouTube</p>
+        )}
         {canEdit ? (
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
@@ -110,7 +117,7 @@ export function VideoPerformance({ cardId, videoUrl, canEdit, active }: VideoPer
             </div>
           </div>
         ) : (
-          <p id={`video-url-${cardId}`} data-testid="video-url-readonly" className="text-xs text-muted-foreground break-all">
+          <p data-testid="video-url-readonly" className="text-xs text-muted-foreground break-all">
             {videoUrl || "Nenhum vídeo vinculado."}
           </p>
         )}

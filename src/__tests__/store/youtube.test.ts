@@ -92,6 +92,13 @@ describe('Store YouTube: desempenho do vídeo', () => {
     expect(useAppStore.getState().videoStats['5']).toBeUndefined();
   });
 
+  it('fetchVideoStats 404 apaga números antigos (link removido por outra pessoa)', async () => {
+    useAppStore.setState({ videoStats: { '5': { cardId: '5', videoId: 'a', videoUrl: 'u', title: 'Antigo', publishedAt: null, latest: null, history: [] } } });
+    api.mockRejectedValueOnce(err('Este projeto não tem vídeo do YouTube vinculado.', 404));
+    await useAppStore.getState().fetchVideoStats('5');
+    expect(useAppStore.getState().videoStats['5']).toBeUndefined();
+  });
+
   it('fetchVideoStats com erro 500 mostra o toast', async () => {
     api.mockRejectedValueOnce(err('Falha no servidor', 500));
     expect(await useAppStore.getState().fetchVideoStats('5')).toBeNull();

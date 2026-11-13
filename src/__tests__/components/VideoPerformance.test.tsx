@@ -104,6 +104,20 @@ describe('VideoPerformance', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Atualizar' })).toBeEnabled());
   });
 
+  it.each(['javascript:alert(1)', 'data:text/html,x', 'https://evil.example.com/watch?v=abc'])(
+    'videoUrl %s não vira link: título em texto puro', (bad) => {
+      setup({ videoStats: { '5': stats({ videoUrl: bad }) } });
+      render(<VideoPerformance cardId="5" videoUrl="https://youtu.be/abc" canEdit active />);
+      expect(screen.getByTestId('video-title').textContent).toBe('Aula 1');
+      expect(screen.queryByRole('link')).toBeNull();
+    });
+
+  it('aba inativa nunca busca os números', () => {
+    const f = setup();
+    render(<VideoPerformance cardId="5" videoUrl="https://youtu.be/abc" canEdit active={false} />);
+    expect(f.fetchVideoStats).not.toHaveBeenCalled();
+  });
+
   it('busca os números ao abrir a aba quando há link', async () => {
     const f = setup();
     render(<VideoPerformance cardId="5" videoUrl="https://youtu.be/abc" canEdit active />);

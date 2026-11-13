@@ -1955,7 +1955,16 @@ export const useAppStore = create<AppState>()(
           return stats;
         } catch (error) {
           // 404: o projeto ainda não tem vídeo vinculado (estado vazio, não erro)
-          if (statusOf(error) !== 404) notifyError(error, "Erro ao carregar o desempenho do vídeo");
+          if (statusOf(error) === 404) {
+            // O vínculo foi removido por outra pessoa: some com os números antigos
+            set(state => {
+              const next = { ...state.videoStats };
+              delete next[cardId];
+              return { videoStats: next };
+            });
+          } else {
+            notifyError(error, "Erro ao carregar o desempenho do vídeo");
+          }
           return null;
         }
       },
