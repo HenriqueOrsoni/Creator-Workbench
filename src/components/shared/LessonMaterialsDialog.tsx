@@ -29,6 +29,7 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
   const {
     activeCourse,
     activeTeam,
+    board,
     cardMaterials,
     fetchCardMaterials,
     downloadMaterial,
@@ -40,13 +41,18 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
   const lesson = activeCourse?.modules
     .find((m) => m.id === moduleId)
     ?.lessons.find((l) => l.id === lessonId);
-  const projectId = lesson?.projectId;
+  const lessonProjectId = lesson?.projectId;
+
+  // Começa pelo projeto da aula, mas qualquer projeto da equipe pode ser escolhido
+  const [pickedProject, setPickedProject] = React.useState<string | null>(null);
+  const projectId = pickedProject ?? lessonProjectId ?? "";
+  const projects = (board?.columns ?? []).flatMap((c) => c.cards).filter((c) => c.type === "PROJECT");
 
   const [selectedId, setSelectedId] = React.useState("");
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
-    if (projectId && canEdit) fetchCardMaterials(projectId);
+    if (projectId && canEdit) fetchCardMaterials(projectId, { ignoreNotFound: true });
   }, [projectId, canEdit, fetchCardMaterials]);
 
   if (!lesson) return null;
@@ -140,9 +146,25 @@ export function LessonMaterialsDialog({ courseId, moduleId, lessonId, onClose }:
               >
                 Vincular material do projeto
               </label>
+              <select
+                aria-label="Projeto do material"
+                value={projectId}
+                onChange={(e) => {
+                  setPickedProject(e.target.value);
+                  setSelectedId("");
+                }}
+                className="h-9 w-full min-w-0 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+              >
+                <option value="">Selecione um projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
               {!projectId ? (
                 <p className="text-xs text-muted-foreground">
-                  Vincule um projeto a esta aula para escolher entre os materiais dele.
+                  Escolha um projeto para ver os materiais dele.
                 </p>
               ) : available.length === 0 ? (
                 <p className="text-xs text-muted-foreground">

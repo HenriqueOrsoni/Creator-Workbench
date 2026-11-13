@@ -598,7 +598,8 @@ interface AppState {
   ) => Promise<boolean>;
 
   cardMaterials: Record<string, MaterialItem[]>;
-  fetchCardMaterials: (cardId: string) => Promise<MaterialItem[]>;
+  /** ignoreNotFound: projeto excluído devolve lista vazia, sem aviso. */
+  fetchCardMaterials: (cardId: string, opts?: { ignoreNotFound?: boolean }) => Promise<MaterialItem[]>;
   uploadMaterial: (cardId: string, file: File) => Promise<MaterialItem | null>;
   deleteMaterial: (materialId: string, cardId: string) => Promise<boolean>;
   downloadMaterial: (material: MaterialItem) => Promise<boolean>;
@@ -1652,7 +1653,7 @@ export const useAppStore = create<AppState>()(
       },
 
       // --- Materiais ---
-      fetchCardMaterials: async (cardId) => {
+      fetchCardMaterials: async (cardId, opts) => {
         const teamId = get().activeTeamId;
         if (!teamId) return get().cardMaterials[cardId] || [];
 
@@ -1667,7 +1668,9 @@ export const useAppStore = create<AppState>()(
             return mapped;
           }
         } catch (error) {
-          notifyError(error, "Erro ao carregar os materiais");
+          if (!(opts?.ignoreNotFound && statusOf(error) === 404)) {
+            notifyError(error, "Erro ao carregar os materiais");
+          }
         }
         return get().cardMaterials[cardId] || [];
       },

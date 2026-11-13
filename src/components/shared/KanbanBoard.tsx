@@ -17,6 +17,7 @@ import {
   Paperclip
 } from "lucide-react";
 import { FEATURES } from "@/lib/features";
+import { reviewLabel } from "@/lib/review";
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -349,7 +350,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                         className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600"
                                         title="Revisão"
                                       >
-                                        Aprovado
+                                        {reviewLabel("APPROVED")}
                                       </span>
                                     )}
                                     {FEATURES.review && item.rawCard.reviewStatus === "CHANGES_REQUESTED" && (
@@ -357,7 +358,7 @@ export function KanbanBoard({ onSelectTab }: KanbanBoardProps) {
                                         className="inline-flex items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600"
                                         title="Revisão"
                                       >
-                                        Alterações solicitadas
+                                        {reviewLabel("CHANGES_REQUESTED")}
                                       </span>
                                     )}
                                     {FEATURES.materials && (item.rawCard.materialsCount ?? 0) > 0 && (

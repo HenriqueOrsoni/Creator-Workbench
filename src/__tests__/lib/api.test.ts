@@ -190,6 +190,7 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
   });
 
   it('apiDownload baixa com fetch + blob enviando o token no cabeçalho', async () => {
+    jest.useFakeTimers();
     setCookie('creator_auth_token', 'tok-123', 86400);
     const blob = new Blob(['conteudo']);
     global.fetch = jest.fn().mockResolvedValueOnce({
@@ -212,7 +213,11 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
     );
     expect(createUrl).toHaveBeenCalledWith(blob);
     expect(clickSpy).toHaveBeenCalled();
+    // O endereço do arquivo é liberado só depois de um instante, não logo após o clique
+    expect(revokeUrl).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1000);
     expect(revokeUrl).toHaveBeenCalledWith('blob:x');
+    jest.useRealTimers();
     clickSpy.mockRestore();
   });
 

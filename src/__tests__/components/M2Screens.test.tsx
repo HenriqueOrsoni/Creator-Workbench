@@ -153,6 +153,28 @@ describe('M2: aba Revisão', () => {
     expect(screen.getByLabelText('Comentários de revisão')).toHaveAttribute('maxLength', '2000');
   });
 
+  it('400 do servidor mantém o texto do comentário; sucesso limpa', async () => {
+    setRole('REVIEWER');
+    let fail = true;
+    api.mockImplementation((method: string, path: string) => {
+      if (method === 'POST') return fail ? Promise.reject(apiError('O comentário deve ter no máximo 2000 caracteres.', 400)) : Promise.resolve({ id: 1 });
+      if (path.endsWith('/board')) return Promise.resolve({ teamId: 7, teamName: 'E', columns: [] });
+      return Promise.resolve([]);
+    });
+    await openTab(/revisão/i);
+
+    await userEvent.click(await screen.findByRole('button', { name: /pedir alterações/i }));
+    const input = screen.getByLabelText('Comentários de revisão');
+    await userEvent.type(input, 'Ajustar o início');
+    await userEvent.click(screen.getByRole('button', { name: /registrar decisão/i }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('O comentário deve ter no máximo 2000 caracteres.'));
+    expect(input).toHaveValue('Ajustar o início');
+
+    fail = false;
+    await userEvent.click(screen.getByRole('button', { name: /registrar decisão/i }));
+    await waitFor(() => expect(input).toHaveValue(''));
+  });
+
   it('erro 403 do servidor aparece no toast e nada é registrado', async () => {
     setRole('REVIEWER');
     api.mockImplementation((method: string) =>
@@ -192,6 +214,50 @@ describe('M2: aba Materiais', () => {
 
     expect(await screen.findByText(/clique para enviar/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^excluir/i })).toBeInTheDocument();
+  });
+
+  it('o rótulo da aba usa materialsCount do card antes de abrir a aba', () => {
+    setRole('CREATOR');
+    api.mockResolvedValue([]);
+    render(<CardTaskDialog card={{ ...card, materialsCount: 3 }} open={true} onOpenChange={() => {}} />);
+    expect(screen.getByRole('tab', { name: 'Materiais (3)' })).toBeInTheDocument();
+  });
+
+  it('413 no envio: sem barra em 100%, a barra some na hora e a mensagem do servidor aparece', async () => {
+    setRole('CREATOR');
+    let reject: (e: unknown) => void = () => {};
+    api.mockImplementation((method: string) =>
+      method === 'POST' ? new Promise((_, rej) => { reject = rej; }) : Promise.resolve([]));
+    await openTab(/materiais/i);
+    await screen.findByText(/Nenhum arquivo anexado/);
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'a.pdf', { type: 'application/pdf' })] } });
+    const bar = await screen.findByTestId('upload-progress');
+    expect(bar.innerHTML).not.toContain('100%');
+
+    reject(apiError('O arquivo excede o limite de 20 MB.', 413));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('O arquivo excede o limite de 20 MB.'));
+    await waitFor(() => expect(screen.queryByTestId('upload-progress')).not.toBeInTheDocument());
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('excluir pede confirmação (avisa dos vínculos) e o clique duplo exclui uma vez só', async () => {
+    setRole('CREATOR');
+    let resolveDelete: (v: unknown) => void = () => {};
+    api.mockImplementation((method: string) =>
+      method === 'DELETE' ? new Promise((res) => { resolveDelete = res; }) : Promise.resolve([{ ...mat, uploadedBy: { userId: 3, name: 'Ana' } }]));
+    await openTab(/materiais/i);
+
+    await userEvent.click(await screen.findByRole('button', { name: /^excluir/i }));
+    expect(api.mock.calls.some((c) => c[0] === 'DELETE')).toBe(false);
+    expect(screen.getByText(/vínculos dele com aulas também serão removidos/i)).toBeInTheDocument();
+
+    const confirm = screen.getByRole('button', { name: /confirmar exclusão/i });
+    await userEvent.dblClick(confirm);
+    expect(api.mock.calls.filter((c) => c[0] === 'DELETE')).toHaveLength(1);
+    resolveDelete(null);
+    await waitFor(() => expect(screen.queryByText(/vínculos dele/i)).not.toBeInTheDocument());
   });
 
   it('arquivo com extensão não permitida é barrado antes do envio, com mensagem', async () => {
@@ -272,6 +338,35 @@ describe('M2: materiais da aula', () => {
 
     await waitFor(() => expect(api).toHaveBeenCalledWith(
       'DELETE', '/api/v1/teams/7/courses/1/modules/2/lessons/3/materials/1'));
+  });
+
+  it('aula sem projeto: escolhe qualquer projeto da equipe e vincula o material dele', async () => {
+    setup('CREATOR');
+    useAppStore.setState({
+      activeCourse: { ...detail([]), modules: [{ id: '2', courseId: '1', title: 'Mod', sortOrder: 0, lessons: [
+        { id: '3', moduleId: '2', title: 'Aula 1', type: 'VIDEO', published: false, sortOrder: 0 },
+      ] }] },
+    });
+    api.mockImplementation((method: string, path: string) =>
+      Promise.resolve(method === 'GET' && path.includes('/cards/5/materials') ? [mat, { ...mat, id: '2', fileName: 'outro.pdf' }] : {}));
+
+    await userEvent.click(screen.getByRole('button', { name: /materiais da aula aula 1/i }));
+    await userEvent.selectOptions(await screen.findByLabelText('Projeto do material'), '5');
+    await userEvent.selectOptions(await screen.findByLabelText(/vincular material do projeto/i), '2');
+    await userEvent.click(screen.getByRole('button', { name: /^vincular$/i }));
+
+    await waitFor(() => expect(api).toHaveBeenCalledWith(
+      'POST', '/api/v1/teams/7/courses/1/modules/2/lessons/3/materials', { materialId: 2 }));
+  });
+
+  it('projeto excluído (404 ao listar materiais) não mostra aviso de erro', async () => {
+    setup('CREATOR');
+    api.mockRejectedValue(apiError('Card não encontrado.', 404));
+
+    await userEvent.click(screen.getByRole('button', { name: /materiais da aula aula 1/i }));
+    await screen.findByText(/Nenhum material vinculado/);
+    await waitFor(() => expect(api).toHaveBeenCalled());
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('Revisor só vê e baixa: sem seletor de vínculo e sem desvincular', async () => {
