@@ -95,10 +95,10 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
     const editCourseBtn = screen.getByRole('button', { name: /editar curso/i });
     fireEvent.click(editCourseBtn);
 
-    const titleInput = screen.getByLabelText(/título do curso \*/i);
+    const titleInput = screen.getByLabelText(/título do curso/i);
     fireEvent.change(titleInput, { target: { value: 'Curso Avançado de Next.js' } });
 
-    const submitBtn = screen.getByRole('button', { name: /salvar alterações/i });
+    const submitBtn = screen.getByRole('button', { name: /^salvar$/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -116,10 +116,10 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
     const editModuleBtn = screen.getByRole('button', { name: /renomear módulo/i });
     fireEvent.click(editModuleBtn);
 
-    const moduleInput = screen.getByLabelText(/nome do módulo \*/i);
+    const moduleInput = screen.getByLabelText(/nome do módulo/i);
     fireEvent.change(moduleInput, { target: { value: 'Módulo 1: Novo Setup' } });
 
-    const submitBtn = screen.getByRole('button', { name: /salvar alterações/i });
+    const submitBtn = screen.getByRole('button', { name: /^salvar$/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -173,9 +173,266 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
     render(<CoursesView />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Editar curso' }));
-    fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
 
     await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: /salvar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeInTheDocument();
+  });
+
+  describe('M3 - publicação, exportação, ordem e papéis', () => {
+    const twoModules: CourseDetail = {
+      ...mockCourseDetail,
+      modules: [
+        {
+          id: 'mod-1', courseId: '1', title: 'Módulo A', sortOrder: 0,
+          lessons: [
+            { id: 'les-1', moduleId: 'mod-1', title: 'Aula 1', type: 'VIDEO', published: true, sortOrder: 0 },
+            { id: 'les-2', moduleId: 'mod-1', title: 'Aula 2', type: 'TEXT', published: true, sortOrder: 1 },
+          ],
+        },
+        { id: 'mod-2', courseId: '1', title: 'Módulo B', sortOrder: 1, lessons: [] },
+      ],
+    };
+
+    it('verificar publicação com problemas mostra cada mensagem do servidor, mesmo de tipo desconhecido, e não publica', async () => {
+      const check = jest.fn().mockResolvedValue({
+        publishable: false,
+        problems: [
+          { type: 'INVALID_LINK', ids: [9], titles: ['Aula 1'], message: 'A aula tem um link inválido.' },
+          { type: 'TIPO_NOVO', ids: [], titles: [], message: 'Mensagem de um tipo que o front não conhece.' },
+        ],
+      });
+      const publish = jest.fn();
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+
+      expect(await screen.findByText('A aula tem um link inválido.')).toBeInTheDocument();
+      expect(screen.getByText('Mensagem de um tipo que o front não conhece.')).toBeInTheDocument();
+      expect(screen.getByText(/2 problemas/i)).toBeInTheDocument();
+      expect(check).toHaveBeenCalledWith('1');
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it('curso pronto abre a confirmação e só publica depois de confirmar', async () => {
+      const check = jest.fn().mockResolvedValue({ publishable: true, problems: [] });
+      const publish = jest.fn().mockResolvedValue(true);
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await screen.findByText(/deseja tornar o curso/i);
+      expect(publish).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /confirmar publicação/i }));
+      await waitFor(() => expect(publish).toHaveBeenCalledWith('1'));
+    });
+
+    it('falha na verificação (null) não abre diálogo nem publica', async () => {
+      const check = jest.fn().mockResolvedValue(null);
+      const publish = jest.fn();
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await waitFor(() => expect(check).toHaveBeenCalled());
+
+      expect(screen.queryByText(/deseja tornar o curso/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/não é possível publicar/i)).not.toBeInTheDocument();
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it('curso publicado mostra "Publicado em dd/mm/aaaa" e a ação Despublicar', async () => {
+      const unpublish = jest.fn().mockResolvedValue(true);
+      useAppStore.setState({
+        activeCourse: { ...mockCourseDetail, status: 'PUBLISHED', publishedAt: '2026-11-10T15:00:00' },
+        unpublishCourse: unpublish,
+      });
+      render(<CoursesView />);
+
+      expect(screen.getByText(/publicado em 10\/11\/2026/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /publicar curso/i })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /despublicar/i }));
+      await waitFor(() => expect(unpublish).toHaveBeenCalledWith('1'));
+    });
+
+    it('curso em rascunho mostra o selo Rascunho', () => {
+      useAppStore.setState({ activeCourse: { ...mockCourseDetail, status: 'DRAFT', publishedAt: null } });
+      render(<CoursesView />);
+      expect(screen.getByText('Rascunho')).toBeInTheDocument();
+    });
+
+    it('exportar JSON e CSV chamam a rota do servidor (não há mais exportação local)', async () => {
+      const exportJson = jest.fn().mockResolvedValue(true);
+      const exportCsv = jest.fn().mockResolvedValue(true);
+      useAppStore.setState({ exportCourseJson: exportJson, exportCourseCsv: exportCsv });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /json/i }));
+      expect(exportJson).toHaveBeenCalledWith('1');
+      await waitFor(() => expect(screen.getByRole('button', { name: /csv/i })).not.toBeDisabled());
+      fireEvent.click(screen.getByRole('button', { name: /csv/i }));
+      expect(exportCsv).toHaveBeenCalledWith('1');
+    });
+
+    it('mover módulo e aula manda a nova ordem de ids ao servidor', async () => {
+      const reorderModules = jest.fn().mockResolvedValue(true);
+      const reorderLessons = jest.fn().mockResolvedValue(true);
+      useAppStore.setState({
+        activeCourse: twoModules,
+        reorderCourseModules: reorderModules,
+        reorderCourseLessons: reorderLessons,
+      });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getAllByLabelText('Mover módulo para baixo')[0]);
+      await waitFor(() => expect(reorderModules).toHaveBeenCalledWith('1', ['mod-2', 'mod-1']));
+
+      fireEvent.click(screen.getAllByLabelText('Mover aula para cima')[1]);
+      await waitFor(() => expect(reorderLessons).toHaveBeenCalledWith('1', 'mod-1', ['les-2', 'les-1']));
+    });
+
+    it('revisor vê o curso sem editar, reordenar, publicar nem excluir, mas pode exportar', () => {
+      useAppStore.setState({
+        activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' },
+        activeCourse: twoModules,
+      });
+      render(<CoursesView />);
+
+      expect(screen.queryByRole('button', { name: 'Editar curso' })).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Renomear módulo')).not.toBeInTheDocument();
+      expect(screen.queryByTitle(/Mover módulo/)).not.toBeInTheDocument();
+      expect(screen.queryByTitle(/Mover aula/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /publicar curso/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /despublicar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /adicionar módulo/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /json/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /csv/i })).toBeInTheDocument();
+    });
+
+    it('revisor não vê Despublicar em curso publicado', () => {
+      useAppStore.setState({
+        activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' },
+        activeCourse: { ...mockCourseDetail, status: 'PUBLISHED', publishedAt: '2026-11-10T15:00:00' },
+      });
+      render(<CoursesView />);
+      expect(screen.queryByRole('button', { name: /despublicar/i })).not.toBeInTheDocument();
+    });
+
+    it('nova aula envia descrição e link do conteúdo', async () => {
+      const create = jest.fn().mockResolvedValue(true);
+      useAppStore.setState({ createCourseLesson: create });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /nova aula/i }));
+      fireEvent.change(screen.getByLabelText(/título da aula \*/i), { target: { value: 'Aula nova' } });
+      fireEvent.change(screen.getByLabelText(/link do conteúdo/i), { target: { value: 'https://exemplo.com/v' } });
+      fireEvent.change(screen.getByLabelText(/descrição da aula/i), { target: { value: 'Resumo da aula' } });
+      fireEvent.click(screen.getByRole('button', { name: /salvar aula/i }));
+
+      await waitFor(() => expect(create).toHaveBeenCalledWith(
+        '1', 'mod-1', 'Aula nova', 'VIDEO', undefined,
+        { description: 'Resumo da aula', contentUrl: 'https://exemplo.com/v' }
+      ));
+    });
+
+    it('nova aula recusada pelo servidor mantém o diálogo aberto com o que foi digitado', async () => {
+      const create = jest.fn().mockResolvedValue(false);
+      useAppStore.setState({ createCourseLesson: create });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /nova aula/i }));
+      fireEvent.change(screen.getByLabelText(/título da aula \*/i), { target: { value: 'Aula nova' } });
+      fireEvent.click(screen.getByRole('button', { name: /salvar aula/i }));
+
+      await waitFor(() => expect(create).toHaveBeenCalled());
+      expect(screen.getByLabelText(/título da aula \*/i)).toHaveValue('Aula nova');
+    });
+
+    it('editar aula mostra e envia descrição e link do conteúdo', async () => {
+      render(<CoursesView />);
+      fireEvent.click(screen.getByRole('button', { name: /editar aula/i }));
+      fireEvent.change(screen.getByLabelText(/link do conteúdo/i), { target: { value: 'https://exemplo.com/novo' } });
+      fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+      await waitFor(() => expect(mockUpdateCourseLesson).toHaveBeenCalledWith(
+        '1', 'mod-1', 'les-1', expect.objectContaining({ contentUrl: 'https://exemplo.com/novo' })
+      ));
+    });
+
+    it('renomear módulo recusado pelo servidor mantém o campo aberto', async () => {
+      mockUpdateCourseModule.mockResolvedValueOnce(false);
+      render(<CoursesView />);
+      fireEvent.click(screen.getByRole('button', { name: /renomear módulo/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^salvar$/i }));
+
+      await waitFor(() => expect(mockUpdateCourseModule).toHaveBeenCalled());
+      expect(screen.getByLabelText(/nome do módulo/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('M3 - ajustes da revisão', () => {
+    it('publicar recusado com 400 busca os problemas de novo e mostra a lista', async () => {
+      const check = jest.fn()
+        .mockResolvedValueOnce({ publishable: true, problems: [] })
+        .mockResolvedValueOnce({
+          publishable: false,
+          problems: [{ type: 'NO_MODULES', ids: [], titles: [], message: 'O curso não tem módulos.' }],
+        });
+      const publish = jest.fn().mockResolvedValue('invalid');
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await screen.findByText(/deseja tornar o curso/i);
+      fireEvent.click(screen.getByRole('button', { name: /confirmar publicação/i }));
+
+      expect(await screen.findByText('O curso não tem módulos.')).toBeInTheDocument();
+      expect(check).toHaveBeenCalledTimes(2);
+    });
+
+    it('publicar com outro erro não refaz a verificação', async () => {
+      const check = jest.fn().mockResolvedValue({ publishable: true, problems: [] });
+      const publish = jest.fn().mockResolvedValue(false);
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await screen.findByText(/deseja tornar o curso/i);
+      fireEvent.click(screen.getByRole('button', { name: /confirmar publicação/i }));
+
+      await waitFor(() => expect(publish).toHaveBeenCalled());
+      expect(check).toHaveBeenCalledTimes(1);
+    });
+
+    it('novo módulo recusado pelo servidor mantém o diálogo e o texto digitado', async () => {
+      const create = jest.fn().mockResolvedValue(false);
+      useAppStore.setState({ createCourseModule: create });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /adicionar módulo/i }));
+      fireEvent.change(screen.getByLabelText(/nome do módulo \*/i), { target: { value: 'Módulo novo' } });
+      fireEvent.click(screen.getByRole('button', { name: /salvar módulo/i }));
+
+      await waitFor(() => expect(create).toHaveBeenCalledWith('1', 'Módulo novo'));
+      expect(screen.getByLabelText(/nome do módulo \*/i)).toHaveValue('Módulo novo');
+    });
+
+    it('exportar bloqueia os botões de exportação até terminar', async () => {
+      let finish: (v: boolean) => void = () => {};
+      const exportJson = jest.fn().mockReturnValue(new Promise<boolean>((r) => { finish = r; }));
+      useAppStore.setState({ exportCourseJson: exportJson });
+      render(<CoursesView />);
+
+      const json = screen.getByRole('button', { name: /json/i });
+      fireEvent.click(json);
+      fireEvent.click(json);
+      expect(exportJson).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: /csv/i })).toBeDisabled();
+
+      finish(true);
+      await waitFor(() => expect(screen.getByRole('button', { name: /csv/i })).not.toBeDisabled());
+    });
   });
 });

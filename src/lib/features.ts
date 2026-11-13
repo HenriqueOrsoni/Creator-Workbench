@@ -13,11 +13,11 @@ export const FEATURES = {
   /** Convites de equipe (aba e ações). */
   invites: true,
   /** Publicar/despublicar curso e verificação de publicação. */
-  coursePublish: false,
+  coursePublish: true,
   /** Exportar curso em CSV. */
-  courseCsv: false,
+  courseCsv: true,
   /** Editar curso, renomear módulo e reordenar módulos e aulas. */
-  courseEdit: false,
+  courseEdit: true,
   /** Renomear e excluir equipe. */
   teamManage: true,
   /** Troca de e-mail e de senha nas configurações. */

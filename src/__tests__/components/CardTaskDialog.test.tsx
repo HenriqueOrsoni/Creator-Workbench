@@ -201,8 +201,8 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
     it('Enter seguido de blur salva uma única vez; Esc seguido de blur não salva', async () => {
       render(<CardTaskDialog card={mockCard} open={true} onOpenChange={() => {}} />);
 
-      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
-      let input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.click(await screen.findByLabelText('Editar título da tarefa Gravar tela'));
+      let input = await screen.findByLabelText('Título da tarefa Gravar tela');
       fireEvent.change(input, { target: { value: 'Título novo' } });
       await act(async () => {
         fireEvent.keyDown(input, { key: 'Enter' });
@@ -212,8 +212,8 @@ describe('Fase 2 - CardTaskDialog Component (Checklist & Progresso)', () => {
       expect(mockUpdateDetails).toHaveBeenCalledWith('10', '102', { title: 'Título novo' });
 
       mockUpdateDetails.mockClear();
-      fireEvent.click(screen.getByLabelText('Editar título da tarefa Gravar tela'));
-      input = screen.getByLabelText('Título da tarefa Gravar tela');
+      fireEvent.click(await screen.findByLabelText('Editar título da tarefa Gravar tela'));
+      input = await screen.findByLabelText('Título da tarefa Gravar tela');
       fireEvent.change(input, { target: { value: 'Cancelado' } });
       await act(async () => {
         fireEvent.keyDown(input, { key: 'Escape' });
