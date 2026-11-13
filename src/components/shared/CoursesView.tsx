@@ -20,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAppStore, type PublicationCheckProblem } from "@/store/useAppStore";
+import { FEATURES } from "@/lib/features";
 import { canEditProduction } from "@/lib/roles";
 import { toast } from "sonner";
 
@@ -119,9 +120,10 @@ export function CoursesView() {
     if (!editingCourse || !editingCourse.title.trim()) return;
 
     setLoading(true);
-    await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
+    const saved = await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
     setLoading(false);
-    setEditingCourse(null);
+    // Só fecha quando o servidor aceitou; em caso de erro a mensagem já foi exibida
+    if (saved) setEditingCourse(null);
   };
 
   const handleCreateModule = async (e: React.FormEvent) => {
@@ -380,7 +382,7 @@ export function CoursesView() {
                     <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
                       Curso Ativo
                     </Badge>
-                    {activeCourse.status === "PUBLISHED" ? (
+                    {FEATURES.coursePublish && (activeCourse.status === "PUBLISHED" ? (
                       <Badge className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                         <Globe className="w-3 h-3 mr-1" /> Publicado
                       </Badge>
@@ -388,14 +390,14 @@ export function CoursesView() {
                       <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-border">
                         Rascunho
                       </Badge>
-                    )}
+                    ))}
                   </div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-bold text-foreground font-heading">
                       {activeCourse.title}
                     </h3>
-                    {canEditCourses && (
-                      <Button
+                    {canEditCourses && FEATURES.courseEdit && (
+<Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setEditingCourse({
@@ -409,7 +411,7 @@ export function CoursesView() {
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                    )}
+)}
                   </div>
                   {activeCourse.description && (
                     <p className="text-xs text-muted-foreground mt-1 max-w-xl leading-relaxed">
@@ -427,6 +429,7 @@ export function CoursesView() {
                   >
                     <Download className="w-3.5 h-3.5" /> JSON
                   </Button>
+                  {FEATURES.courseCsv && (
                   <Button
                     variant="outline"
                     onClick={() => exportCourseCsv(activeCourse.id)}
@@ -435,9 +438,10 @@ export function CoursesView() {
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> CSV
                   </Button>
+                  )}
                   {canEditCourses && (
                     <>
-                      {activeCourse.status === "PUBLISHED" ? (
+                      {FEATURES.coursePublish && (activeCourse.status === "PUBLISHED" ? (
                         <Button
                           variant="outline"
                           onClick={handleUnpublishCourse}
@@ -455,7 +459,7 @@ export function CoursesView() {
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Publicar Curso
                         </Button>
-                      )}
+                      ))}
                       <Button
                         onClick={() => setOpenCreateModule(true)}
                         className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
@@ -497,8 +501,8 @@ export function CoursesView() {
                           <span className="text-[10px] text-muted-foreground font-medium">
                             ({module.lessons.length} {module.lessons.length === 1 ? "aula" : "aulas"})
                           </span>
-                          {canEditCourses && (
-                            <Button
+                          {canEditCourses && FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setEditingModule({ id: module.id, title: module.title })}
@@ -508,12 +512,13 @@ export function CoursesView() {
                             >
                               <Pencil className="w-3 h-3" />
                             </Button>
-                          )}
+)}
                         </div>
 
                         {canEditCourses && (
                           <div className="flex items-center gap-1.5">
-                            <Button
+                            {FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               disabled={moduleIndex === 0}
@@ -524,7 +529,9 @@ export function CoursesView() {
                             >
                               <ChevronUp className="w-3.5 h-3.5" />
                             </Button>
-                            <Button
+)}
+                            {FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               disabled={moduleIndex === activeCourse.modules.length - 1}
@@ -535,6 +542,7 @@ export function CoursesView() {
                             >
                               <ChevronDown className="w-3.5 h-3.5" />
                             </Button>
+)}
                             <Button
                               variant="outline"
                               size="sm"
@@ -589,7 +597,8 @@ export function CoursesView() {
                                 </div>
                                 {canEditCourses && (
                                   <div className="flex items-center gap-1 shrink-0">
-                                    <Button
+                                    {FEATURES.courseEdit && (
+<Button
                                       variant="ghost"
                                       size="icon"
                                       disabled={lessonIndex === 0}
@@ -600,7 +609,9 @@ export function CoursesView() {
                                     >
                                       <ChevronUp className="w-2.5 h-2.5" />
                                     </Button>
-                                    <Button
+)}
+                                    {FEATURES.courseEdit && (
+<Button
                                       variant="ghost"
                                       size="icon"
                                       disabled={lessonIndex === module.lessons.length - 1}
@@ -611,6 +622,7 @@ export function CoursesView() {
                                     >
                                       <ChevronDown className="w-2.5 h-2.5" />
                                     </Button>
+)}
                                     <Button
                                       variant="ghost"
                                       size="icon"

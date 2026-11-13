@@ -1,5 +1,6 @@
 "use client";
 
+import { sanitizeHtml } from "@/lib/sanitize";
 import React from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -469,7 +470,7 @@ export function ScriptEditor({ kanbanItemId }: ScriptEditorProps) {
               <div 
                 className="text-xs text-foreground/90 prose prose-sm dark:prose-invert max-w-none leading-relaxed"
                 dangerouslySetInnerHTML={{ 
-                  __html: snapshots.find(s => s.id === versionToRestore)?.content || "<p class='italic text-muted-foreground'>Versão vazia.</p>" 
+                  __html: sanitizeHtml(snapshots.find(s => s.id === versionToRestore)?.content) || "<p class='italic text-muted-foreground'>Versão vazia.</p>"
                 }}
               />
             </div>

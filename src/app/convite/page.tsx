@@ -10,6 +10,7 @@ import { apiRequest, getCookie } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "sonner";
 import Link from "next/link";
+import { FEATURES } from "@/lib/features";
 
 interface InviteData {
   teamName: string;
@@ -35,6 +36,8 @@ export function ConviteContent() {
   const isLoggedIn = Boolean(getCookie("creator_auth_token"));
 
   useEffect(() => {
+    // Convites ainda não têm backend: não chama as rotas de convite
+    if (!FEATURES.invites) return;
     if (!token) {
       setError("Token de convite não informado.");
       setLoading(false);
@@ -86,6 +89,21 @@ export function ConviteContent() {
         return r;
     }
   };
+
+  if (!FEATURES.invites) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background text-foreground font-sans">
+        <Card className="max-w-md w-full p-8 rounded-2xl border-border bg-card shadow-lg text-center space-y-4">
+          <h1 className="text-xl font-bold font-heading">Convites estarão disponíveis em breve.</h1>
+          <Link href="/">
+            <Button className="w-full rounded-lg text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground h-10 shadow-xs">
+              Ir para a Página Inicial
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

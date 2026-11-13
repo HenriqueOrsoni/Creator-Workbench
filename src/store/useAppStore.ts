@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { OklchColor } from "@/lib/color-utils";
-import { apiRequest, apiDownload } from "@/lib/api";
+import { apiRequest, apiDownload, registerApiHooks } from "@/lib/api";
+import { FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 
 /**
@@ -194,6 +195,7 @@ export interface KanbanItem {
   tasksDone?: number;
   columnId?: string;
   dueDate?: string;
+  tagId?: string;
 }
 
 export interface ApiTaskDto {
@@ -452,7 +454,8 @@ function flattenCards(columns: BoardColumn[]): KanbanItem[] {
     tasksTotal: card.tasksTotal,
     tasksDone: card.tasksDone,
     columnId: col.id,
-    dueDate: card.dueDate
+    dueDate: card.dueDate,
+    tagId: card.tagId
   })));
 }
 
@@ -473,7 +476,10 @@ interface AppState {
   resetStore: () => void;
   setSelectedProjectId: (id: string | null) => void;
   /** Edita título, público, objetivo e prazo do card (PUT /kanban/{id}); "" no prazo limpa. */
-  updateProject: (id: string, title: string, audience: string, objective: string, dueDate?: string) => Promise<boolean>;
+  /** `tagId`: undefined mantém a etiqueta, "" remove, outro valor troca. */
+  updateProject: (id: string, title: string, audience: string, objective: string, dueDate?: string, tagId?: string) => Promise<boolean>;
+  /** Edita uma ideia da caixa de entrada (título, descrição e etiqueta). */
+  updateIdea: (id: string, data: { title: string; description: string; tagId?: string }) => Promise<boolean>;
 
   // Equipes & Membros
   teams: Team[];
@@ -499,7 +505,7 @@ interface AppState {
   createBoardCard: (data: { title: string; description?: string; columnId?: string; targetAudience?: string; pedagogicalObjective?: string; tagId?: number }) => Promise<ProjectCard | null>;
   createInboxIdea: (data: { title: string; description?: string; targetAudience?: string; pedagogicalObjective?: string; tagId?: number }) => Promise<ProjectCard | null>;
   voteIdea: (cardId: string) => Promise<void>;
-  convertInboxIdea: (cardId: string, columnId?: string, data?: { targetAudience?: string; pedagogicalObjective?: string }) => Promise<boolean>;
+  convertInboxIdea: (cardId: string, columnId?: string, data?: { title?: string; targetAudience?: string; pedagogicalObjective?: string }) => Promise<boolean>;
   moveCard: (cardId: string, columnId: string, sortOrder?: number) => Promise<boolean>;
   deleteCard: (cardId: string) => Promise<void>;
   addColumn: (name: string) => Promise<void>;
@@ -612,17 +618,24 @@ const EMPTY_SESSION_STATE = {
   teamTags: [] as TeamTag[],
 };
 
+// Pedido de equipes em andamento (evita buscas repetidas na carga da página)
+let teamsInFlight: Promise<void> | null = null;
+let alertsInFlight = false;
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       ...EMPTY_SESSION_STATE,
 
       clearError: () => set({ error: null }),
-      resetStore: () => set({ ...EMPTY_SESSION_STATE }),
+      resetStore: () => {
+        teamsInFlight = null;
+        set({ ...EMPTY_SESSION_STATE });
+      },
 
       setSelectedProjectId: (id) => set({ selectedProjectId: id }),
 
-      updateProject: async (id, title, audience, objective, dueDate) => {
+      updateProject: async (id, title, audience, objective, dueDate, tagId) => {
         try {
           set({ error: null });
           await apiRequest("PUT", `/api/v1/kanban/${id}`, {
@@ -630,7 +643,9 @@ export const useAppStore = create<AppState>()(
             targetAudience: audience,
             pedagogicalObjective: objective,
             // Prazo: "" limpa, undefined mantém o valor salvo
-            ...(dueDate !== undefined ? { dueDate } : {})
+            ...(dueDate !== undefined ? { dueDate } : {}),
+            // Etiqueta: undefined mantém, "" remove (0), outro valor troca
+            ...(tagId !== undefined ? { tagId: tagId === "" ? 0 : Number(tagId) } : {})
           });
           toast.success("Projeto atualizado!");
           await get().fetchBoard();
@@ -643,37 +658,65 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // --- Equipes ---
-      fetchTeams: async () => {
+      updateIdea: async (id, data) => {
         try {
           set({ error: null });
-          const rawTeams = await apiRequest("GET", "/api/v1/teams");
-          if (Array.isArray(rawTeams) && rawTeams.length > 0) {
-            const mappedTeams: Team[] = rawTeams.map(t => ({
-              id: String(t.id),
-              name: t.name,
-              role: t.role,
-              membersCount: t.membersCount,
-              createdAt: t.createdAt
-            }));
-
-            let activeId = get().activeTeamId;
-            if (!activeId || !mappedTeams.some(t => t.id === activeId)) {
-              activeId = mappedTeams[0].id;
-            }
-
-            const active = mappedTeams.find(t => t.id === activeId) || null;
-            set({ teams: mappedTeams, activeTeamId: activeId, activeTeam: active });
-
-            await Promise.all([get().fetchBoard(), get().fetchIdeas(), get().fetchCourses(), get().fetchTeamTags(), get().fetchTeamMembers()]);
-            return;
-          }
-          set({ teams: [], activeTeamId: null, activeTeam: null });
-        } catch (err: unknown) {
-          const message = errMsg(err, "Não foi possível carregar as equipes.");
+          await apiRequest("PUT", `/api/v1/kanban/${id}`, {
+            title: data.title,
+            description: data.description,
+            ...(data.tagId !== undefined ? { tagId: data.tagId === "" ? 0 : Number(data.tagId) } : {})
+          });
+          toast.success("Ideia atualizada!");
+          // A resposta traz só o tagId (sem nome/cor da etiqueta): recarrega a lista
+          await get().fetchIdeas();
+          return true;
+        } catch (error) {
+          const message = errMsg(error, "Erro ao atualizar ideia");
           set({ error: message });
           toast.error(message);
+          return false;
         }
+      },
+
+      // --- Equipes ---
+      fetchTeams: async () => {
+        // Várias telas pedem as equipes ao carregar: junta os pedidos em andamento em um só
+        if (teamsInFlight) return teamsInFlight;
+        const current: Promise<void> = (async () => {
+          try {
+            set({ error: null });
+            const rawTeams = await apiRequest("GET", "/api/v1/teams");
+            if (Array.isArray(rawTeams) && rawTeams.length > 0) {
+              const mappedTeams: Team[] = rawTeams.map(t => ({
+                id: String(t.id),
+                name: t.name,
+                role: t.role,
+                membersCount: t.membersCount,
+                createdAt: t.createdAt
+              }));
+
+              let activeId = get().activeTeamId;
+              if (!activeId || !mappedTeams.some(t => t.id === activeId)) {
+                activeId = mappedTeams[0].id;
+              }
+
+              const active = mappedTeams.find(t => t.id === activeId) || null;
+              set({ teams: mappedTeams, activeTeamId: activeId, activeTeam: active });
+
+              await Promise.all([get().fetchBoard(), get().fetchIdeas(), get().fetchCourses(), get().fetchTeamTags(), get().fetchTeamMembers()]);
+              return;
+            }
+            set({ teams: [], activeTeamId: null, activeTeam: null });
+          } catch (err: unknown) {
+            const message = errMsg(err, "Não foi possível carregar as equipes.");
+            set({ error: message });
+            toast.error(message);
+          }
+        })().finally(() => {
+          if (teamsInFlight === current) teamsInFlight = null;
+        });
+        teamsInFlight = current;
+        return current;
       },
 
       setActiveTeamId: async (teamId) => {
@@ -1516,8 +1559,11 @@ export const useAppStore = create<AppState>()(
 
       // --- Alertas ---
       fetchAlerts: async () => {
+        // Sem backend de alertas ainda: não chama a rota enquanto a flag estiver desligada
+        if (!FEATURES.alerts) return;
         const teamId = get().activeTeamId;
-        if (!teamId) return;
+        if (!teamId || alertsInFlight) return;
+        alertsInFlight = true;
 
         try {
           const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/alerts`);
@@ -1537,6 +1583,8 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           // Carga em segundo plano (a cada troca de equipe): sem aviso na tela
           console.error("Erro ao carregar os alertas:", error);
+        } finally {
+          alertsInFlight = false;
         }
       },
 
@@ -1863,3 +1911,13 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// 401 limpa a equipe ativa também na memória; escrita invalida a busca de equipes em andamento
+if (typeof registerApiHooks === "function") {
+  registerApiHooks({
+    onUnauthorized: () => useAppStore.getState().resetStore(),
+    onWrite: () => {
+      teamsInFlight = null;
+    },
+  });
+}

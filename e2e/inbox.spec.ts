@@ -139,6 +139,8 @@ test.describe("Caixa de Entrada (ideias)", () => {
     const confirm = page.getByRole("button", { name: "Confirmar e Mover ao Quadro" });
     await expect(page.getByRole("heading", { name: "Ativar Projeto no Quadro" })).toBeVisible();
     await expect(confirm).toBeDisabled();
+    // o titulo vem preenchido com o da ideia e pode ser editado (doc 08 §4.5)
+    await expect(page.getByLabel("Título do Projeto *")).toHaveValue(title);
 
     await page.getByPlaceholder("Ex: Iniciantes em CS").fill("ab");
     await page.getByPlaceholder("Ex: Compreender BFS e DFS").fill("curto");

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAppStore, TeamMember, TeamInvite } from "@/store/useAppStore";
+import { FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 import { canManageTeam, formatRole } from "@/lib/roles";
 import { TagManager } from "./TagManager";
@@ -62,7 +63,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
   useEffect(() => {
     if (open && activeTeam) {
       fetchTeamMembers(activeTeam.id);
-      fetchTeamInvites();
+      if (FEATURES.invites) fetchTeamInvites();
     }
   }, [open, activeTeam, fetchTeamMembers, fetchTeamInvites]);
 
@@ -165,19 +166,21 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-2">
-            <TabsList className={`grid ${isAdmin ? "grid-cols-4" : "grid-cols-2"} w-full bg-muted/60 p-1 rounded-lg text-xs`}>
+            <TabsList className="flex w-full justify-start overflow-x-auto bg-muted/60 p-1 rounded-lg text-xs">
               <TabsTrigger value="membros" className="text-xs font-semibold rounded-md">
                 Membros ({teamMembers.length})
               </TabsTrigger>
-              <TabsTrigger value="convites" className="text-xs font-semibold rounded-md">
-                Convites ({teamInvites.length})
-              </TabsTrigger>
+              {FEATURES.invites && (
+                <TabsTrigger value="convites" className="text-xs font-semibold rounded-md">
+                  Convites ({teamInvites.length})
+                </TabsTrigger>
+              )}
               {isAdmin && (
                 <TabsTrigger value="etiquetas" className="text-xs font-semibold rounded-md">
                   Etiquetas
                 </TabsTrigger>
               )}
-              {isAdmin && (
+              {isAdmin && FEATURES.teamManage && (
                 <TabsTrigger value="configuracoes" className="text-xs font-semibold rounded-md">
                   Configurações
                 </TabsTrigger>
@@ -298,6 +301,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
             </TabsContent>
 
             {/* Aba 2: Convites Pendentes (FE-26) */}
+            {FEATURES.invites && (
             <TabsContent value="convites" className="space-y-3 pt-2">
               {isAdmin && (
                 <form onSubmit={handleSendInvite} className="p-3.5 rounded-lg bg-muted/30 border border-border space-y-2.5">
@@ -372,6 +376,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                 )}
               </div>
             </TabsContent>
+            )}
 
             {/* Aba 3: Etiquetas (somente Administrador) */}
             {isAdmin && (
@@ -381,7 +386,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
             )}
 
             {/* Aba 4: Configurações da Equipe (FE-26) */}
-            {isAdmin && (
+            {isAdmin && FEATURES.teamManage && (
               <TabsContent value="configuracoes" className="space-y-4 pt-3">
                 <form onSubmit={handleRenameTeam} className="p-3.5 rounded-lg border border-border bg-card space-y-2.5">
                   <span className="text-xs font-semibold text-foreground block">

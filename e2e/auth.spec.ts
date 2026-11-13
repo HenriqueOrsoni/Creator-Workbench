@@ -112,21 +112,18 @@ test.describe("Autenticacao", () => {
     await expect(page.getByRole("heading", { name: "Painel de Controle" })).toBeVisible();
   });
 
-  test("chamadas em segundo plano para rotas ainda nao construidas (alertas) nao mostram toast de erro", async ({ page }) => {
+  test("rotas ainda nao construidas (alertas): sino escondido e nenhuma chamada a /alerts (flag desligada)", async ({ page }) => {
     const problems = collectProblems(page);
-    const statuses: number[] = [];
-    page.on("response", (r) => {
-      if (r.url().includes("/alerts")) statuses.push(r.status());
+    const calls: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/alerts")) calls.push(r.url());
     });
     await loginAs(page, "ana");
     await page.waitForTimeout(1500);
     await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
-    expect(statuses.length).toBeGreaterThan(0);
-    expect(statuses.every((s) => s === 404 || s === 200)).toBeTruthy();
+    expect(calls, "chamadas a /alerts com a flag desligada").toEqual([]);
+    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toHaveCount(0);
     expect(problems).toEqual([]);
-    // o sino continua utilizavel
-    await page.getByRole("button", { name: "Alertas de Prazos" }).click();
-    await expect(page.getByText(/Alertas de Prazos \(\d+\)/)).toBeVisible();
     void expectToast;
   });
 });

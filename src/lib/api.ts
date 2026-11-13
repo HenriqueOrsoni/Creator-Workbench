@@ -23,9 +23,38 @@ export function deleteCookie(name: string) {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
+/** Esquece a equipe ativa guardada no navegador (a próxima sessão escolhe pelas equipes do usuário). */
+export function clearPersistedTeam() {
+  if (typeof window === "undefined") return;
+  try {
+    const key = "creator-workbench-storage";
+    const raw = window.localStorage?.getItem(key);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved?.state && "activeTeamId" in saved.state) {
+      saved.state.activeTeamId = null;
+      window.localStorage.setItem(key, JSON.stringify(saved));
+    }
+  } catch {
+    // Ignora restrições de sandbox/ambiente
+  }
+}
+
+// Ganchos que a store registra (a store importa este módulo, então não dá para importá-la aqui)
+let onUnauthorizedHook: (() => void) | null = null;
+let onWriteHook: (() => void) | null = null;
+
+export function registerApiHooks(hooks: { onUnauthorized?: () => void; onWrite?: () => void }) {
+  onUnauthorizedHook = hooks.onUnauthorized ?? null;
+  onWriteHook = hooks.onWrite ?? null;
+}
+
 export function handleUnauthorized() {
+  // Limpa também a equipe ativa em memória, senão o persist a grava de volta
+  onUnauthorizedHook?.();
   deleteCookie("creator_auth_token");
   deleteCookie("creator_user_id");
+  clearPersistedTeam();
   if (typeof window !== "undefined") {
     try {
       window.localStorage?.removeItem("creator_auth_token");
@@ -81,6 +110,17 @@ async function throwIfError(response: Response, path: string) {
   throw new ApiError(await readErrorMessage(response, "Ocorreu um erro na requisição."), response.status);
 }
 
+export const NETWORK_ERROR_MESSAGE = "Não foi possível conectar ao servidor. Verifique sua conexão.";
+
+// Falha de rede (servidor fora do ar, sem internet, CORS): mensagem em português
+async function safeFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(NETWORK_ERROR_MESSAGE, 0);
+  }
+}
+
 function buildHeaders(withJsonContentType: boolean): Record<string, string> {
   const token = getCookie("creator_auth_token");
   const headers: Record<string, string> = {
@@ -92,11 +132,31 @@ function buildHeaders(withJsonContentType: boolean): Record<string, string> {
   return headers;
 }
 
+// Leituras (GET) idênticas e simultâneas compartilham a mesma requisição
+const inFlightGets = new Map<string, Promise<unknown>>();
+
 // Função para chamadas genéricas à API
 export async function apiRequest(method: string, path: string, body?: unknown) {
+  if (method === "GET" && body === undefined) {
+    const key = `${getCookie("creator_auth_token") ?? ""}|${path}`;
+    const pending = inFlightGets.get(key);
+    if (pending) return pending;
+    const request = performRequest(method, path, body).finally(() => {
+      inFlightGets.delete(key);
+    });
+    inFlightGets.set(key, request);
+    return request;
+  }
+  // Depois de uma escrita nenhuma leitura em andamento vale mais: a próxima vai ao servidor
+  inFlightGets.clear();
+  onWriteHook?.();
+  return performRequest(method, path, body);
+}
+
+async function performRequest(method: string, path: string, body?: unknown) {
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await safeFetch(`${API_BASE_URL}${path}`, {
     method,
     headers: buildHeaders(!isFormData),
     body: isFormData ? (body as FormData) : (body !== undefined ? JSON.stringify(body) : undefined),
@@ -113,7 +173,7 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
  * Um link simples (<a href>) não envia o token, por isso não serve para rotas protegidas.
  */
 export async function apiDownload(path: string, fallbackFileName: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await safeFetch(`${API_BASE_URL}${path}`, {
     method: "GET",
     headers: buildHeaders(false),
   });

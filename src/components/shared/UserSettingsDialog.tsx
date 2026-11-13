@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { User, Mail, ShieldAlert, Key, Settings2, CheckCircle2 } from "lucide-react";
 import { apiRequest, getCookie, deleteCookie } from "@/lib/api";
 import { toast } from "sonner";
+import { FEATURES } from "@/lib/features";
 
 const userSettingsSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres."),
@@ -256,11 +257,13 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
         )}
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid grid-cols-3 w-full bg-muted/60 p-1 rounded-lg text-xs">
-            <TabsTrigger value="profile" className="text-xs font-semibold rounded-md">Perfil</TabsTrigger>
-            <TabsTrigger value="password" className="text-xs font-semibold rounded-md">Segurança</TabsTrigger>
-            <TabsTrigger value="email" className="text-xs font-semibold rounded-md">E-mail</TabsTrigger>
-          </TabsList>
+          {FEATURES.accountSecurity && (
+            <TabsList className="grid grid-cols-3 w-full bg-muted/60 p-1 rounded-lg text-xs">
+              <TabsTrigger value="profile" className="text-xs font-semibold rounded-md">Perfil</TabsTrigger>
+              <TabsTrigger value="password" className="text-xs font-semibold rounded-md">Segurança</TabsTrigger>
+              <TabsTrigger value="email" className="text-xs font-semibold rounded-md">E-mail</TabsTrigger>
+            </TabsList>
+          )}
 
           {/* Aba de Perfil */}
           <TabsContent value="profile" className="space-y-4 pt-3">
@@ -302,7 +305,7 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                           placeholder="usuario@creator.studio"
                           disabled
                           readOnly
-                          title="Para trocar o e-mail, use a aba E-mail"
+                          title={FEATURES.accountSecurity ? "Para trocar o e-mail, use a aba E-mail" : undefined}
                           className="bg-background border-border rounded-lg h-10 text-sm"
                           {...field}
                         />
@@ -336,6 +339,8 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
           </TabsContent>
 
           {/* Aba de Segurança / Trocar Senha (FE-33) */}
+          {FEATURES.accountSecurity && (
+          <>
           <TabsContent value="password" className="space-y-4 pt-3">
             <form onSubmit={handleChangePassword} className="space-y-3.5">
               <div>
@@ -443,6 +448,8 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
               </form>
             )}
           </TabsContent>
+          </>
+          )}
         </Tabs>
       </DialogContent>
 

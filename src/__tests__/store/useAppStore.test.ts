@@ -2,6 +2,14 @@ import { useAppStore } from '@/store/useAppStore';
 import * as apiModule from '@/lib/api';
 import { toast } from 'sonner';
 
+// Telas de marcos futuros ficam ligadas aqui para testar o comportamento delas
+jest.mock('@/lib/features', () => ({
+  FEATURES: {
+    materials: true, summary: true, review: true, invites: true, coursePublish: true,
+    courseCsv: true, courseEdit: true, teamManage: true, accountSecurity: true, alerts: true,
+  },
+}));
+
 jest.mock('@/lib/api', () => ({
   apiRequest: jest.fn(),
   apiDownload: jest.fn(),
