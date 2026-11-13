@@ -3,6 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CoursesView } from '@/components/shared/CoursesView';
 import { useAppStore, Course, CourseDetail } from '@/store/useAppStore';
 
+jest.mock('@/lib/features', () => ({
+  FEATURES: { coursePublish: true, courseCsv: true, courseEdit: true },
+}));
+
 describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas)', () => {
   const mockFetchCourses = jest.fn();
   const mockFetchCourseDetails = jest.fn();
@@ -162,5 +166,16 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
     await waitFor(() => {
       expect(mockDeleteCourse).toHaveBeenCalledWith('1');
     });
+  });
+
+  it('edição do curso recusada pelo servidor mantém o diálogo aberto', async () => {
+    mockUpdateCourse.mockResolvedValueOnce(false);
+    render(<CoursesView />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar curso' }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: /salvar/i })).toBeInTheDocument();
   });
 });

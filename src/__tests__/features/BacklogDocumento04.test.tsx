@@ -12,7 +12,7 @@ import * as apiModule from "@/lib/api";
 jest.mock('@/lib/features', () => ({
   FEATURES: {
     materials: true, summary: true, review: true, invites: true, coursePublish: true,
-    courseCsv: true, teamManage: true, accountSecurity: true, alerts: true,
+    courseCsv: true, courseEdit: true, teamManage: true, accountSecurity: true, alerts: true,
   },
 }));
 

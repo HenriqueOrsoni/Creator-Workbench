@@ -16,6 +16,8 @@ export const FEATURES = {
   coursePublish: false,
   /** Exportar curso em CSV. */
   courseCsv: false,
+  /** Editar curso, renomear módulo e reordenar módulos e aulas. */
+  courseEdit: false,
   /** Renomear e excluir equipe. */
   teamManage: false,
   /** Troca de e-mail e de senha nas configurações. */

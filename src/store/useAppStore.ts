@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { OklchColor } from "@/lib/color-utils";
-import { apiRequest, apiDownload } from "@/lib/api";
+import { apiRequest, apiDownload, registerApiHooks } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 import { toast } from "sonner";
 
@@ -628,7 +628,10 @@ export const useAppStore = create<AppState>()(
       ...EMPTY_SESSION_STATE,
 
       clearError: () => set({ error: null }),
-      resetStore: () => set({ ...EMPTY_SESSION_STATE }),
+      resetStore: () => {
+        teamsInFlight = null;
+        set({ ...EMPTY_SESSION_STATE });
+      },
 
       setSelectedProjectId: (id) => set({ selectedProjectId: id }),
 
@@ -679,7 +682,7 @@ export const useAppStore = create<AppState>()(
       fetchTeams: async () => {
         // Várias telas pedem as equipes ao carregar: junta os pedidos em andamento em um só
         if (teamsInFlight) return teamsInFlight;
-        teamsInFlight = (async () => {
+        const current: Promise<void> = (async () => {
           try {
             set({ error: null });
             const rawTeams = await apiRequest("GET", "/api/v1/teams");
@@ -710,9 +713,10 @@ export const useAppStore = create<AppState>()(
             toast.error(message);
           }
         })().finally(() => {
-          teamsInFlight = null;
+          if (teamsInFlight === current) teamsInFlight = null;
         });
-        return teamsInFlight;
+        teamsInFlight = current;
+        return current;
       },
 
       setActiveTeamId: async (teamId) => {
@@ -1907,3 +1911,13 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// 401 limpa a equipe ativa também na memória; escrita invalida a busca de equipes em andamento
+if (typeof registerApiHooks === "function") {
+  registerApiHooks({
+    onUnauthorized: () => useAppStore.getState().resetStore(),
+    onWrite: () => {
+      teamsInFlight = null;
+    },
+  });
+}

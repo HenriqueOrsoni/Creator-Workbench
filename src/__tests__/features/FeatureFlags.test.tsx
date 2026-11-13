@@ -8,6 +8,7 @@ import { CoursesView } from '@/components/shared/CoursesView';
 import { Navbar } from '@/components/shared/Navbar';
 import { useAppStore, ProjectCard, Course, CourseDetail } from '@/store/useAppStore';
 import * as apiModule from '@/lib/api';
+import { ConviteContent } from '@/app/convite/page';
 
 // Aqui as flags ficam como estão no código (todas desligadas): as telas sem backend não aparecem
 // e nenhuma das rotas delas é chamada.
@@ -19,6 +20,10 @@ jest.mock('@/lib/api', () => ({
   deleteCookie: jest.fn(),
 }));
 
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => ({ get: () => 'token-x' }),
+  useRouter: () => ({ push: jest.fn() }),
+}));
 jest.mock('@/components/shared/ThemeColorPicker', () => ({ ThemeColorPicker: () => null }));
 jest.mock('@/components/shared/ThemeToggle', () => ({ ThemeToggle: () => null }));
 jest.mock('@/components/shared/CreateIdeaDialog', () => ({
@@ -105,6 +110,37 @@ describe('Feature flags do marco 1: telas sem backend ficam escondidas', () => {
 
   it('fetchAlerts com a flag desligada não chama a rota', async () => {
     await useAppStore.getState().fetchAlerts();
+    expect(api).not.toHaveBeenCalled();
+  });
+
+  it('CoursesView esconde editar curso, renomear módulo e reordenar módulos e aulas', () => {
+    const course: Course = { id: '1', teamId: '10', title: 'Curso A', modulesCount: 1, createdAt: 'x' };
+    const detail: CourseDetail = {
+      ...course,
+      modules: [
+        { id: 'm1', courseId: '1', title: 'Mod 1', sortOrder: 0, lessons: [
+          { id: 'l1', moduleId: 'm1', title: 'Aula 1', type: 'VIDEO', published: false, sortOrder: 0 },
+          { id: 'l2', moduleId: 'm1', title: 'Aula 2', type: 'VIDEO', published: false, sortOrder: 1 },
+        ] },
+        { id: 'm2', courseId: '1', title: 'Mod 2', sortOrder: 1, lessons: [] },
+      ],
+    };
+    useAppStore.setState({ courses: [course], activeCourse: detail, board: null, fetchCourses: jest.fn(), fetchCourseDetails: jest.fn() });
+    render(<CoursesView />);
+
+    expect(screen.queryByRole('button', { name: 'Editar curso' })).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Renomear módulo')).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Mover módulo/)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/Mover aula/)).not.toBeInTheDocument();
+    // editar aula continua (a rota existe)
+    expect(screen.getAllByRole('button', { name: /editar aula/i }).length).toBe(2);
+  });
+
+  it('/convite sem a flag mostra mensagem e não chama as rotas de convite', () => {
+    render(<ConviteContent />);
+
+    expect(screen.getByText('Convites estarão disponíveis em breve.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /página inicial/i })).toHaveAttribute('href', '/');
     expect(api).not.toHaveBeenCalled();
   });
 });

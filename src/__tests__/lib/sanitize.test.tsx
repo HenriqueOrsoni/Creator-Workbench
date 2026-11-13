@@ -36,4 +36,10 @@ describe('sanitizeHtml (XSS no HTML do roteiro)', () => {
     expect(sanitizeHtml(null)).toBe('');
     expect(sanitizeHtml(undefined)).toBe('');
   });
+
+  it('links ganham rel noopener noreferrer nofollow', () => {
+    const out = sanitizeHtml('<a href="https://exemplo.com" target="_blank">ok</a><a href="https://x.test" rel="opener">y</a>');
+    expect(out.match(/rel="noopener noreferrer nofollow"/g)).toHaveLength(2);
+    expect(out).not.toContain('rel="opener"');
+  });
 });

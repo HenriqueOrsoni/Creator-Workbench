@@ -487,7 +487,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
           {/* Aba 2: Materiais de Apoio (FE-10, FE-11, FE-12) */}
           {FEATURES.materials && (
-<TabsContent value="materiais" className="space-y-3 pt-3">
+          <TabsContent value="materiais" className="space-y-3 pt-3">
             {canEditTasks && (
               <div className="border border-dashed border-border rounded-xl p-4 text-center bg-muted/20 hover:bg-muted/30 transition-colors">
                 <input
@@ -571,11 +571,11 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
-)}
+          )}
 
           {/* Aba 3: Resumo com Inteligência Artificial (FE-17) */}
           {FEATURES.summary && (
-<TabsContent value="resumo" className="space-y-3 pt-3">
+          <TabsContent value="resumo" className="space-y-3 pt-3">
             <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 font-heading">
@@ -610,11 +610,11 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
-)}
+          )}
 
           {/* Aba 4: Revisão Pedagógica (FE-27) */}
           {FEATURES.review && (
-<TabsContent value="revisao" className="space-y-3 pt-3">
+          <TabsContent value="revisao" className="space-y-3 pt-3">
             <div className="p-3.5 rounded-xl border border-border bg-card space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-foreground">
@@ -686,7 +686,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               )}
             </div>
           </TabsContent>
-)}
+          )}
 
           {/* Aba 5: Histórico de Movimentações (FE-05) */}
           <TabsContent value="historico" className="space-y-2 pt-3">

@@ -7,6 +7,19 @@ const ALLOWED_TAGS = [
 ];
 const ALLOWED_ATTR = ["href", "target", "rel", "class"];
 
+// Links abertos pelo roteiro nunca ganham acesso à janela de origem
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A") {
+    if (node.hasAttribute("href")) {
+      node.setAttribute("rel", "noopener noreferrer nofollow");
+      if (node.hasAttribute("target")) node.setAttribute("target", "_blank");
+    } else {
+      node.removeAttribute("target");
+      node.removeAttribute("rel");
+    }
+  }
+});
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }

@@ -120,9 +120,10 @@ export function CoursesView() {
     if (!editingCourse || !editingCourse.title.trim()) return;
 
     setLoading(true);
-    await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
+    const saved = await updateCourse(editingCourse.id, editingCourse.title.trim(), editingCourse.description.trim() || undefined);
     setLoading(false);
-    setEditingCourse(null);
+    // Só fecha quando o servidor aceitou; em caso de erro a mensagem já foi exibida
+    if (saved) setEditingCourse(null);
   };
 
   const handleCreateModule = async (e: React.FormEvent) => {
@@ -395,8 +396,8 @@ export function CoursesView() {
                     <h3 className="text-xl font-bold text-foreground font-heading">
                       {activeCourse.title}
                     </h3>
-                    {canEditCourses && (
-                      <Button
+                    {canEditCourses && FEATURES.courseEdit && (
+<Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setEditingCourse({
@@ -410,7 +411,7 @@ export function CoursesView() {
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                    )}
+)}
                   </div>
                   {activeCourse.description && (
                     <p className="text-xs text-muted-foreground mt-1 max-w-xl leading-relaxed">
@@ -500,8 +501,8 @@ export function CoursesView() {
                           <span className="text-[10px] text-muted-foreground font-medium">
                             ({module.lessons.length} {module.lessons.length === 1 ? "aula" : "aulas"})
                           </span>
-                          {canEditCourses && (
-                            <Button
+                          {canEditCourses && FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               onClick={() => setEditingModule({ id: module.id, title: module.title })}
@@ -511,12 +512,13 @@ export function CoursesView() {
                             >
                               <Pencil className="w-3 h-3" />
                             </Button>
-                          )}
+)}
                         </div>
 
                         {canEditCourses && (
                           <div className="flex items-center gap-1.5">
-                            <Button
+                            {FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               disabled={moduleIndex === 0}
@@ -527,7 +529,9 @@ export function CoursesView() {
                             >
                               <ChevronUp className="w-3.5 h-3.5" />
                             </Button>
-                            <Button
+)}
+                            {FEATURES.courseEdit && (
+<Button
                               variant="ghost"
                               size="icon"
                               disabled={moduleIndex === activeCourse.modules.length - 1}
@@ -538,6 +542,7 @@ export function CoursesView() {
                             >
                               <ChevronDown className="w-3.5 h-3.5" />
                             </Button>
+)}
                             <Button
                               variant="outline"
                               size="sm"
@@ -592,7 +597,8 @@ export function CoursesView() {
                                 </div>
                                 {canEditCourses && (
                                   <div className="flex items-center gap-1 shrink-0">
-                                    <Button
+                                    {FEATURES.courseEdit && (
+<Button
                                       variant="ghost"
                                       size="icon"
                                       disabled={lessonIndex === 0}
@@ -603,7 +609,9 @@ export function CoursesView() {
                                     >
                                       <ChevronUp className="w-2.5 h-2.5" />
                                     </Button>
-                                    <Button
+)}
+                                    {FEATURES.courseEdit && (
+<Button
                                       variant="ghost"
                                       size="icon"
                                       disabled={lessonIndex === module.lessons.length - 1}
@@ -614,6 +622,7 @@ export function CoursesView() {
                                     >
                                       <ChevronDown className="w-2.5 h-2.5" />
                                     </Button>
+)}
                                     <Button
                                       variant="ghost"
                                       size="icon"

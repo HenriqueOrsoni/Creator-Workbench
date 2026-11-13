@@ -8,11 +8,14 @@ jest.mock('@/lib/api', () => ({
   getCookie: jest.fn(),
   setCookie: jest.fn(),
   deleteCookie: jest.fn(),
+  registerApiHooks: jest.fn(),
 }));
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
 const api = apiModule.apiRequest as jest.Mock;
+// A store registra os ganchos ao carregar o módulo (antes dos clearAllMocks)
+const storeHooks = (apiModule.registerApiHooks as jest.Mock).mock.calls[0]?.[0];
 const T = '/api/v1/teams/7';
 
 function mockRoutes(routes: Record<string, unknown>) {
@@ -156,6 +159,44 @@ describe('Store: fechamento do marco 1 (etiqueta, edição de ideia, conversão 
       const teamsCalls = api.mock.calls.filter((c) => c[1] === '/api/v1/teams');
       expect(teamsCalls).toHaveLength(1);
       expect(useAppStore.getState().activeTeamId).toBe('7');
+    });
+  });
+
+  describe('equipes e escritas', () => {
+    const teamList = [{ id: 7, name: 'Equipe', role: 'ADMIN', membersCount: 1, createdAt: 'x' }];
+
+    it('updateIdea seguido de fetchIdeas busca de novo no servidor', async () => {
+      mockRoutes({ 'PUT /api/v1/kanban/50': { id: 50 }, [`GET ${T}/ideas`]: [] });
+      await useAppStore.getState().updateIdea('50', { title: 'Abc', description: '' });
+      await useAppStore.getState().fetchIdeas();
+      expect(api.mock.calls.filter((c) => c[0] === 'GET')).toHaveLength(2);
+    });
+
+    it('fetchTeams depois de aceitar convite refaz o GET /teams mesmo com uma busca anterior em andamento', async () => {
+      let release: (v: unknown) => void = () => {};
+      let calls = 0;
+      api.mockImplementation((method: string, path: string) => {
+        if (method === 'GET' && path === '/api/v1/teams') {
+          calls += 1;
+          if (calls === 1) return new Promise((r) => { release = r; });
+          return Promise.resolve(teamList);
+        }
+        return Promise.resolve(path.endsWith('/board') ? { teamId: 7, teamName: 'Equipe', columns: [] } : []);
+      });
+      const hooks = storeHooks;
+      const first = useAppStore.getState().fetchTeams();
+      hooks?.onWrite?.(); // POST /invites/{t}/accept
+      const second = useAppStore.getState().fetchTeams();
+      release(teamList);
+      await Promise.all([first, second]);
+      expect(calls).toBe(2);
+    });
+
+    it('401 (gancho registrado) limpa a equipe ativa em memória', () => {
+      useAppStore.setState({ activeTeamId: '7' });
+      const hooks = storeHooks;
+      hooks.onUnauthorized();
+      expect(useAppStore.getState().activeTeamId).toBeNull();
     });
   });
 

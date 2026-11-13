@@ -1,4 +1,4 @@
-import { apiRequest, apiDownload, ApiError, NETWORK_ERROR_MESSAGE, clearPersistedTeam } from '@/lib/api';
+import { apiRequest, apiDownload, ApiError, NETWORK_ERROR_MESSAGE, clearPersistedTeam, registerApiHooks } from '@/lib/api';
 
 describe('api.ts: falha de rede, leituras repetidas e equipe guardada', () => {
   const originalFetch = global.fetch;
@@ -74,5 +74,34 @@ describe('api.ts: falha de rede, leituras repetidas e equipe guardada', () => {
     const saved = JSON.parse(window.localStorage.getItem('creator-workbench-storage')!);
     expect(saved.state.activeTeamId).toBeNull();
     expect(saved.state.accentHue).toBe(200);
+  });
+
+  it('GET depois de uma escrita volta ao servidor (não reaproveita leitura em andamento)', async () => {
+    let resolveFirst: (v: unknown) => void = () => {};
+    const first = new Promise((r) => { resolveFirst = r; });
+    global.fetch = jest.fn()
+      .mockImplementationOnce(() => first)
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: 1 }) });
+
+    const staleRead = apiRequest('GET', '/api/v1/teams/7/ideas');
+    await apiRequest('PUT', '/api/v1/kanban/5', { title: 'Novo' });
+    const freshRead = apiRequest('GET', '/api/v1/teams/7/ideas');
+    resolveFirst({ ok: true, status: 200, json: async () => [] });
+    await Promise.all([staleRead, freshRead]);
+
+    expect((global.fetch as jest.Mock).mock.calls.map((c) => c[1].method)).toEqual(['GET', 'PUT', 'GET']);
+  });
+
+  it('401 chama o gancho registrado (a store limpa a equipe ativa) e a escrita avisa o gancho de escrita', async () => {
+    const onUnauthorized = jest.fn();
+    const onWrite = jest.fn();
+    registerApiHooks({ onUnauthorized, onWrite });
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) });
+
+    await expect(apiRequest('GET', '/api/v1/teams')).rejects.toThrow('Sessão expirada');
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    await expect(apiRequest('POST', '/api/v1/x', {})).rejects.toThrow();
+    expect(onWrite).toHaveBeenCalledTimes(1);
+    registerApiHooks({});
   });
 });

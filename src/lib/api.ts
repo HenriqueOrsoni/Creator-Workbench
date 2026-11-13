@@ -40,7 +40,18 @@ export function clearPersistedTeam() {
   }
 }
 
+// Ganchos que a store registra (a store importa este módulo, então não dá para importá-la aqui)
+let onUnauthorizedHook: (() => void) | null = null;
+let onWriteHook: (() => void) | null = null;
+
+export function registerApiHooks(hooks: { onUnauthorized?: () => void; onWrite?: () => void }) {
+  onUnauthorizedHook = hooks.onUnauthorized ?? null;
+  onWriteHook = hooks.onWrite ?? null;
+}
+
 export function handleUnauthorized() {
+  // Limpa também a equipe ativa em memória, senão o persist a grava de volta
+  onUnauthorizedHook?.();
   deleteCookie("creator_auth_token");
   deleteCookie("creator_user_id");
   clearPersistedTeam();
@@ -136,6 +147,9 @@ export async function apiRequest(method: string, path: string, body?: unknown) {
     inFlightGets.set(key, request);
     return request;
   }
+  // Depois de uma escrita nenhuma leitura em andamento vale mais: a próxima vai ao servidor
+  inFlightGets.clear();
+  onWriteHook?.();
   return performRequest(method, path, body);
 }
 
