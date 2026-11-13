@@ -84,7 +84,7 @@ export function CreateIdeaDialog({ open: openProp, onOpenChange, trigger }: Crea
       ) : !isControlled ? (
         <DialogTrigger render={
           <Button
-            aria-label="NOVA_IDEIA"
+            aria-label="Nova ideia"
             className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5 font-sans"
           >
             <Plus size={16} /> Nova Ideia

@@ -3,9 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Navbar } from '@/components/shared/Navbar';
 import { useAppStore } from '@/store/useAppStore';
 
-jest.mock('@/components/shared/ThemeColorPicker', () => ({
-  ThemeColorPicker: () => <div data-testid="theme-color-picker">ColorPicker</div>,
-}));
 
 jest.mock('@/components/shared/ThemeToggle', () => ({
   ThemeToggle: () => <div data-testid="theme-toggle">ThemeToggle</div>,
