@@ -9,6 +9,8 @@ export const USERS = {
   caio: { email: "caio.criador.e2e@creatorworkbench.test", name: "Caio Criador", role: "Criador" },
   rui: { email: "rui.revisor.e2e@creatorworkbench.test", name: "Rui Revisor", role: "Revisor" },
   bia: { email: "bia.admin.e2e@creatorworkbench.test", name: "Bia Administradora", role: "Administrador" },
+  /** Administrador do sistema (APP_ADMIN_EMAILS): so serve para ativar planos de equipe. */
+  sistema: { email: "admin.sistema@creatorworkbench.test", name: "Admin Sistema", role: "Administrador" },
 } as const;
 export type UserKey = keyof typeof USERS;
 
@@ -174,11 +176,31 @@ export function inboxCard(page: Page, title: string): Locator {
   return page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 }
 
-/** Cria uma equipe nova (Ana administra) com Caio (Criador) e Rui (Revisor); isola os testes que mudam colunas. */
-export async function apiCreateTeam(name: string, owner: UserKey = "ana") {
+/**
+ * Muda o plano de uma equipe pela rota do administrador do sistema (PUT /api/v1/admin/teams/{id}/plan).
+ * Desde o M5 toda equipe nasce no Gratuito (1 usuario, 3 projetos ativos, 1 curso, sem resumo, 100 MB).
+ */
+export async function apiSetPlan(teamId: number | string, plan: "GRATUITO" | "SOLO" | "PRO" | "AGENCIA", expiresAt?: string) {
+  const { token } = await apiLogin("sistema");
+  const r = await api(token, "PUT", `/api/v1/admin/teams/${teamId}/plan`, expiresAt ? { plan, expiresAt } : { plan });
+  if (r.status !== 200) throw new Error(`ativar plano ${plan}: ${r.status} ${JSON.stringify(r.body)}`);
+  return r.body;
+}
+
+/**
+ * Cria uma equipe nova (Ana administra) com Caio (Criador) e Rui (Revisor); isola os testes que mudam colunas.
+ * A equipe e movida para AGENCIA logo depois de criada (sem limites; e libera o dono a criar outras equipes).
+ * Use `plan: "GRATUITO"` para ficar no plano de entrada e testar os limites.
+ */
+export async function apiCreateTeam(name: string, owner: UserKey = "ana", plan: "GRATUITO" | "SOLO" | "PRO" | "AGENCIA" = "AGENCIA") {
   const { token } = await apiLogin(owner);
   const r = await api(token, "POST", "/api/v1/teams", { name });
   if (r.status !== 200) throw new Error(`criar equipe: ${r.status} ${JSON.stringify(r.body)}`);
+  if (plan !== "GRATUITO") await apiSetPlan(r.body.id, plan);
+  if (plan === "GRATUITO") {
+    teamCache.set(`${owner}:${name}`, r.body.id);
+    return r.body.id as number;
+  }
   await api(token, "POST", `/api/v1/teams/${r.body.id}/members`, { email: USERS.caio.email, role: "CREATOR" });
   await api(token, "POST", `/api/v1/teams/${r.body.id}/members`, { email: USERS.rui.email, role: "REVIEWER" });
   teamCache.set(`${owner}:${name}`, r.body.id);

@@ -41,7 +41,8 @@ test.describe("Autenticacao", () => {
     await page.getByPlaceholder("operador@creator.studio").fill(USERS.ana.email);
     await page.getByPlaceholder("••••••••").fill(PASSWORD);
     await page.getByRole("button", { name: /Iniciar Sessão/ }).click();
-    await expect(page).toHaveURL(/\/convite\?token=xyz/);
+    // o token sai da barra de enderecos (fica so na sessao da aba); o redirect interno e respeitado
+    await expect(page).toHaveURL(/localhost:3000\/convite$/);
 
     // redirect externo: cai na raiz
     await page.context().clearCookies();
@@ -112,7 +113,7 @@ test.describe("Autenticacao", () => {
     await expect(page.getByRole("heading", { name: "Painel de Controle" })).toBeVisible();
   });
 
-  test("rotas ainda nao construidas (alertas): sino escondido e nenhuma chamada a /alerts (flag desligada)", async ({ page }) => {
+  test("alertas (flag ligada desde o M4): sino visivel e GET /alerts chamado sem erro", async ({ page }) => {
     const problems = collectProblems(page);
     const calls: string[] = [];
     page.on("request", (r) => {
@@ -121,8 +122,8 @@ test.describe("Autenticacao", () => {
     await loginAs(page, "ana");
     await page.waitForTimeout(1500);
     await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
-    expect(calls, "chamadas a /alerts com a flag desligada").toEqual([]);
-    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toHaveCount(0);
+    expect(calls.length, "o sino deve consultar /alerts").toBeGreaterThan(0);
+    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toBeVisible();
     expect(problems).toEqual([]);
     void expectToast;
   });

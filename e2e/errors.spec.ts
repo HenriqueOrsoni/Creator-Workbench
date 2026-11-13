@@ -99,19 +99,20 @@ test.describe("Falhas de rede e erros 5xx (sem sucesso falso)", () => {
     await expect(page.locator('[data-sonner-toast][data-type="error"]').first()).toBeVisible();
   });
 
-  test("alertas e convites escondidos (sem backend): nao ha sino, aba Convites nem chamadas a essas rotas, e nenhum toast de erro", async ({ page }) => {
+  test("alertas e convites ligados (M4): sino, abas Convites e Configuracoes aparecem para o Administrador, chamam as rotas e nao geram toast de erro", async ({ page }) => {
     const calls: string[] = [];
     page.on("request", (r) => {
       if (/\/(alerts|invites)/.test(r.url())) calls.push(r.url());
     });
     await loginAs(page, "ana", team);
-    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Alertas de Prazos" })).toBeVisible();
     await page.getByTitle("Gerenciar membros da equipe").click();
     await expect(page.getByRole("tab", { name: /Membros/ })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /Convites/ })).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "Configurações" })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: /Convites/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Configurações" })).toBeVisible();
     await page.waitForTimeout(800);
-    expect(calls).toEqual([]);
+    expect(calls.some((c) => c.includes("/alerts"))).toBe(true);
+    expect(calls.some((c) => c.includes("/invites"))).toBe(true);
     await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0);
   });
 
