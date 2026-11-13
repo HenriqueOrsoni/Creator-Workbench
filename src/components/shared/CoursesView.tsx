@@ -107,6 +107,29 @@ export function CoursesView() {
     fetchCourses();
   }, [fetchCourses]);
 
+  // Aviso de curso publicado com pendências (decisão 20): só editores, sem toast em caso de falha.
+  // A chave muda a cada edição de curso, aula, material ou ordem, e a verificação roda de novo.
+  const [publishedWarning, setPublishedWarning] = React.useState<{ courseId: string; problems: PublicationCheckProblem[] } | null>(null);
+  const isPublishedCourse = activeCourse?.status === "PUBLISHED";
+  const warnCourseId = activeCourse?.id;
+  const warnKey = activeCourse ? JSON.stringify(activeCourse) : "";
+  React.useEffect(() => {
+    if (!canEditCourses || !isPublishedCourse || !warnCourseId) {
+      setPublishedWarning(null);
+      return;
+    }
+    let cancelled = false;
+    checkCoursePublication(warnCourseId, { silent: true }).then((result) => {
+      if (cancelled) return;
+      setPublishedWarning(result && !result.publishable && result.problems.length > 0
+        ? { courseId: warnCourseId, problems: result.problems }
+        : null);
+    });
+    return () => { cancelled = true; };
+    // warnKey faz a verificação repetir depois de cada alteração do curso
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEditCourses, isPublishedCourse, warnCourseId, warnKey]);
+
   // Lista todos os cards de projeto do quadro para permitir vínculo com lições
   const allProjects = React.useMemo(() => {
     if (!board) return [];
@@ -528,6 +551,20 @@ export function CoursesView() {
                   )}
                 </div>
               </div>
+
+              {canEditCourses && publishedWarning && publishedWarning.courseId === activeCourse.id && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 p-3 text-xs space-y-1.5 break-words"
+                >
+                  <p className="font-semibold">Este curso está publicado, mas tem pendências:</p>
+                  <ul className="list-disc pl-5 space-y-0.5">
+                    {publishedWarning.problems.map((problem, i) => (
+                      <li key={`${problem.type}-${i}`}>{problem.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Lista de Módulos */}
               <div className="space-y-3.5">

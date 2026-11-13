@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { CoursesView } from '@/components/shared/CoursesView';
 import { useAppStore, Course, CourseDetail } from '@/store/useAppStore';
 
@@ -433,6 +433,78 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
 
       finish(true);
       await waitFor(() => expect(screen.getByRole('button', { name: /csv/i })).not.toBeDisabled());
+    });
+  });
+  describe('Aviso de curso publicado com pendências (decisão 20)', () => {
+    const published = { ...mockCourseDetail, status: 'PUBLISHED' as const };
+    const problems = { publishable: false, problems: [{ type: 'INVALID_LINK', ids: [1], titles: ['Aula 1'], message: 'A aula "Aula 1" tem um link inválido.' }] };
+
+    it('curso publicado com problemas mostra o aviso com cada mensagem como texto', async () => {
+      const check = jest.fn().mockResolvedValue(problems);
+      useAppStore.setState({ activeCourse: published, checkCoursePublication: check });
+      render(<CoursesView />);
+
+      expect(await screen.findByText(/este curso está publicado, mas tem pendências/i)).toBeInTheDocument();
+      expect(screen.getByText('A aula "Aula 1" tem um link inválido.')).toBeInTheDocument();
+      expect(check).toHaveBeenCalledWith('1', { silent: true });
+    });
+
+    it('curso publicável não mostra aviso', async () => {
+      const check = jest.fn().mockResolvedValue({ publishable: true, problems: [] });
+      useAppStore.setState({ activeCourse: published, checkCoursePublication: check });
+      render(<CoursesView />);
+
+      await waitFor(() => expect(check).toHaveBeenCalled());
+      expect(screen.queryByText(/mas tem pendências/i)).not.toBeInTheDocument();
+    });
+
+    it('falha na verificação (null) não mostra aviso', async () => {
+      const check = jest.fn().mockResolvedValue(null);
+      useAppStore.setState({ activeCourse: published, checkCoursePublication: check });
+      render(<CoursesView />);
+
+      await waitFor(() => expect(check).toHaveBeenCalled());
+      expect(screen.queryByText(/mas tem pendências/i)).not.toBeInTheDocument();
+    });
+
+    it('curso em rascunho não faz verificação', async () => {
+      const check = jest.fn().mockResolvedValue(problems);
+      useAppStore.setState({ activeCourse: { ...mockCourseDetail, status: 'DRAFT' as const }, checkCoursePublication: check });
+      render(<CoursesView />);
+
+      await Promise.resolve();
+      expect(check).not.toHaveBeenCalled();
+      expect(screen.queryByText(/mas tem pendências/i)).not.toBeInTheDocument();
+    });
+
+    it('Revisor não faz verificação nem vê o aviso', async () => {
+      const check = jest.fn().mockResolvedValue(problems);
+      useAppStore.setState({
+        activeTeam: { id: 't1', name: 'Equipe', role: 'REVIEWER', membersCount: 1, createdAt: 'x' },
+        activeCourse: published,
+        checkCoursePublication: check,
+      });
+      render(<CoursesView />);
+
+      await Promise.resolve();
+      expect(check).not.toHaveBeenCalled();
+      expect(screen.queryByText(/mas tem pendências/i)).not.toBeInTheDocument();
+    });
+
+    it('o aviso é atualizado depois de uma edição do curso', async () => {
+      const check = jest.fn()
+        .mockResolvedValueOnce(problems)
+        .mockResolvedValue({ publishable: true, problems: [] });
+      useAppStore.setState({ activeCourse: published, checkCoursePublication: check });
+      render(<CoursesView />);
+      await screen.findByText(/mas tem pendências/i);
+
+      act(() => {
+        useAppStore.setState({ activeCourse: { ...published, title: 'Curso corrigido' } });
+      });
+
+      await waitFor(() => expect(screen.queryByText(/mas tem pendências/i)).not.toBeInTheDocument());
+      expect(check).toHaveBeenCalledTimes(2);
     });
   });
 });
