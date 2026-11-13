@@ -1,4 +1,4 @@
-import { setCookie, getCookie, deleteCookie, apiRequest, apiDownload } from '@/lib/api';
+import { setCookie, getCookie, deleteCookie, apiRequest, apiDownload, fileNameFromDisposition } from '@/lib/api';
 
 describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
   const originalFetch = global.fetch;
@@ -190,6 +190,7 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
   });
 
   it('apiDownload baixa com fetch + blob enviando o token no cabeçalho', async () => {
+    jest.useFakeTimers();
     setCookie('creator_auth_token', 'tok-123', 86400);
     const blob = new Blob(['conteudo']);
     global.fetch = jest.fn().mockResolvedValueOnce({
@@ -212,7 +213,11 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
     );
     expect(createUrl).toHaveBeenCalledWith(blob);
     expect(clickSpy).toHaveBeenCalled();
+    // O endereço do arquivo é liberado só depois de um instante, não logo após o clique
+    expect(revokeUrl).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1000);
     expect(revokeUrl).toHaveBeenCalledWith('blob:x');
+    jest.useRealTimers();
     clickSpy.mockRestore();
   });
 
@@ -229,5 +234,42 @@ describe('5.2 Integração Frontend ↔ Backend (IT-11 a IT-14)', () => {
       status: 404,
     });
     expect(window.URL.createObjectURL).not.toHaveBeenCalled();
+  });
+});
+
+describe('fileNameFromDisposition (M2)', () => {
+  it('prefere filename* (UTF-8) ao nome de reserva em ASCII', () => {
+    const header = `attachment; filename="roteiro_final.pdf"; filename*=UTF-8''roteiro%20final%20-%20vers%C3%A3o.pdf`;
+    expect(fileNameFromDisposition(header)).toBe('roteiro final - versão.pdf');
+  });
+
+  it('usa filename simples quando não há filename*', () => {
+    expect(fileNameFromDisposition('attachment; filename="curso-5.csv"')).toBe('curso-5.csv');
+    expect(fileNameFromDisposition('attachment; filename=guia.pdf')).toBe('guia.pdf');
+  });
+
+  it('sem cabeçalho devolve null (vale o nome padrão)', () => {
+    expect(fileNameFromDisposition(null)).toBeNull();
+    expect(fileNameFromDisposition('attachment')).toBeNull();
+  });
+
+  it('apiDownload usa o nome de filename* do cabeçalho', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(['x']),
+      headers: { get: () => `attachment; filename="a_b.pdf"; filename*=UTF-8''a%C3%A7%C3%A3o.pdf` },
+    });
+    window.URL.createObjectURL = jest.fn().mockReturnValue('blob:y');
+    window.URL.revokeObjectURL = jest.fn();
+    let downloaded = '';
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloaded = this.download;
+    });
+
+    await apiDownload('/api/v1/teams/1/materials/5/download', 'padrao.bin');
+
+    expect(downloaded).toBe('ação.pdf');
+    clickSpy.mockRestore();
   });
 });

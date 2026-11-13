@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   useAppStore,
@@ -27,6 +28,7 @@ import { toast } from "sonner";
 import { canEditProduction, canReviewCards } from "@/lib/roles";
 import { formatLocalDate, formatDateTime } from "@/lib/dates";
 import { FEATURES } from "@/lib/features";
+import { reviewLabel } from "@/lib/review";
 
 interface CardTaskDialogProps {
   card: ProjectCard | null;
@@ -49,6 +51,8 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     deleteMaterial,
     downloadMaterial,
     cardSummaries,
+    cardReviews,
+    fetchCardReviews,
     fetchCardSummary,
     generateCardSummary,
     teamMembers,
@@ -82,7 +86,10 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   // Estados para Materiais (FE-10, FE-11)
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [materialToDelete, setMaterialToDelete] = useState<{ id: string; fileName: string } | null>(null);
+  const [deletingMaterial, setDeletingMaterial] = useState(false);
+  const [summaryLoadedFor, setSummaryLoadedFor] = useState<string | null>(null);
+  const [reviewsLoadedFor, setReviewsLoadedFor] = useState<string | null>(null);
 
   // Estados para Histórico (FE-05)
   const [history, setHistory] = useState<CardMovementHistory[]>([]);
@@ -111,6 +118,14 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     return cardMaterials[currentCard.id] || [];
   }, [cardMaterials, currentCard]);
 
+  const reviews = useMemo(() => {
+    if (!currentCard) return [];
+    return cardReviews[currentCard.id] || [];
+  }, [cardReviews, currentCard]);
+
+  const loadingSummary = summaryLoadedFor !== currentCard?.id;
+  const loadingReviews = reviewsLoadedFor !== currentCard?.id;
+
   const summary = useMemo(() => {
     if (!currentCard) return null;
     return cardSummaries[currentCard.id] || null;
@@ -122,7 +137,15 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     if (activeTab === "materiais" && FEATURES.materials) {
       fetchCardMaterials(currentCard.id);
     } else if (activeTab === "resumo" && FEATURES.summary) {
-      fetchCardSummary(currentCard.id);
+      {
+      const id = currentCard.id;
+      fetchCardSummary(id).finally(() => setSummaryLoadedFor(id));
+    }
+    } else if (activeTab === "revisao" && FEATURES.review) {
+      {
+      const id = currentCard.id;
+      fetchCardReviews(id).finally(() => setReviewsLoadedFor(id));
+    }
     } else if (activeTab === "historico") {
       let cancelled = false;
       fetchCardHistory(currentCard.id)
@@ -136,7 +159,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
         cancelled = true;
       };
     }
-  }, [open, activeTab, currentCard?.id, fetchCardMaterials, fetchCardSummary, fetchCardHistory]);
+  }, [open, activeTab, currentCard?.id, fetchCardMaterials, fetchCardSummary, fetchCardReviews, fetchCardHistory]);
 
   if (!currentCard) return null;
 
@@ -192,23 +215,26 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     // Reset input
     e.target.value = "";
 
+    // Barra indeterminada: não há progresso real e ela some assim que o servidor responde (sucesso ou erro)
     setIsUploading(true);
-    setUploadProgress(20);
-    const progressTimer = setInterval(() => {
-      setUploadProgress(prev => (prev !== null && prev < 90 ? prev + 25 : prev));
-    }, 150);
-
-    const uploaded = await uploadMaterial(currentCard.id, file);
-    clearInterval(progressTimer);
-    setUploadProgress(100);
-    setTimeout(() => {
+    let uploaded = null;
+    try {
+      uploaded = await uploadMaterial(currentCard.id, file);
+    } finally {
       setIsUploading(false);
-      setUploadProgress(null);
-    }, 400);
+    }
 
     if (uploaded) {
       await fetchCardMaterials(currentCard.id);
     }
+  };
+
+  const confirmDeleteMaterial = async () => {
+    if (!materialToDelete || deletingMaterial) return;
+    setDeletingMaterial(true);
+    await deleteMaterial(materialToDelete.id, currentCard.id);
+    setDeletingMaterial(false);
+    setMaterialToDelete(null);
   };
 
   const handleGenerateSummary = async () => {
@@ -225,9 +251,9 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     }
 
     setIsSubmittingReview(true);
-    await submitCardReview(currentCard.id, reviewDecision, reviewComment.trim());
+    const ok = await submitCardReview(currentCard.id, reviewDecision, reviewComment.trim());
     setIsSubmittingReview(false);
-    setReviewComment("");
+    if (ok) setReviewComment("");
   };
 
   return (
@@ -247,7 +273,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                 }`}
               >
-                {currentCard.reviewStatus === "APPROVED" ? "Aprovado" : "Alterações Solicitadas"}
+                {reviewLabel(currentCard.reviewStatus)}
               </Badge>
             )}
           </div>
@@ -270,13 +296,13 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           }}
           className="w-full mt-2"
         >
-          <TabsList className="flex w-full justify-start overflow-x-auto bg-muted/50 p-1 rounded-lg text-xs">
+          <TabsList className="flex w-full h-auto group-data-horizontal/tabs:h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-lg text-xs">
             <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md shrink-0">
               Tarefas ({tasks.length})
             </TabsTrigger>
             {FEATURES.materials && (
               <TabsTrigger value="materiais" className="text-xs font-semibold rounded-md">
-                Materiais ({materials.length})
+                Materiais ({cardMaterials[currentCard.id]?.length ?? currentCard.materialsCount ?? 0})
               </TabsTrigger>
             )}
             {FEATURES.summary && (
@@ -512,10 +538,9 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 </label>
 
                 {isUploading && (
-                  <div className="mt-3 w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <div data-testid="upload-progress" className="mt-3 w-full bg-muted rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-primary h-full transition-all duration-200"
-                      style={{ width: `${uploadProgress || 50}%` }}
+                      className="bg-primary h-full w-full animate-pulse"
                     />
                   </div>
                 )}
@@ -558,9 +583,10 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteMaterial(mat.id, currentCard.id)}
+                          onClick={() => setMaterialToDelete({ id: mat.id, fileName: mat.fileName })}
                           className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-md"
                           title="Excluir arquivo"
+                          aria-label={`Excluir ${mat.fileName}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -585,27 +611,37 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   <Button
                     onClick={handleGenerateSummary}
                     disabled={isGeneratingSummary}
+                    aria-busy={isGeneratingSummary}
                     size="sm"
                     className="rounded-lg text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary-hover shadow-xs"
                   >
                     <Sparkles className="w-3 h-3" />
-                    {isGeneratingSummary ? "Gerando (até 30s)..." : "Gerar Resumo"}
+                    {isGeneratingSummary ? "Gerando (até 30s)..." : summary ? "Gerar novo resumo" : "Gerar Resumo"}
                   </Button>
                 )}
               </div>
 
               {summary ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-foreground leading-relaxed bg-card p-3 rounded-lg border border-border">
+                  {/* Texto puro: o resumo vem de um modelo e pode conter marcação */}
+                  <p
+                    data-testid="summary-text"
+                    className="text-xs text-foreground leading-relaxed bg-card p-3 rounded-lg border border-border whitespace-pre-wrap break-words"
+                  >
                     {summary.summary}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     Gerado em {formatDateTime(summary.generatedAt)} a partir do {summary.basedOn === "SCRIPT" ? "roteiro de produção" : "briefing"}.
                   </p>
                 </div>
+              ) : loadingSummary ? (
+                <p className="text-xs text-muted-foreground">Carregando resumo...</p>
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  A inteligência artificial analisa o roteiro e os objetivos pedagógicos do projeto para produzir uma síntese didática estruturada. Clique no botão acima para iniciar.
+                  Nenhum resumo gerado para este projeto.
+                  {canEditTasks
+                    ? " Escreva pelo menos 100 palavras no roteiro e clique em Gerar Resumo."
+                    : ""}
                 </p>
               )}
             </div>
@@ -621,11 +657,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   Status Atual da Revisão
                 </span>
                 <Badge variant="outline" className="text-xs font-semibold">
-                  {currentCard.reviewStatus === "APPROVED"
-                    ? "Aprovado"
-                    : currentCard.reviewStatus === "CHANGES_REQUESTED"
-                    ? "Alterações Solicitadas"
-                    : "Pendente de Revisão"}
+                  {reviewLabel(currentCard.reviewStatus)}
                 </Badge>
               </div>
 
@@ -668,6 +700,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     <Input
                       id="review-comment"
                       aria-label="Comentários de revisão"
+                      maxLength={2000}
                       placeholder={reviewDecision === "CHANGES_REQUESTED" ? "Descreva o que precisa ser ajustado..." : "Observações opcionais"}
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
@@ -683,6 +716,39 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                     {isSubmittingReview ? "Enviando Decisão..." : "Registrar Decisão de Revisão"}
                   </Button>
                 </form>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-foreground">Histórico de revisões</span>
+              {loadingReviews && reviews.length === 0 ? (
+                <p className="py-4 text-center text-xs text-muted-foreground">Carregando revisões...</p>
+              ) : reviews.length === 0 ? (
+                <p className="py-4 text-center text-xs text-muted-foreground">Nenhuma revisão registrada ainda.</p>
+              ) : (
+                <ul className="max-h-[220px] overflow-y-auto space-y-2 pr-1">
+                  {reviews.map((r) => (
+                    <li key={r.id} className="p-2.5 rounded-lg border border-border bg-card space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-semibold ${
+                            r.decision === "APPROVED"
+                              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                              : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          }`}
+                        >
+                          {reviewLabel(r.decision)}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{formatDateTime(r.createdAt)}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Por {r.reviewer?.name || "Revisor removido"}</p>
+                      {r.comment && (
+                        <p className="text-xs text-foreground whitespace-pre-wrap break-words">{r.comment}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </TabsContent>
@@ -726,6 +792,41 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* Confirmação de exclusão de material */}
+      <Dialog open={Boolean(materialToDelete)} onOpenChange={(o) => !o && !deletingMaterial && setMaterialToDelete(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl p-6 bg-card border border-border shadow-lg font-sans">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 font-heading text-destructive">
+              <Trash2 className="w-4 h-4" />
+              Excluir Material
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-1 break-words">
+              Tem certeza que deseja excluir o arquivo <strong className="text-foreground font-semibold">&ldquo;{materialToDelete?.fileName}&rdquo;</strong>? Os vínculos dele com aulas também serão removidos. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 pt-4 border-t border-border mt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={deletingMaterial}
+              onClick={() => setMaterialToDelete(null)}
+              className="rounded-lg text-xs font-medium"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deletingMaterial}
+              onClick={confirmDeleteMaterial}
+              className="rounded-lg text-xs font-semibold"
+            >
+              {deletingMaterial ? "Excluindo..." : "Confirmar Exclusão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

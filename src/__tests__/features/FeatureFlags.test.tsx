@@ -10,8 +10,8 @@ import { useAppStore, ProjectCard, Course, CourseDetail } from '@/store/useAppSt
 import * as apiModule from '@/lib/api';
 import { ConviteContent } from '@/app/convite/page';
 
-// Aqui as flags ficam como estão no código (todas desligadas): as telas sem backend não aparecem
-// e nenhuma das rotas delas é chamada.
+// Aqui as flags ficam como estão no código: as telas sem backend (convites, publicação, CSV,
+// edição de curso, equipe, segurança e alertas) seguem escondidas e as rotas delas não são chamadas.
 
 jest.mock('@/lib/api', () => ({
   ...jest.requireActual('@/lib/api'),
@@ -35,7 +35,7 @@ const api = apiModule.apiRequest as jest.Mock;
 
 const admin = { id: '10', name: 'Equipe', role: 'ADMIN' as const, membersCount: 1, createdAt: 'x' };
 
-describe('Feature flags do marco 1: telas sem backend ficam escondidas', () => {
+describe('Feature flags: telas sem backend ficam escondidas', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     api.mockResolvedValue([]);
@@ -43,21 +43,25 @@ describe('Feature flags do marco 1: telas sem backend ficam escondidas', () => {
     useAppStore.setState({ activeTeam: admin, activeTeamId: '10' });
   });
 
-  it('todas as flags estão desligadas', () => {
-    expect(Object.values(FEATURES).every((v) => v === false)).toBe(true);
+  it('materials, summary e review ligadas no marco 2; as demais seguem desligadas', () => {
+    expect(FEATURES.materials).toBe(true);
+    expect(FEATURES.summary).toBe(true);
+    expect(FEATURES.review).toBe(true);
+    const off = Object.entries(FEATURES).filter(([k]) => !['materials', 'summary', 'review'].includes(k));
+    expect(off.length).toBeGreaterThan(0);
+    expect(off.every(([, v]) => v === false)).toBe(true);
   });
 
-  it('CardTaskDialog só tem as abas Tarefas e Histórico e não busca materiais nem resumo', () => {
+  it('CardTaskDialog mostra as abas Materiais, Resumo IA e Revisão (sem buscar nada até abrir a aba)', () => {
     const card: ProjectCard = {
       id: '10', title: 'Projeto', description: '', type: 'PROJECT', sortOrder: 0, progress: 0,
       tasksTotal: 0, tasksDone: 0, tasks: [], createdAt: new Date().toISOString(),
     };
     render(<CardTaskDialog card={card} open={true} onOpenChange={() => {}} />);
 
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Tarefas (0)', 'Histórico']);
-    expect(screen.queryByRole('tab', { name: /materiais/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /resumo/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: /revisão/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'Tarefas (0)', 'Materiais (0)', 'Resumo IA', 'Revisão', 'Histórico',
+    ]);
     expect(api).not.toHaveBeenCalled();
   });
 
