@@ -385,8 +385,8 @@ test.describe("M3 publicacao", () => {
     const types = check.problems.map((p: any) => p.type).sort();
     expect(types).toEqual(["EMPTY_MODULE", "LESSON_WITHOUT_MATERIAL"]);
     for (const p of check.problems) await expect(dialog.getByText(p.message, { exact: true })).toBeVisible();
-    await expect(dialog.getByText("Modulo vazio", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("Aula sem nada", { exact: true })).toBeVisible();
+    await expect(dialog).toContainText("Modulo vazio"); // o titulo vem dentro da mensagem do servidor (sem repetir)
+    await expect(dialog).toContainText("Aula sem nada"); // o titulo vem dentro da mensagem do servidor (sem repetir)
     // a aula com link do YouTube e sem material nao e problema
     await expect(dialog.getByText(/Aula do youtube/)).toHaveCount(0);
     await page.screenshot({ path: `${SHOTS}/m3-check-problemas.png` });
@@ -403,7 +403,7 @@ test.describe("M3 publicacao", () => {
     const check = (await api((await apiLogin("ana")).token, "GET", `/api/v1/teams/${t}/courses/${course.id}/publication-check`)).body;
     expect(check.problems.map((p: any) => p.type)).toContain("INVALID_LINK");
     await expect(dialog.getByText(check.problems[0].message, { exact: true })).toBeVisible();
-    await expect(dialog.getByText("Aula link ruim", { exact: true })).toBeVisible();
+    await expect(dialog).toContainText("Aula link ruim"); // o titulo vem dentro da mensagem do servidor (sem repetir)
     // o link ruim nunca vira link clicavel na tela
     await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
   });
@@ -471,7 +471,7 @@ test.describe("M3 publicacao", () => {
     expect(r.status).toBe(200);
     await dialog.getByRole("button", { name: "Confirmar Publicação" }).click();
     await expect(page.getByText(/Não é possível publicar: 1 problema/)).toBeVisible();
-    await expect(dialogOf(page).getByText("Aula corrida", { exact: true })).toBeVisible();
+    await expect(dialogOf(page)).toContainText("Aula corrida"); // o titulo vem dentro da mensagem do servidor (sem repetir)
     await expect(page.locator('[data-sonner-toast][data-type="success"]')).toHaveCount(0);
     await page.getByRole("button", { name: "Entendido" }).click();
     await expect(page.getByText("Rascunho", { exact: true })).toBeVisible();
@@ -777,7 +777,7 @@ test.describe("M3 mobile e tema escuro", () => {
 });
 
 // ---------------------------------------------------------------- regressao de visual (bugs conhecidos)
-test.describe("M3 visual [BUG]", () => {
+test.describe("M3 visual (regressao)", () => {
   test("UX-M3: dialogos de curso tem fundo opaco no tema claro (375 px e 1440 px)", async ({ page }) => {
     const course = await buildCourse([{ title: "Vazio" }]);
     for (const size of [{ width: 375, height: 812 }, { width: 1440, height: 900 }]) {
@@ -788,7 +788,7 @@ test.describe("M3 visual [BUG]", () => {
       await expect(dialogOf(page).getByText(/Não é possível publicar/)).toBeVisible();
       await page.waitForTimeout(500);
       const bg = await dialogOf(page).evaluate((el) => getComputedStyle(el).backgroundColor);
-      expect.soft(bg, `[BUG] dialogo com bg-card fica transparente no tema claro (--card nao existe em :root, globals.css:60) a ${size.width}px: ${bg}`).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
+      expect.soft(bg, `dialogo de curso deve ter fundo opaco no tema claro a ${size.width}px: ${bg}`).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
     }
   });
 
@@ -798,7 +798,7 @@ test.describe("M3 visual [BUG]", () => {
     await openCourse(page, "ana", course);
     const el = courseCard(page).locator("div.truncate.font-medium", { hasText: "Segunda aula" });
     const cut = await el.evaluate((n) => n.scrollWidth > n.clientWidth);
-    expect.soft(cut, "[BUG] titulo 'Segunda aula' aparece como 'Segunda ...' no celular: os 4 botoes da aula tomam a linha (CoursesView.tsx ~651-740)").toBe(false);
+    expect.soft(cut, "titulo da aula nao deve ser cortado a 375 px").toBe(false);
   });
 });
 
