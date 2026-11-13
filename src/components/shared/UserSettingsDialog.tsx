@@ -146,6 +146,8 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
       // A troca de senha encerra as outras sessões; o servidor devolve o token novo desta
       if (res && typeof res.token === "string" && res.token) {
         setCookie("creator_auth_token", res.token, 86400);
+        // Same lifetime as the new token, as login does, so both cookies expire together
+        setCookie("creator_user_id", String(userId), 86400);
       }
       toast.success("Senha alterada com sucesso!");
       setCurrentPassword("");
