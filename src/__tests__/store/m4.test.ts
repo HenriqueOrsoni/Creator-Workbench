@@ -149,7 +149,12 @@ describe('Store M4: convites', () => {
     api.mockRejectedValueOnce(err(message, status));
     const ok = await useAppStore.getState().createTeamInvite('a@b.com', 'CREATOR');
     expect(ok).toBe(false);
-    expect(toast.error).toHaveBeenCalledWith(message);
+    if (status === 402) {
+      // limite do plano: o toast oferece "Ver planos"
+      expect(toast.error).toHaveBeenCalledWith(message, expect.objectContaining({ action: expect.objectContaining({ label: 'Ver planos' }) }));
+    } else {
+      expect(toast.error).toHaveBeenCalledWith(message);
+    }
     expect(toast.success).not.toHaveBeenCalled();
     expect(useAppStore.getState().teamInvites).toEqual([]);
   });

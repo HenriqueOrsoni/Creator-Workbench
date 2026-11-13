@@ -221,4 +221,20 @@ describe('4.4 Componentes do Editor de Roteiros (FT-18 a FT-21)', () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Projeto não encontrado.'));
   });
+
+  it('plano sem resumo automático: botão Resumo IA desabilitado com a dica de plano', async () => {
+    const { mapTeamPlan } = await import('@/lib/plans');
+    useAppStore.setState({
+      teamPlan: mapTeamPlan({
+        teamId: 1, plan: 'SOLO', planName: 'Solo', source: 'MANUAL', expiresAt: null, trialAvailable: false,
+        limits: { maxUsers: 1, maxActiveProjects: 10, maxCourses: 5, automaticSummary: false, storageBytes: 1 },
+        usage: { members: 1, activeProjects: 0, courses: 0, storageBytes: 0 }, overLimit: false,
+      }),
+    });
+    render(<ScriptEditor kanbanItemId="1" />);
+    const gate = await screen.findByTestId('summary-plan-gate');
+    expect(gate).toBeDisabled();
+    expect(gate).toHaveAttribute('title', 'Disponível nos planos Pro e Agência');
+    useAppStore.setState({ teamPlan: null });
+  });
 });

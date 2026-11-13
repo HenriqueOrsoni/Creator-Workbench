@@ -4,6 +4,8 @@ import { OklchColor } from "@/lib/color-utils";
 import { apiRequest, apiDownload, apiOpenInline, registerApiHooks } from "@/lib/api";
 import { FEATURES } from "@/lib/features";
 import { toast } from "sonner";
+import { toastApiError } from "@/lib/plan-nav";
+import { mapTeamPlan, mapPlanInfo, type TeamPlan, type PlanInfo, type PlanName, type PlanSource, type TrialPlan } from "@/lib/plans";
 
 /**
  * Creator Workbench - Global Store
@@ -21,6 +23,9 @@ export interface Team {
   role: TeamRoleName;
   membersCount: number;
   createdAt: string;
+  plan?: PlanName;
+  planSource?: PlanSource;
+  planExpiresAt?: string | null;
   /** Equipe pessoal (não pode ser excluída). Só vem quando o servidor informa. */
   personal?: boolean;
 }
@@ -364,7 +369,9 @@ function statusOf(error: unknown): number | undefined {
 }
 
 function notifyError(error: unknown, fallback: string) {
-  toast.error(errMsg(error, fallback));
+  toastApiError(error, fallback);
+  // Limite do plano: o uso mudou ou está desatualizado. GET do plano nunca devolve 402, então não há laço.
+  if (statusOf(error) === 402) void useAppStore.getState().fetchTeamPlan();
 }
 
 function mapTask(t: ApiTaskDto): CardTask {
@@ -619,6 +626,13 @@ interface AppState {
   fetchCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
   generateCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
 
+  // Planos
+  plans: PlanInfo[];
+  teamPlan: TeamPlan | null;
+  fetchPlans: () => Promise<void>;
+  fetchTeamPlan: () => Promise<TeamPlan | null>;
+  startTrial: (plan: TrialPlan) => Promise<boolean>;
+
   // Convites e administração da equipe
   teamInvites: TeamInvite[];
   fetchTeamInvites: () => Promise<void>;
@@ -657,6 +671,8 @@ const EMPTY_SESSION_STATE = {
   cardSummaries: {} as Record<string, ProjectSummary>,
   teamInvites: [] as TeamInvite[],
   teamTags: [] as TeamTag[],
+  plans: [] as PlanInfo[],
+  teamPlan: null as TeamPlan | null,
 };
 
 // Pedido de equipes em andamento (evita buscas repetidas na carga da página)
@@ -695,7 +711,7 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           const message = errMsg(error, "Erro ao atualizar projeto");
           set({ error: message });
-          toast.error(message);
+          toastApiError(error, message);
           return false;
         }
       },
@@ -715,7 +731,7 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           const message = errMsg(error, "Erro ao atualizar ideia");
           set({ error: message });
-          toast.error(message);
+          toastApiError(error, message);
           return false;
         }
       },
@@ -735,6 +751,9 @@ export const useAppStore = create<AppState>()(
                 role: t.role,
                 membersCount: t.membersCount,
                 createdAt: t.createdAt,
+                plan: t.plan,
+                planSource: t.planSource,
+                planExpiresAt: t.planExpiresAt ?? null,
                 ...(typeof t.personal === "boolean" ? { personal: t.personal } : {})
               }));
 
@@ -753,7 +772,7 @@ export const useAppStore = create<AppState>()(
           } catch (err: unknown) {
             const message = errMsg(err, "Não foi possível carregar as equipes.");
             set({ error: message });
-            toast.error(message);
+            toastApiError(err, message);
           }
         })().finally(() => {
           if (teamsInFlight === current) teamsInFlight = null;
@@ -773,6 +792,7 @@ export const useAppStore = create<AppState>()(
           activeCourse: null,
           teamTags: [],
           teamMembers: [],
+          teamPlan: null,
           alerts: [],
           teamInvites: [],
           selectedProjectId: null,
@@ -790,7 +810,10 @@ export const useAppStore = create<AppState>()(
             name: raw.name,
             role: raw.role,
             membersCount: raw.membersCount,
-            createdAt: raw.createdAt
+            createdAt: raw.createdAt,
+            plan: raw.plan,
+            planSource: raw.planSource,
+            planExpiresAt: raw.planExpiresAt ?? null
           };
           toast.success("Equipe criada com sucesso!");
           set(state => ({ teams: [...state.teams, newTeam] }));
@@ -1884,6 +1907,55 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           notifyError(error, "Erro ao gerar o resumo");
           return null;
+        }
+      },
+
+      // --- Planos ---
+      fetchPlans: async () => {
+        try {
+          const raw = await apiRequest("GET", "/api/v1/plans");
+          if (Array.isArray(raw)) set({ plans: raw.map(mapPlanInfo) });
+        } catch (error) {
+          notifyError(error, "Erro ao carregar os planos");
+        }
+      },
+
+      fetchTeamPlan: async () => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/plan`);
+          if (!raw) return null;
+          const plan = mapTeamPlan(raw);
+          if (get().activeTeamId === teamId) set({ teamPlan: plan });
+          return plan;
+        } catch (error) {
+          toastApiError(error, "Erro ao carregar o plano da equipe"); // sem refetch: evita laço em 402
+          return null;
+        }
+      },
+
+      startTrial: async (plan) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/plan/trial`, { plan });
+          if (!raw) return false;
+          const updated = mapTeamPlan(raw);
+          set(state => {
+            const patch = (t: Team): Team =>
+              t.id === teamId ? { ...t, plan: updated.plan, planSource: updated.source, planExpiresAt: updated.expiresAt } : t;
+            return {
+              teamPlan: updated,
+              teams: state.teams.map(patch),
+              activeTeam: state.activeTeam ? patch(state.activeTeam) : state.activeTeam
+            };
+          });
+          toast.success("Teste de 14 dias iniciado!");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao iniciar o teste");
+          return false;
         }
       },
 

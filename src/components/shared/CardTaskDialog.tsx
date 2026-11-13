@@ -1,5 +1,6 @@
 "use client";
 
+import { hasAutomaticSummary } from "@/lib/plans";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   CheckSquare, Square, Plus, Trash2, ListChecks, Paperclip,
@@ -59,8 +60,10 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     generateCardSummary,
     teamMembers,
     board,
-    activeTeam
+    activeTeam,
+    teamPlan
   } = useAppStore();
+  const summaryAvailable = hasAutomaticSummary(teamPlan);
 
   // Revisor é somente leitura: não edita, move, exclui nem envia arquivos (BF-07)
   const canEditTasks = canEditProduction(activeTeam?.role);
@@ -635,7 +638,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 font-heading">
                   <Sparkles className="w-4 h-4 text-primary" /> Síntese Pedagógica com IA
                 </span>
-                {canEditTasks && (
+                {canEditTasks && summaryAvailable && (
                   <Button
                     onClick={handleGenerateSummary}
                     disabled={isGeneratingSummary}
@@ -648,6 +651,12 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                   </Button>
                 )}
               </div>
+
+              {!summaryAvailable && (
+                <p data-testid="summary-plan-gate" className="text-xs text-muted-foreground leading-relaxed">
+                  Disponível nos planos Pro e Agência.
+                </p>
+              )}
 
               {summary ? (
                 <div className="space-y-2">
@@ -667,7 +676,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               ) : (
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Nenhum resumo gerado para este projeto.
-                  {canEditTasks
+                  {canEditTasks && summaryAvailable
                     ? " Escreva pelo menos 100 palavras no roteiro e clique em Gerar Resumo."
                     : ""}
                 </p>

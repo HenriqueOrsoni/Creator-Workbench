@@ -40,8 +40,8 @@ describe('Feature flags: telas sem backend ficam escondidas', () => {
     useAppStore.setState({ activeTeam: admin, activeTeamId: '10' });
   });
 
-  it('todas as telas com backend pronto (M2, M3 e M4) estão ligadas', () => {
-    const on = ['materials', 'summary', 'review', 'courseEdit', 'coursePublish', 'courseCsv', 'invites', 'teamManage', 'accountSecurity', 'alerts'];
+  it('todas as telas com backend pronto (M2, M3, M4 e planos do M5) estão ligadas', () => {
+    const on = ['materials', 'summary', 'review', 'courseEdit', 'coursePublish', 'courseCsv', 'invites', 'teamManage', 'accountSecurity', 'alerts', 'plans'];
     on.forEach((k) => expect(FEATURES[k as keyof typeof FEATURES]).toBe(true));
     expect(Object.values(FEATURES).every((v) => v === true)).toBe(true);
   });

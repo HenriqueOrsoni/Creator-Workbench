@@ -33,6 +33,11 @@ export function canReviewCards(role?: string | null): boolean {
   return role === "ADMIN" || role === "REVIEWER";
 }
 
+/** Plano da equipe: somente o Administrador inicia o teste gratuito. */
+export function canManagePlan(role?: string | null): boolean {
+  return role === "ADMIN";
+}
+
 export function canEditProduction(role?: string | null): boolean {
   // Sem papel (sem equipe ativa) é somente leitura; REVIEWER também.
   if (!role) return false;

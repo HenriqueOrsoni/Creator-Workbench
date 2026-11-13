@@ -154,7 +154,7 @@ describe('M4: gestão da equipe e convites (papéis)', () => {
     fireEvent.change(screen.getByPlaceholderText(/e-mail do convidado/i), { target: { value: 'novo@x.com' } });
     api.mockRejectedValueOnce(err('Limite de membros do plano atingido.', 402));
     await userEvent.click(screen.getByRole('button', { name: /enviar convite por e-mail/i }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Limite de membros do plano atingido.'));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Limite de membros do plano atingido.', expect.objectContaining({ action: expect.objectContaining({ label: 'Ver planos' }) })));
     expect(api).toHaveBeenCalledWith('POST', '/api/v1/teams/7/invites', { email: 'novo@x.com', role: 'CREATOR' });
     expect(screen.getByPlaceholderText(/e-mail do convidado/i)).toHaveValue('novo@x.com');
   });

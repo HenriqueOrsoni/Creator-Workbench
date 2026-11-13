@@ -16,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAppStore } from "@/store/useAppStore";
 import { formatRole } from "@/lib/roles";
+import { FEATURES } from "@/lib/features";
+import { PLAN_LABELS } from "@/lib/plans";
 
 import { TeamMembersDialog } from "./TeamMembersDialog";
 
@@ -67,6 +69,11 @@ export function TeamSwitcher() {
           >
             <Users className="w-3.5 h-3.5 text-primary" />
             <span className="max-w-[80px] sm:max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
+            {FEATURES.plans && activeTeam?.plan && (
+              <Badge variant="outline" data-testid="team-plan-badge" className="text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
+                {PLAN_LABELS[activeTeam.plan] ?? activeTeam.plan}
+              </Badge>
+            )}
             {activeTeam && (
               <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
                 {formatRole(activeTeam.role)}
@@ -112,6 +119,12 @@ export function TeamSwitcher() {
                         <span>{formatRole(t.role)}</span>
                         <span>•</span>
                         <span>{t.membersCount} {t.membersCount === 1 ? "membro" : "membros"}</span>
+                        {FEATURES.plans && t.plan && (
+                          <>
+                            <span>•</span>
+                            <span>{PLAN_LABELS[t.plan] ?? t.plan}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -172,7 +185,7 @@ export function TeamSwitcher() {
                 Criar Nova Equipe
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Uma equipe possui seu próprio quadro Kanban dinâmico, caixa de entrada e cursos.
+                Uma equipe possui seu próprio quadro Kanban dinâmico, caixa de entrada e cursos. No plano Gratuito, você pode criar uma equipe compartilhada; sua equipe pessoal não conta.
               </DialogDescription>
             </DialogHeader>
 
