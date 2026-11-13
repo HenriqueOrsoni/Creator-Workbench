@@ -70,6 +70,16 @@ describe('VideoPerformance', () => {
     expect(screen.queryByRole('button', { name: 'Remover' })).toBeNull();
   });
 
+  it('vídeo vinculado sem nenhuma leitura (latest null): mostra o aviso, sem título vazio nem tiles', () => {
+    setup({ videoStats: { '5': stats({ title: null as unknown as string, publishedAt: null as unknown as string, latest: null, history: [] }) } });
+    render(<VideoPerformance cardId="5" videoUrl="https://youtu.be/abc" canEdit active />);
+    expect(screen.getByText('Ainda não há números deste vídeo. Clique em Atualizar.')).toBeInTheDocument();
+    expect(screen.queryByTestId('video-title')).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByTestId('stat-Visualizações')).toBeNull();
+    expect(screen.getByRole('button', { name: /atualizar/i })).toBeEnabled();
+  });
+
   it('mostra título como link seguro, tiles com traço e atualização', () => {
     setup({ videoStats: { '5': stats() } });
     render(<VideoPerformance cardId="5" videoUrl="https://youtu.be/abc" canEdit active />);

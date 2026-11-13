@@ -139,8 +139,8 @@ test.describe("mobile 375: navegacao e logout", () => {
       expect.soft(b!.x + b!.width, `${what} fora da tela (right=${Math.round(b!.x + b!.width)})`).toBeLessThanOrEqual(376);
     };
     await inside(dialog.getByRole("tab", { name: "Histórico" }), "aba Histórico");
-    // Marco 2: Tarefas, Materiais, Resumo IA, Revisão e Histórico (as abas quebram de linha no celular e as 5 ficam visíveis)
-    await expect(dialog.getByRole("tab")).toHaveCount(5);
+    // Marco 2 + v4: Tarefas, Materiais, Resumo IA, Revisão, Desempenho e Histórico (as abas quebram de linha no celular e as 6 ficam visíveis)
+    await expect(dialog.getByRole("tab")).toHaveCount(6); // v4: + Desempenho
     await inside(dialog.getByTitle("Excluir tarefa").first(), "botao Excluir tarefa");
     await inside(dialog.getByLabel(/^Prazo da tarefa/).first(), "campo Prazo da tarefa");
     await inside(dialog.getByTitle("Mover para baixo").first(), "botao Mover tarefa");

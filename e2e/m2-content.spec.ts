@@ -52,7 +52,7 @@ test.beforeAll(async () => {
 
 test.describe("M2 card dialog layout", () => {
   for (const theme of ["light", "dark"] as const) {
-    test(`UX-06: dialogo do card tem 5 abas e a lista quebrada nao cobre o conteudo (375 px, ${theme})`, async ({ page }) => {
+    test(`UX-06: dialogo do card tem 6 abas e a lista quebrada nao cobre o conteudo (375 px, ${theme})`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await page.emulateMedia({ colorScheme: theme });
       const title = uniq("Projeto abas");
@@ -60,13 +60,13 @@ test.describe("M2 card dialog layout", () => {
       await loginAs(page, "ana", team);
       const dialog = await openCard(page, title);
       const tabs = dialog.getByRole("tab");
-      await expect(tabs).toHaveCount(5);
+      await expect(tabs).toHaveCount(6); // v4: + Desempenho (projetos)
       const names = (await tabs.allInnerTexts()).map((s) => s.trim());
-      expect(names.map((n) => n.replace(/\s*\(\d+\)/, ""))).toEqual(["Tarefas", "Materiais", "Resumo IA", "Revisão", "Histórico"]);
+      expect(names.map((n) => n.replace(/\s*\(\d+\)/, ""))).toEqual(["Tarefas", "Materiais", "Resumo IA", "Revisão", "Desempenho", "Histórico"]);
 
       const tablistBox = (await dialog.getByRole("tablist").boundingBox())!;
       const tops = new Set<number>();
-      for (const [i, name] of ["Tarefas", "Materiais", "Resumo IA", "Revisão", "Histórico"].entries()) {
+      for (const [i, name] of ["Tarefas", "Materiais", "Resumo IA", "Revisão", "Desempenho", "Histórico"].entries()) {
         const tab = dialog.getByRole("tab", { name: new RegExp(`^${name}`) });
         await tab.click();
         const b = (await tab.boundingBox())!;
@@ -84,7 +84,7 @@ test.describe("M2 card dialog layout", () => {
         expect.soft(m.listBottom, `aba ${name}: a lista de abas (base) nao passa do topo do painel (2a linha de abas cobre o conteudo)`).toBeLessThanOrEqual(m.panelTop + 0.5);
         // a ultima linha de abas tambem cabe na lista
         expect.soft(m.tabBottom, `aba ${name} nao vaza da lista (a 2a linha fica fora da caixa da lista)`).toBeLessThanOrEqual(m.listBottom + 0.5);
-        if (i === 4) await page.screenshot({ path: `${SHOTS}/m2-mobile-${theme}-abas-${name}.png` });
+        if (i === 5) await page.screenshot({ path: `${SHOTS}/m2-mobile-${theme}-abas-${name}.png` });
       }
       expect(tops.size, "as abas deveriam quebrar em mais de uma linha a 375 px").toBeGreaterThan(1);
       expect(tablistBox.height).toBeGreaterThan(40);
