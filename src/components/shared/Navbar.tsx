@@ -34,6 +34,16 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
     }
   }, [activeTeamId, fetchAlerts]);
 
+  const setCardToOpenId = useAppStore((state) => state.setCardToOpenId);
+  const [alertsOpen, setAlertsOpen] = React.useState(false);
+
+  // Clicar no alerta leva ao quadro e abre o card (o quadro faz a abertura)
+  const openAlertCard = (cardId: string) => {
+    setCardToOpenId(cardId);
+    setAlertsOpen(false);
+    onNavigate?.("kanban");
+  };
+
   const overdueCount = alerts.filter(a => a.type === "CARD_OVERDUE" || a.type === "TASK_OVERDUE").length;
   const totalAlerts = alerts.length;
 
@@ -183,9 +193,8 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           />
         )}
 
-        <div className="hidden sm:flex items-center gap-1">
           {FEATURES.alerts && (
-          <Popover>
+          <Popover open={alertsOpen} onOpenChange={setAlertsOpen}>
             <PopoverTrigger render={
               <Button
                 variant="ghost"
@@ -205,7 +214,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                 )}
               </Button>
             } />
-            <PopoverContent align="end" className="w-80 p-0 rounded-xl shadow-lg border border-border bg-card">
+            <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-0 rounded-xl shadow-lg border border-border bg-card">
               <div className="p-3 border-b border-border flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5 font-heading">
                   <Bell className="w-3.5 h-3.5 text-primary" />
@@ -226,9 +235,12 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                   alerts.map((alert, idx) => {
                     const isOverdue = alert.type === "CARD_OVERDUE" || alert.type === "TASK_OVERDUE";
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={idx}
-                        className={`p-2 rounded-lg text-xs border transition-colors ${
+                        onClick={() => openAlertCard(alert.cardId)}
+                        aria-label={`Abrir card ${alert.cardTitle}`}
+                        className={`w-full text-left p-2 rounded-lg text-xs border transition-colors cursor-pointer hover:brightness-95 ${
                           isOverdue
                             ? "bg-destructive/5 border-destructive/20 text-foreground"
                             : "bg-amber-500/5 border-amber-500/20 text-foreground"
@@ -251,7 +263,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
                             Tarefa: {alert.taskTitle}
                           </p>
                         )}
-                      </div>
+                      </button>
                     );
                   })
                 )}
@@ -259,6 +271,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
             </PopoverContent>
           </Popover>
           )}
+        <div className="hidden sm:flex items-center gap-1">
           <ThemeToggle />
           <UserSettingsDialog
             trigger={

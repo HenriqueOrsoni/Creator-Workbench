@@ -419,6 +419,7 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   </p>
                   <Button
                     type="button"
+                    disabled={activeTeam?.personal === true}
                     variant="destructive"
                     onClick={() => {
                       setDeleteTeamNameConfirm("");
@@ -428,6 +429,9 @@ export function TeamMembersDialog({ open, onOpenChange }: TeamMembersDialogProps
                   >
                     Excluir Equipe
                   </Button>
+                  {activeTeam?.personal === true && (
+                    <p className="text-[11px] text-muted-foreground">A equipe pessoal não pode ser excluída.</p>
+                  )}
                 </div>
               </TabsContent>
             )}

@@ -132,6 +132,10 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
       toast.error("A nova senha deve ter no mínimo 6 caracteres.");
       return;
     }
+    if (newPassword.length > 72) {
+      toast.error("A senha deve ter no máximo 72 caracteres.");
+      return;
+    }
 
     setIsChangingPassword(true);
     try {
@@ -364,6 +368,7 @@ export function UserSettingsDialog({ trigger, open: controlledOpen, onOpenChange
                 <Input
                   type="password"
                   value={newPassword}
+                  maxLength={72}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Digite a nova senha"
                   disabled={isChangingPassword}

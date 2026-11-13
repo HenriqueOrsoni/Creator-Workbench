@@ -29,6 +29,7 @@ export function ConviteContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
   const fetchTeams = useAppStore((state) => state.fetchTeams);
   const setActiveTeamId = useAppStore((state) => state.setActiveTeamId);
@@ -63,6 +64,7 @@ export function ConviteContent() {
   const handleAcceptInvite = async () => {
     if (!token) return;
     setAccepting(true);
+    setAcceptError(null);
     try {
       const acceptedTeam = await apiRequest("POST", `/api/v1/invites/${token}/accept`);
       toast.success(`Você agora faz parte da equipe ${acceptedTeam?.name || "nova"}!`);
@@ -72,7 +74,9 @@ export function ConviteContent() {
       }
       router.push("/");
     } catch (err) {
-      toast.error((err as Error).message || "Erro ao aceitar convite.");
+      const message = (err as Error).message || "Erro ao aceitar convite.";
+      setAcceptError(message);
+      toast.error(message);
       setAccepting(false);
     }
   };
@@ -181,6 +185,9 @@ export function ConviteContent() {
               <CheckCircle2 className="w-4 h-4" />
               {accepting ? "Aceitando..." : "Aceitar Convite e Acessar"}
             </Button>
+            {acceptError && (
+              <p role="alert" className="text-xs text-center text-destructive font-medium">{acceptError}</p>
+            )}
             <p className="text-[11px] text-center text-muted-foreground">
               Você já está autenticado e o acesso será liberado imediatamente.
             </p>
