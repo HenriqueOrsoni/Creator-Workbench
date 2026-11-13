@@ -7,12 +7,12 @@ import { sql } from "./support/mail";
 
 /**
  * v4 (FE QA): aba "Desempenho" do card (acompanhamento do video no YouTube, decisao 23).
- * O backend sobe com YOUTUBE_BASE_URL=http://localhost:3027 e YOUTUBE_API_KEY=stub-key e o `youtube-stub.mjs`
+ * O backend sobe com YOUTUBE_BASE_URL=http://127.0.0.1:3027 e YOUTUBE_API_KEY=stub-key e o `youtube-stub.mjs`
  * responde no lugar do YouTube (nunca a API real). Cada teste usa um id de video novo (o stub conta chamadas por id).
  * Roda numa equipe isolada (plano Agencia) e uma equipe extra para o limite de 30 atualizacoes por hora (429).
  */
 
-const STUB = process.env.YOUTUBE_STUB_URL ?? "http://localhost:3027";
+const STUB = process.env.YOUTUBE_STUB_URL ?? "http://127.0.0.1:3027";
 const ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
 const NOT_FOUND = "zzzzzzzzzzz";
 const MSG_INVALID = "Informe um link válido do YouTube.";
@@ -226,7 +226,8 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
     await dialog.getByRole("button", { name: "Salvar" }).click();
     await expectToast(page, "Link do vídeo salvo!");
     // nao pode ficar com o titulo do video antigo
-    await expect(dialog.getByTestId("video-title")).not.toHaveText(`Vídeo de teste ${a}`);
+    await expect(dialog.getByTestId("video-title")).toHaveCount(0);
+    await expect(dialog.getByText("Ainda não há números deste vídeo. Clique em Atualizar.")).toBeVisible();
     await dialog.getByRole("button", { name: "Atualizar" }).click();
     await expect(dialog.getByTestId("video-title")).toHaveText(`Vídeo de teste ${b}`);
   });
@@ -272,7 +273,7 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
 
     // erro 500 do YouTube tambem vira a mesma mensagem
     ageSnapshots(card.id);
-    await page.locator('[data-sonner-toast]').first().waitFor({ state: "detached" }).catch(() => {});
+    await expect(page.locator('[data-sonner-toast][data-type="error"]')).toHaveCount(0, { timeout: 10_000 });
     await stub("/__mode", { mode: "error" });
     await dialog.getByRole("button", { name: "Atualizar" }).click();
     await expect(page.locator('[data-sonner-toast][data-type="error"]').filter({ hasText: MSG_UNAVAILABLE }).first()).toBeVisible();
@@ -281,6 +282,7 @@ test.describe("v4 YouTube: editor (Ana, Administradora)", () => {
   });
 
   test("FT-YT-08: 31a atualizacao da equipe na hora devolve 429 e a tela avisa", async ({ page }) => {
+    test.setTimeout(90_000);
     // equipe nova para nao afetar os outros testes (limite de 30 consultas ao YouTube por equipe por hora)
     const t2 = uniq("Equipe YT 429");
     const tid = await apiCreateTeam(t2);
@@ -374,14 +376,10 @@ test.describe("v4 YouTube: ideias", () => {
     await page.getByRole("tab", { name: "Caixa de Entrada" }).click();
     const card = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: title, exact: true }) });
     await expect(card).toBeVisible();
-    // o card de ideia no inbox nao oferece o dialogo de tarefas com a aba Desempenho
-    const opener = card.getByTitle("Tarefas do card");
-    if (await opener.count()) {
-      await opener.click();
-      await expect(dialogOf(page).getByRole("tab", { name: /^Tarefas/ })).toBeVisible();
-      await expect(dialogOf(page).getByRole("tab", { name: "Desempenho" })).toHaveCount(0);
-    }
+    // o card de ideia na Caixa de Entrada nao tem o botao que abre o dialogo de tarefas (e portanto nao tem a aba Desempenho)
+    await expect(card.getByTitle("Tarefas do card")).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Desempenho" })).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 });
 
@@ -406,9 +404,8 @@ test.describe("v4 YouTube: responsivo", () => {
       expect(o.dialog).toBeLessThanOrEqual(0);
       await page.screenshot({ path: `${SHOTS}/v4-yt-375-${theme}-empty.png` });
 
-      // titulo e link longos nao podem estourar a largura
-      const longId = id;
-      await urlInput(dialog).fill(`https://www.youtube.com/watch?v=${longId}&list=PLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&t=123456789`);
+      // link longo (com parametro de lista) nao pode estourar a largura
+      await urlInput(dialog).fill(`https://www.youtube.com/watch?v=${id}&list=PLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&t=123456789`);
       await dialog.getByRole("button", { name: "Salvar" }).click();
       await expectToast(page, "Link do vídeo salvo!");
       await dialog.getByRole("button", { name: "Atualizar" }).click();

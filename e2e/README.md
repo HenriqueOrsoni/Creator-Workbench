@@ -64,9 +64,9 @@ Na tela existe so uma forma de adicionar pessoas: a aba **Convites** da gestao d
 ## v4 (YouTube): servidor falso e variaveis
 
 O acompanhamento de videos (aba **Desempenho** do card, decisao 23) consulta a API de dados do YouTube. Nos testes **nunca** se chama o YouTube real:
-`node e2e/support/youtube-stub.mjs` sobe um servidor falso em `:3027` (`STUB_PORT` muda a porta) e o backend aponta para ele.
+`node e2e/support/youtube-stub.mjs` sobe um servidor falso em `127.0.0.1:3027` (so a interface local; `STUB_PORT` muda a porta) e o backend aponta para ele.
 
-- Backend com `YOUTUBE_BASE_URL=http://localhost:3027` e `YOUTUBE_API_KEY=stub-key` (qualquer valor nao vazio; o stub responde 403 se o cabecalho `X-Goog-Api-Key` faltar).
+- Backend com `YOUTUBE_BASE_URL=http://127.0.0.1:3027` e `YOUTUBE_API_KEY=stub-key` (qualquer valor nao vazio; o stub responde 403 se o cabecalho `X-Goog-Api-Key` faltar).
   Sem `YOUTUBE_API_KEY` o backend devolve 503 "Integração com o YouTube não configurada." em toda atualizacao.
 - `GET /videos?part=statistics,snippet&id=...`: qualquer id de 11 caracteres devolve titulo "Vídeo de teste <id>", e as visualizacoes **crescem 100 a cada chamada**
   (curtidas = 10 %, comentarios = 1 %). O id `zzzzzzzzzzz` volta sem itens (o backend responde 404, "video nao encontrado").
@@ -74,5 +74,5 @@ O acompanhamento de videos (aba **Desempenho** do card, decisao 23) consulta a A
   "Não foi possível consultar o YouTube agora. Tente novamente."), `POST /__reset`, `POST /__counter {"id","views"}`.
 - Cache: o backend reaproveita o ultimo snapshot por 15 min. `v4-youtube.spec.ts` mostra os dois caminhos: a 2a leitura dentro da janela nao chama o stub, e depois de
   envelhecer os snapshots com `sql("UPDATE video_stat_snapshots SET captured_at = captured_at - INTERVAL 60 MINUTE ...")` a leitura volta a chamar o stub (a tendencia aparece com 2 leituras).
-- Limite de 30 atualizacoes por equipe por hora (`APP_YOUTUBE_REFRESH_PER_TEAM_HOUR`, padrao 30): o teste do 429 usa uma **equipe nova** para nao afetar os outros specs.
+- Limite de 30 atualizacoes por equipe por hora (`APP_YOUTUBE_REFRESH_PER_TEAM_HOUR`, padrao 30): so contam as atualizacoes que chegam ao YouTube (leituras do cache nao contam). O teste do 429 usa uma **equipe nova** para nao afetar os outros specs.
 - Antes de rodar: `node e2e/support/youtube-stub.mjs` (alem do mail sink). Os testes de abas contam 6 abas num projeto (Tarefas, Materiais, Resumo IA, Revisão, Desempenho, Histórico).

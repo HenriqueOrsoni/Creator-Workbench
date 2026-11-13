@@ -1,5 +1,5 @@
 // YouTube falso para o E2E (nunca chama a API real). Escuta em :3027 (STUB_PORT).
-// O backend sobe com YOUTUBE_BASE_URL=http://localhost:3027 e YOUTUBE_API_KEY=stub-key e chama
+// O backend sobe com YOUTUBE_BASE_URL=http://127.0.0.1:3027 e YOUTUBE_API_KEY=stub-key e chama
 //   GET /videos?part=statistics,snippet&id=a,b&fields=...   com o cabecalho X-Goog-Api-Key.
 //
 // Respostas de GET /videos:
@@ -42,7 +42,7 @@ function readBody(req) {
 
 http
   .createServer(async (req, res) => {
-    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
     if (req.method === "GET" && url.pathname === "/__state") return json(res, 200, { mode, calls, key: lastKey, counters: Object.fromEntries(counters) });
     if (req.method === "POST" && url.pathname === "/__mode") {
       const b = await readBody(req);
@@ -82,4 +82,4 @@ http
     }
     json(res, 404, { error: "not found" });
   })
-  .listen(PORT, () => console.log(`youtube-stub em http://localhost:${PORT}`));
+  .listen(PORT, "127.0.0.1", () => console.log(`youtube-stub em http://127.0.0.1:${PORT}`));
