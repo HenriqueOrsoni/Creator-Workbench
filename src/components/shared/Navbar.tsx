@@ -65,7 +65,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger render={
-            <Button variant="ghost" size="icon" aria-label="Abrir menu" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground md:hidden">
+            <Button variant="ghost" size="icon" aria-label="Abrir menu" className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground lg:hidden">
               <Menu className="w-5 h-5" />
             </Button>
           } />
@@ -138,7 +138,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
           <div className="w-8 h-8 bg-primary/10 border border-primary/20 text-primary rounded-lg flex items-center justify-center shadow-xs">
             <Zap className="w-4 h-4 fill-primary/30" />
           </div>
-          <span className="text-base font-bold tracking-tight text-foreground font-heading hidden sm:inline">
+          <span className="text-base font-bold tracking-tight text-foreground font-heading hidden lg:inline">
             Workbench<span className="text-primary font-black">_CR</span>
           </span>
         </div>
@@ -151,7 +151,7 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <div className="hidden md:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
+        <div className="hidden lg:flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
           <button 
             onClick={() => onNavigate?.("inbox")}
             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
@@ -190,10 +190,10 @@ export function Navbar({ activeTab = "kanban", onNavigate }: NavbarProps = {}) {
               <Button
                 aria-label="Capturar Ideia"
                 title="Capturar Ideia"
-                className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-2.5 sm:px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5"
+                className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold rounded-lg px-2.5 lg:px-3.5 h-9 text-xs tracking-wide shadow-xs transition-colors flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4 sm:hidden" aria-hidden="true" />
-                <span className="hidden sm:inline">Capturar Ideia</span>
+                <Plus className="w-4 h-4 lg:hidden" aria-hidden="true" />
+                <span className="hidden lg:inline">Capturar Ideia</span>
               </Button>
             }
           />

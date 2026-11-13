@@ -66,22 +66,23 @@ export function TeamSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 sm:gap-1.5 font-sans">
+    <div className="flex items-center gap-1 sm:gap-1.5 font-sans min-w-0">
       <Dialog open={openSelect} onOpenChange={setOpenSelect}>
         <DialogTrigger render={
           <Button
             variant="outline"
-            className="flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-lg border-border bg-background hover:bg-muted font-medium text-xs transition-colors shadow-xs"
+            className="flex items-center gap-2 h-9 px-2.5 sm:px-3 shrink min-w-0 max-w-full overflow-hidden rounded-lg border-border bg-background hover:bg-muted font-medium text-xs transition-colors shadow-xs"
           >
             <Users className="w-3.5 h-3.5 text-primary" />
-            <span className="max-w-[80px] sm:max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
+            <span className="min-w-[48px] max-w-[80px] sm:max-w-[130px] truncate">{activeTeam ? activeTeam.name : "Meu Estúdio"}</span>
             {FEATURES.plans && activeTeam?.plan && (
-              <Badge variant="outline" data-testid="team-plan-badge" className="text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
+              // Oculto de md a xl: nessas larguras os botões Ideação/Produção/Cursos ficam ao lado e os selos se sobrepunham (plano e papel continuam no diálogo da equipe)
+              <Badge variant="outline" data-testid="team-plan-badge" className="md:hidden xl:inline-flex text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
                 {PLAN_LABELS[activeTeam.plan] ?? activeTeam.plan}
               </Badge>
             )}
             {activeTeam && (
-              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
+              <Badge variant="secondary" className="hidden xl:inline-flex text-[10px] px-1.5 py-0 h-4 font-semibold rounded-sm">
                 {formatRole(activeTeam.role)}
               </Badge>
             )}
