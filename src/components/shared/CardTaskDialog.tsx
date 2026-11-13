@@ -4,11 +4,12 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   CheckSquare, Square, Plus, Trash2, ListChecks, Paperclip,
   Sparkles, History, CheckCircle2, ArrowUp, ArrowDown,
-  UploadCloud, Download, User, Calendar, MessageSquare, Pencil, X
+  UploadCloud, Download, User, Calendar, MessageSquare, Pencil, X, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { isPreviewable, materialMeta } from "@/lib/materials";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -50,6 +51,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     uploadMaterial,
     deleteMaterial,
     downloadMaterial,
+    previewMaterial,
     cardSummaries,
     cardReviews,
     fetchCardReviews,
@@ -86,6 +88,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   // Estados para Materiais (FE-10, FE-11)
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState(0);
   const [materialToDelete, setMaterialToDelete] = useState<{ id: string; fileName: string } | null>(null);
   const [deletingMaterial, setDeletingMaterial] = useState(false);
   const [summaryLoadedFor, setSummaryLoadedFor] = useState<string | null>(null);
@@ -215,13 +218,15 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
     // Reset input
     e.target.value = "";
 
-    // Barra indeterminada: não há progresso real e ela some assim que o servidor responde (sucesso ou erro)
+    // Progresso real do envio; a barra some assim que o servidor responde (sucesso ou erro)
+    setUploadPercent(0);
     setIsUploading(true);
     let uploaded = null;
     try {
-      uploaded = await uploadMaterial(currentCard.id, file);
+      uploaded = await uploadMaterial(currentCard.id, file, setUploadPercent);
     } finally {
       setIsUploading(false);
+      setUploadPercent(0);
     }
 
     if (uploaded) {
@@ -258,7 +263,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border border-border shadow-lg font-sans">
+      <DialogContent className="min-w-0 overflow-x-hidden sm:max-w-[560px] max-h-[90vh] overflow-y-auto rounded-xl p-4 sm:p-6 bg-card border border-border shadow-lg font-sans">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
@@ -294,28 +299,28 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
               setLoadingHistory(true);
             }
           }}
-          className="w-full mt-2"
+          className="w-full min-w-0 max-w-full mt-2"
         >
           <TabsList className="flex w-full h-auto group-data-horizontal/tabs:h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-lg text-xs">
-            <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md shrink-0">
+            <TabsTrigger value="tarefas" className="h-auto text-xs font-semibold rounded-md shrink-0">
               Tarefas ({tasks.length})
             </TabsTrigger>
             {FEATURES.materials && (
-              <TabsTrigger value="materiais" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="materiais" className="h-auto text-xs font-semibold rounded-md">
                 Materiais ({cardMaterials[currentCard.id]?.length ?? currentCard.materialsCount ?? 0})
               </TabsTrigger>
             )}
             {FEATURES.summary && (
-              <TabsTrigger value="resumo" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="resumo" className="h-auto text-xs font-semibold rounded-md">
                 Resumo IA
               </TabsTrigger>
             )}
             {FEATURES.review && (
-              <TabsTrigger value="revisao" className="text-xs font-semibold rounded-md">
+              <TabsTrigger value="revisao" className="h-auto text-xs font-semibold rounded-md">
                 Revisão
               </TabsTrigger>
             )}
-            <TabsTrigger value="historico" className="text-xs font-semibold rounded-md">
+            <TabsTrigger value="historico" className="h-auto text-xs font-semibold rounded-md">
               Histórico
             </TabsTrigger>
           </TabsList>
@@ -513,7 +518,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
           {/* Aba 2: Materiais de Apoio (FE-10, FE-11, FE-12) */}
           {FEATURES.materials && (
-          <TabsContent value="materiais" className="space-y-3 pt-3">
+          <TabsContent value="materiais" className="min-w-0 max-w-full space-y-3 pt-3">
             {canEditTasks && (
               <div className="border border-dashed border-border rounded-xl p-4 text-center bg-muted/20 hover:bg-muted/30 transition-colors">
                 <input
@@ -538,16 +543,26 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 </label>
 
                 {isUploading && (
-                  <div data-testid="upload-progress" className="mt-3 w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <div data-testid="upload-progress" className="mt-3 w-full">
                     <div
-                      className="bg-primary h-full w-full animate-pulse"
-                    />
+                      role="progressbar"
+                      aria-label="Progresso do envio"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={uploadPercent}
+                      className="w-full bg-muted rounded-full h-1.5 overflow-hidden"
+                    >
+                      <div className="bg-primary h-full transition-all" style={{ width: `${uploadPercent}%` }} />
+                    </div>
+                    <span data-testid="upload-percent" className="mt-1 block text-[10px] font-medium text-muted-foreground">
+                      Enviando... {uploadPercent}%
+                    </span>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="space-y-1.5 max-h-[220px] overflow-y-auto">
+            <div className="min-w-0 max-w-full space-y-1.5 max-h-[220px] overflow-y-auto">
               {materials.length === 0 ? (
                 <div className="py-6 text-center text-xs text-muted-foreground">
                   Nenhum arquivo anexado a este projeto ainda.
@@ -556,18 +571,31 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
                 materials.map((mat) => (
                   <div
                     key={mat.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-card border border-border shadow-2xs"
+                    className="flex min-w-0 items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border shadow-2xs"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Paperclip className="w-4 h-4 text-primary shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">{mat.fileName}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {Math.round(mat.sizeBytes / 1024)} KB • Por {mat.uploadedBy?.name || "Membro"}
+                        <p className="text-xs font-medium text-foreground truncate" title={mat.fileName}>{mat.fileName}</p>
+                        <p className="text-[10px] text-muted-foreground break-words" data-testid="material-meta">
+                          {materialMeta(mat)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      {isPreviewable(mat) && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => previewMaterial(mat)}
+                          className="h-7 w-7 text-muted-foreground hover:text-primary rounded-md"
+                          title="Visualizar"
+                          aria-label={`Visualizar ${mat.fileName}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"
