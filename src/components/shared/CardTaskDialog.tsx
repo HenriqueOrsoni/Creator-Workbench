@@ -32,6 +32,7 @@ import { formatLocalDate, formatDateTime } from "@/lib/dates";
 import { FEATURES } from "@/lib/features";
 import { useCloseOnPlanRequest } from "@/lib/plan-nav";
 import { reviewLabel } from "@/lib/review";
+import { VideoPerformance } from "@/components/shared/VideoPerformance";
 
 interface CardTaskDialogProps {
   card: ProjectCard | null;
@@ -171,6 +172,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
 
   if (!currentCard) return null;
 
+  const showPerformance = FEATURES.youtube && currentCard.type === "PROJECT";
   const tasks = currentCard.tasks || [];
   const tasksDone = currentCard.tasksDone || 0;
   const tasksTotal = currentCard.tasksTotal || tasks.length;
@@ -323,6 +325,11 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
             {FEATURES.review && (
               <TabsTrigger value="revisao" className="h-auto text-xs font-semibold rounded-md">
                 Revisão
+              </TabsTrigger>
+            )}
+            {showPerformance && (
+              <TabsTrigger value="desempenho" className="h-auto text-xs font-semibold rounded-md">
+                Desempenho
               </TabsTrigger>
             )}
             <TabsTrigger value="historico" className="h-auto text-xs font-semibold rounded-md">
@@ -794,6 +801,18 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           )}
 
           {/* Aba 5: Histórico de Movimentações (FE-05) */}
+          {showPerformance && (
+          <TabsContent value="desempenho" className="pt-3 min-w-0">
+            <VideoPerformance
+              key={`${currentCard.id}|${currentCard.videoUrl ?? ""}`}
+              cardId={currentCard.id}
+              videoUrl={currentCard.videoUrl}
+              canEdit={canEditTasks}
+              active={open && activeTab === "desempenho"}
+            />
+          </TabsContent>
+          )}
+
           <TabsContent value="historico" className="space-y-2 pt-3">
             <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1">
               {loadingHistory ? (

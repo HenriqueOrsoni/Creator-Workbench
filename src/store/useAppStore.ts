@@ -86,6 +86,8 @@ export interface ProjectCard {
   reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
   /** Quantidade de arquivos anexados ao card. */
   materialsCount?: number;
+  /** Link do vídeo publicado no YouTube (somente projetos). */
+  videoUrl?: string;
   materials?: MaterialItem[];
   createdAt: string;
   updatedAt?: string;
@@ -144,6 +146,24 @@ export interface AlertItem {
   taskTitle?: string | null;
   dueDate: string;
   daysLeft: number;
+}
+
+export interface VideoSnapshot {
+  capturedAt: string;
+  viewCount: number;
+  likeCount: number | null;
+  commentCount: number | null;
+}
+
+export interface VideoStats {
+  cardId: string;
+  videoId: string;
+  videoUrl: string;
+  title: string;
+  publishedAt: string | null;
+  latest: VideoSnapshot | null;
+  /** Do mais antigo para o mais novo (até 60). */
+  history: VideoSnapshot[];
 }
 
 export interface ProjectSummary {
@@ -242,6 +262,7 @@ export interface ApiCardDto {
   columnSince?: string | null;
   reviewStatus?: "NONE" | "APPROVED" | "CHANGES_REQUESTED";
   materialsCount?: number | null;
+  videoUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -415,6 +436,7 @@ function mapCard(c: ApiCardDto, column?: { id: string; name: string }): ProjectC
     columnSince: c.columnSince || undefined,
     reviewStatus: c.reviewStatus,
     materialsCount: typeof c.materialsCount === "number" ? c.materialsCount : 0,
+    videoUrl: c.videoUrl || undefined,
     createdAt: c.createdAt || "",
     updatedAt: c.updatedAt
   };
@@ -466,6 +488,40 @@ function mapCourse(c: ApiCourseDto): Course {
     status: c.status,
     publishedAt: c.publishedAt,
     createdAt: c.createdAt
+  };
+}
+
+function mapSnapshot(r: { capturedAt: string; viewCount: number; likeCount?: number | null; commentCount?: number | null }): VideoSnapshot {
+  return {
+    capturedAt: r.capturedAt,
+    viewCount: r.viewCount,
+    likeCount: r.likeCount ?? null,
+    commentCount: r.commentCount ?? null
+  };
+}
+
+function mapVideoStats(raw: Record<string, unknown>, cardId: string): VideoStats {
+  const r = raw as {
+    videoId: string; videoUrl: string; title: string; publishedAt?: string | null;
+    latest?: Parameters<typeof mapSnapshot>[0] | null; history?: Parameters<typeof mapSnapshot>[0][] | null;
+  };
+  return {
+    cardId,
+    videoId: r.videoId,
+    videoUrl: r.videoUrl,
+    title: r.title || "",
+    publishedAt: r.publishedAt || null,
+    latest: r.latest ? mapSnapshot(r.latest) : null,
+    history: Array.isArray(r.history) ? r.history.map(mapSnapshot) : []
+  };
+}
+
+/** Troca o videoUrl do card no quadro e nas ideias, sem nova ida ao servidor. */
+function withVideoUrl<T extends { board: AppState["board"]; ideas: ProjectCard[] }>(state: T, cardId: string, videoUrl?: string) {
+  const patch = (c: ProjectCard) => (c.id === cardId ? { ...c, videoUrl } : c);
+  return {
+    board: state.board ? { ...state.board, columns: state.board.columns.map(col => ({ ...col, cards: col.cards.map(patch) })) } : state.board,
+    ideas: state.ideas.map(patch)
   };
 }
 
@@ -624,6 +680,12 @@ interface AppState {
   unlinkMaterialFromLesson: (courseId: string, moduleId: string, lessonId: string, materialId: string) => Promise<boolean>;
 
   cardSummaries: Record<string, ProjectSummary>;
+  /** url vazia remove o vínculo. Só altera o estado quando o servidor aceita. */
+  setCardVideo: (cardId: string, url: string) => Promise<boolean>;
+  /** 404 (sem vídeo vinculado) não é erro: devolve null sem aviso. */
+  fetchVideoStats: (cardId: string) => Promise<VideoStats | null>;
+  refreshVideoStats: (cardId: string) => Promise<VideoStats | null>;
+  videoStats: Record<string, VideoStats>;
   fetchCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
   generateCardSummary: (cardId: string) => Promise<ProjectSummary | null>;
 
@@ -671,6 +733,7 @@ const EMPTY_SESSION_STATE = {
   cardMaterials: {} as Record<string, MaterialItem[]>,
   cardReviews: {} as Record<string, CardReview[]>,
   cardSummaries: {} as Record<string, ProjectSummary>,
+  videoStats: {} as Record<string, VideoStats>,
   teamInvites: [] as TeamInvite[],
   teamTags: [] as TeamTag[],
   plans: [] as PlanInfo[],
@@ -1858,6 +1921,57 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           notifyError(error, "Erro ao desvincular o material");
           return false;
+        }
+      },
+
+      // --- Desempenho no YouTube ---
+      setCardVideo: async (cardId, url) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return false;
+        try {
+          const raw = await apiRequest("PUT", `/api/v1/teams/${teamId}/cards/${cardId}/video`, { url: url.trim() });
+          const videoUrl = (raw && typeof raw === "object" && raw.videoUrl) || undefined;
+          set(state => {
+            const next = { ...state.videoStats };
+            if (videoUrl !== state.videoStats[cardId]?.videoUrl) delete next[cardId];
+            return { ...withVideoUrl(state, cardId, videoUrl), videoStats: next };
+          });
+          toast.success(videoUrl ? "Link do vídeo salvo!" : "Link do vídeo removido.");
+          return true;
+        } catch (error) {
+          notifyError(error, "Erro ao salvar o link do vídeo");
+          return false;
+        }
+      },
+
+      fetchVideoStats: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+        try {
+          const raw = await apiRequest("GET", `/api/v1/teams/${teamId}/cards/${cardId}/video-stats`);
+          if (!raw) return null;
+          const stats = mapVideoStats(raw, cardId);
+          set(state => ({ videoStats: { ...state.videoStats, [cardId]: stats } }));
+          return stats;
+        } catch (error) {
+          // 404: o projeto ainda não tem vídeo vinculado (estado vazio, não erro)
+          if (statusOf(error) !== 404) notifyError(error, "Erro ao carregar o desempenho do vídeo");
+          return null;
+        }
+      },
+
+      refreshVideoStats: async (cardId) => {
+        const teamId = get().activeTeamId;
+        if (!teamId) return null;
+        try {
+          const raw = await apiRequest("POST", `/api/v1/teams/${teamId}/cards/${cardId}/video-stats/refresh`);
+          if (!raw) return null;
+          const stats = mapVideoStats(raw, cardId);
+          set(state => ({ videoStats: { ...state.videoStats, [cardId]: stats } }));
+          return stats;
+        } catch (error) {
+          notifyError(error, "Erro ao atualizar os números do vídeo");
+          return null;
         }
       },
 

@@ -26,6 +26,8 @@ export const FEATURES = {
   alerts: true,
   /** Aba Plano, banners e selo do plano. */
   plans: true,
+  /** Aba Desempenho do card (vídeo no YouTube). */
+  youtube: true,
 } as const;
 
 export type FeatureName = keyof typeof FEATURES;
