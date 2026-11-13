@@ -296,7 +296,7 @@ export function CardTaskDialog({ card, open, onOpenChange }: CardTaskDialogProps
           }}
           className="w-full mt-2"
         >
-          <TabsList className="flex w-full h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-lg text-xs">
+          <TabsList className="flex w-full h-auto group-data-horizontal/tabs:h-auto flex-wrap justify-start gap-1 bg-muted/50 p-1 rounded-lg text-xs">
             <TabsTrigger value="tarefas" className="text-xs font-semibold rounded-md shrink-0">
               Tarefas ({tasks.length})
             </TabsTrigger>
