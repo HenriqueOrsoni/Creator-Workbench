@@ -518,6 +518,25 @@ describe('Store Zustand: dados vêm sempre da API', () => {
       expect(toast.error).toHaveBeenCalledWith('Exportação indisponível.');
     });
 
+    it('publishCourse devolve "invalid" quando o servidor responde 400 e mostra a mensagem', async () => {
+      const err = Object.assign(new Error('O curso tem problemas.'), { status: 400 });
+      mockRoutes({ [`POST ${T}/courses/5/publish`]: err });
+      expect(await useAppStore.getState().publishCourse('5')).toBe('invalid');
+      expect(toast.error).toHaveBeenCalledWith('O curso tem problemas.');
+    });
+
+    it('createCourseModule devolve true no sucesso e false com a mensagem do servidor no erro', async () => {
+      mockRoutes({
+        [`POST ${T}/courses/5/modules`]: { id: 60 },
+        [`GET ${T}/courses/5`]: { id: 5, teamId: 10, title: 'C', modules: [] },
+        [`GET ${T}/courses`]: [],
+      });
+      expect(await useAppStore.getState().createCourseModule('5', 'Mod')).toBe(true);
+      mockRoutes({ [`POST ${T}/courses/5/modules`]: new Error('Título inválido.') });
+      expect(await useAppStore.getState().createCourseModule('5', 'Mod')).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Título inválido.');
+    });
+
     it('exportCourseJson baixa de GET .../export?format=json; com erro mostra a mensagem', async () => {
       download.mockResolvedValueOnce(undefined);
       expect(await useAppStore.getState().exportCourseJson('5')).toBe(true);

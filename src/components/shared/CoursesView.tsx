@@ -98,6 +98,9 @@ export function CoursesView() {
   const [lessonToDelete, setLessonToDelete] = React.useState<{ moduleId: string; lessonId: string; title: string } | null>(null);
 
   const [loading, setLoading] = React.useState(false);
+  // Exportação e reordenação em andamento: bloqueia cliques repetidos
+  const [exporting, setExporting] = React.useState(false);
+  const [reordering, setReordering] = React.useState(false);
   const [materialsLesson, setMaterialsLesson] = React.useState<{ moduleId: string; lessonId: string } | null>(null);
 
   React.useEffect(() => {
@@ -142,8 +145,10 @@ export function CoursesView() {
     if (!activeCourse || !moduleTitle.trim()) return;
 
     setLoading(true);
-    await createCourseModule(activeCourse.id, moduleTitle.trim());
+    const created = await createCourseModule(activeCourse.id, moduleTitle.trim());
     setLoading(false);
+    // Só fecha e limpa quando o servidor aceitou
+    if (!created) return;
     setModuleTitle("");
     setOpenCreateModule(false);
   };
@@ -216,9 +221,17 @@ export function CoursesView() {
   const handleConfirmPublish = async () => {
     if (!activeCourse) return;
     setLoading(true);
-    await publishCourse(activeCourse.id);
-    setLoading(false);
+    const result = await publishCourse(activeCourse.id);
     setOpenPublishConfirm(false);
+    if (result === "invalid") {
+      // O servidor recusou (400): busca de novo os problemas e mostra a lista
+      const check = await checkCoursePublication(activeCourse.id);
+      if (check && !check.publishable) {
+        setValidationProblems(check.problems);
+        setOpenValidationDialog(true);
+      }
+    }
+    setLoading(false);
   };
 
   const handleUnpublishCourse = async () => {
@@ -228,6 +241,16 @@ export function CoursesView() {
     setLoading(false);
   };
 
+  const handleExport = async (format: "json" | "csv") => {
+    if (!activeCourse || exporting) return;
+    setExporting(true);
+    try {
+      await (format === "json" ? exportCourseJson(activeCourse.id) : exportCourseCsv(activeCourse.id));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleMoveModule = async (index: number, direction: "up" | "down") => {
     if (!activeCourse) return;
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -235,7 +258,13 @@ export function CoursesView() {
     const newModules = [...activeCourse.modules];
     const [moved] = newModules.splice(index, 1);
     newModules.splice(targetIndex, 0, moved);
-    await reorderCourseModules(activeCourse.id, newModules.map(m => m.id));
+    if (reordering) return;
+    setReordering(true);
+    try {
+      await reorderCourseModules(activeCourse.id, newModules.map(m => m.id));
+    } finally {
+      setReordering(false);
+    }
   };
 
   const handleMoveLesson = async (moduleId: string, lessonIndex: number, direction: "up" | "down") => {
@@ -247,7 +276,13 @@ export function CoursesView() {
     const newLessons = [...mod.lessons];
     const [moved] = newLessons.splice(lessonIndex, 1);
     newLessons.splice(targetIndex, 0, moved);
-    await reorderCourseLessons(activeCourse.id, moduleId, newLessons.map(l => l.id));
+    if (reordering) return;
+    setReordering(true);
+    try {
+      await reorderCourseLessons(activeCourse.id, moduleId, newLessons.map(l => l.id));
+    } finally {
+      setReordering(false);
+    }
   };
 
   const confirmDeleteCourse = async () => {
@@ -435,7 +470,8 @@ export function CoursesView() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="outline"
-                    onClick={() => exportCourseJson(activeCourse.id)}
+                    disabled={exporting}
+                    onClick={() => handleExport("json")}
                     className="rounded-lg h-9 px-3 text-xs font-medium gap-1.5 border-border"
                     title="Exportar estrutura em JSON"
                   >
@@ -444,9 +480,10 @@ export function CoursesView() {
                   {FEATURES.courseCsv && (
                   <Button
                     variant="outline"
-                    onClick={() => exportCourseCsv(activeCourse.id)}
+                    disabled={exporting}
+                    onClick={() => handleExport("csv")}
                     className="rounded-lg h-9 px-3 text-xs font-medium gap-1.5 border-border"
-                    title="Exportar estrutura em CSV para Excel (FE-23)"
+                    title="Exportar estrutura em CSV para Excel"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" /> CSV
                   </Button>
@@ -467,7 +504,7 @@ export function CoursesView() {
                           onClick={handleStartPublish}
                           disabled={loading}
                           className="rounded-lg h-9 px-3.5 text-xs font-semibold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                          title="Verificar e Publicar Curso (FE-22)"
+                          title="Verificar e Publicar Curso"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Publicar Curso
                         </Button>
@@ -555,7 +592,7 @@ export function CoursesView() {
 <Button
                               variant="ghost"
                               size="icon"
-                              disabled={moduleIndex === 0}
+                              disabled={reordering || moduleIndex === 0}
                               onClick={() => handleMoveModule(moduleIndex, "up")}
                               className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                               title="Mover módulo para cima"
@@ -568,7 +605,7 @@ export function CoursesView() {
 <Button
                               variant="ghost"
                               size="icon"
-                              disabled={moduleIndex === activeCourse.modules.length - 1}
+                              disabled={reordering || moduleIndex === activeCourse.modules.length - 1}
                               onClick={() => handleMoveModule(moduleIndex, "down")}
                               className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                               title="Mover módulo para baixo"
@@ -646,7 +683,7 @@ export function CoursesView() {
 <Button
                                       variant="ghost"
                                       size="icon"
-                                      disabled={lessonIndex === 0}
+                                      disabled={reordering || lessonIndex === 0}
                                       onClick={() => handleMoveLesson(module.id, lessonIndex, "up")}
                                       className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                                       title="Mover aula para cima"
@@ -659,7 +696,7 @@ export function CoursesView() {
 <Button
                                       variant="ghost"
                                       size="icon"
-                                      disabled={lessonIndex === module.lessons.length - 1}
+                                      disabled={reordering || lessonIndex === module.lessons.length - 1}
                                       onClick={() => handleMoveLesson(module.id, lessonIndex, "down")}
                                       className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md disabled:opacity-30"
                                       title="Mover aula para baixo"
@@ -680,7 +717,7 @@ export function CoursesView() {
                                         description: lesson.description,
                                         contentUrl: lesson.contentUrl
                                       })}
-                                      className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-md"
+                                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-md"
                                       title="Editar aula"
                                       aria-label={`Editar aula ${lesson.title}`}
                                     >
@@ -694,7 +731,7 @@ export function CoursesView() {
                                         lessonId: lesson.id,
                                         title: lesson.title
                                       })}
-                                      className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-md"
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-md"
                                       title="Excluir aula"
                                     >
                                       <Trash2 className="w-3 h-3" />

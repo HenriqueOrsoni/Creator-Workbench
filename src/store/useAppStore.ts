@@ -568,7 +568,7 @@ interface AppState {
   createCourse: (title: string, description?: string) => Promise<Course | null>;
   updateCourse: (courseId: string, title: string, description?: string) => Promise<boolean>;
   deleteCourse: (courseId: string) => Promise<void>;
-  createCourseModule: (courseId: string, title: string) => Promise<void>;
+  createCourseModule: (courseId: string, title: string) => Promise<boolean>;
   updateCourseModule: (courseId: string, moduleId: string, title: string) => Promise<boolean>;
   deleteCourseModule: (courseId: string, moduleId: string) => Promise<void>;
   createCourseLesson: (courseId: string, moduleId: string, title: string, type?: "VIDEO" | "TEXT" | "QUIZ", projectId?: string, extra?: { description?: string; contentUrl?: string }) => Promise<boolean>;
@@ -577,7 +577,8 @@ interface AppState {
   reorderCourseModules: (courseId: string, moduleIds: string[]) => Promise<boolean>;
   reorderCourseLessons: (courseId: string, moduleId: string, lessonIds: string[]) => Promise<boolean>;
   checkCoursePublication: (courseId: string) => Promise<PublicationCheckResult | null>;
-  publishCourse: (courseId: string) => Promise<boolean>;
+  /** true = publicado; "invalid" = o servidor recusou com 400 (há problemas a mostrar); false = outro erro. */
+  publishCourse: (courseId: string) => Promise<boolean | "invalid">;
   unpublishCourse: (courseId: string) => Promise<boolean>;
   exportCourseCsv: (courseId: string) => Promise<boolean>;
   exportCourseJson: (courseId: string) => Promise<boolean>;
@@ -1356,15 +1357,17 @@ export const useAppStore = create<AppState>()(
 
       createCourseModule: async (courseId, title) => {
         const teamId = get().activeTeamId;
-        if (!teamId) return;
+        if (!teamId) return false;
 
         try {
           await apiRequest("POST", `/api/v1/teams/${teamId}/courses/${courseId}/modules`, { title });
           toast.success("Módulo adicionado!");
           await get().fetchCourseDetails(courseId);
           await get().fetchCourses();
+          return true;
         } catch (error) {
           notifyError(error, "Erro ao adicionar módulo");
+          return false;
         }
       },
 
@@ -1513,7 +1516,7 @@ export const useAppStore = create<AppState>()(
           return true;
         } catch (error) {
           notifyError(error, "Erro ao publicar o curso");
-          return false;
+          return (error as { status?: number })?.status === 400 ? "invalid" : false;
         }
       },
 

@@ -263,16 +263,16 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
       expect(screen.getByText('Rascunho')).toBeInTheDocument();
     });
 
-    it('exportar JSON e CSV chamam a rota do servidor (não há mais exportação local)', () => {
+    it('exportar JSON e CSV chamam a rota do servidor (não há mais exportação local)', async () => {
       const exportJson = jest.fn().mockResolvedValue(true);
       const exportCsv = jest.fn().mockResolvedValue(true);
       useAppStore.setState({ exportCourseJson: exportJson, exportCourseCsv: exportCsv });
       render(<CoursesView />);
 
       fireEvent.click(screen.getByRole('button', { name: /json/i }));
-      fireEvent.click(screen.getByRole('button', { name: /csv/i }));
-
       expect(exportJson).toHaveBeenCalledWith('1');
+      await waitFor(() => expect(screen.getByRole('button', { name: /csv/i })).not.toBeDisabled());
+      fireEvent.click(screen.getByRole('button', { name: /csv/i }));
       expect(exportCsv).toHaveBeenCalledWith('1');
     });
 
@@ -369,6 +369,70 @@ describe('Fase 2 - CoursesView Component (Hierarquia Cursos -> Módulos -> Aulas
 
       await waitFor(() => expect(mockUpdateCourseModule).toHaveBeenCalled());
       expect(screen.getByLabelText(/nome do módulo/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('M3 - ajustes da revisão', () => {
+    it('publicar recusado com 400 busca os problemas de novo e mostra a lista', async () => {
+      const check = jest.fn()
+        .mockResolvedValueOnce({ publishable: true, problems: [] })
+        .mockResolvedValueOnce({
+          publishable: false,
+          problems: [{ type: 'NO_MODULES', ids: [], titles: [], message: 'O curso não tem módulos.' }],
+        });
+      const publish = jest.fn().mockResolvedValue('invalid');
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await screen.findByText(/deseja tornar o curso/i);
+      fireEvent.click(screen.getByRole('button', { name: /confirmar publicação/i }));
+
+      expect(await screen.findByText('O curso não tem módulos.')).toBeInTheDocument();
+      expect(check).toHaveBeenCalledTimes(2);
+    });
+
+    it('publicar com outro erro não refaz a verificação', async () => {
+      const check = jest.fn().mockResolvedValue({ publishable: true, problems: [] });
+      const publish = jest.fn().mockResolvedValue(false);
+      useAppStore.setState({ checkCoursePublication: check, publishCourse: publish });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /publicar curso/i }));
+      await screen.findByText(/deseja tornar o curso/i);
+      fireEvent.click(screen.getByRole('button', { name: /confirmar publicação/i }));
+
+      await waitFor(() => expect(publish).toHaveBeenCalled());
+      expect(check).toHaveBeenCalledTimes(1);
+    });
+
+    it('novo módulo recusado pelo servidor mantém o diálogo e o texto digitado', async () => {
+      const create = jest.fn().mockResolvedValue(false);
+      useAppStore.setState({ createCourseModule: create });
+      render(<CoursesView />);
+
+      fireEvent.click(screen.getByRole('button', { name: /adicionar módulo/i }));
+      fireEvent.change(screen.getByLabelText(/nome do módulo \*/i), { target: { value: 'Módulo novo' } });
+      fireEvent.click(screen.getByRole('button', { name: /salvar módulo/i }));
+
+      await waitFor(() => expect(create).toHaveBeenCalledWith('1', 'Módulo novo'));
+      expect(screen.getByLabelText(/nome do módulo \*/i)).toHaveValue('Módulo novo');
+    });
+
+    it('exportar bloqueia os botões de exportação até terminar', async () => {
+      let finish: (v: boolean) => void = () => {};
+      const exportJson = jest.fn().mockReturnValue(new Promise<boolean>((r) => { finish = r; }));
+      useAppStore.setState({ exportCourseJson: exportJson });
+      render(<CoursesView />);
+
+      const json = screen.getByRole('button', { name: /json/i });
+      fireEvent.click(json);
+      fireEvent.click(json);
+      expect(exportJson).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: /csv/i })).toBeDisabled();
+
+      finish(true);
+      await waitFor(() => expect(screen.getByRole('button', { name: /csv/i })).not.toBeDisabled());
     });
   });
 });
